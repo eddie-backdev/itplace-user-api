@@ -123,7 +123,7 @@
 <p align="left">
 <img src="https://img.shields.io/badge/Route53-FF9900?style=flat&logo=amazon-aws&logoColor=white" />
 <img src="https://img.shields.io/badge/CloudFront-232F3E?style=flat&logo=amazon-aws&logoColor=white" />
-<img src="https://img.shields.io/badge/Elastic%20Load%20Balancing-FF9900?style=flat&logo=amazon-aws&logoColor=white" />
+<img src="https://img.shields.io/badge/Application%20Load%20Balancing-FF9900?style=flat&logo=amazon-aws&logoColor=white" />
 <img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white" />
 <img src="https://img.shields.io/badge/CodeDeploy-6DB33F?style=flat&logo=aws-code-deploy&logoColor=white" />
 <img src="https://img.shields.io/badge/Elastic%20Container%20Registry-FF9900?style=flat&logo=amazon-ecs&logoColor=white" />
