@@ -15,7 +15,17 @@ import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableJpaRepositories
+@EnableJpaRepositories(basePackages = {
+        "com.itplace.userapi.benefit",
+        "com.itplace.userapi.favorite",
+        "com.itplace.userapi.history",
+        "com.itplace.userapi.map",
+        "com.itplace.userapi.partner",
+        "com.itplace.userapi.user",
+        "com.itplace.userapi.recommend",
+        "com.itplace.userapi.ai",
+        "com.itplace.userapi.event"
+})
 public class DataSourceConfig {
 
     // Write replica 정보로 만든 DataSource
