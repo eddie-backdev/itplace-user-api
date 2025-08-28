@@ -1,6 +1,7 @@
 package com.itplace.userapi.security.auth.oauth.service;
 
 import com.itplace.userapi.benefit.entity.enums.Grade;
+import com.itplace.userapi.common.redis.RedisRepository;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
@@ -21,10 +22,8 @@ import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OAuthServiceImpl implements OAuthService {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisRepository redisRepository;
     private final MembershipRepository membershipRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
@@ -131,7 +130,7 @@ public class OAuthServiceImpl implements OAuthService {
         String role = user.getRole().getKey();
         String accessToken = jwtUtil.createJwt(user.getId(), role, JWTConstants.CATEGORY_ACCESS);
         String refreshToken = jwtUtil.createJwt(user.getId(), role, JWTConstants.CATEGORY_REFRESH);
-        redisTemplate.opsForValue().set("RT:" + user.getId(), refreshToken, jwtUtil.getRefreshTokenValidityInMS(), TimeUnit.MILLISECONDS);
+        redisRepository.saveRefreshToken(String.valueOf(user.getId()), refreshToken);
 
         LoginResponse loginResponse = LoginResponse.builder()
                 .name(user.getName())
