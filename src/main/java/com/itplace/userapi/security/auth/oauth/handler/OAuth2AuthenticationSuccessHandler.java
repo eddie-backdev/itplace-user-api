@@ -1,12 +1,11 @@
 package com.itplace.userapi.security.auth.oauth.handler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itplace.userapi.common.redis.RedisRepository;
 import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.auth.oauth.dto.CustomOAuth2User;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.MembershipRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,7 +13,6 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -27,15 +25,14 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
-    private final ObjectMapper objectMapper;
-    private final MembershipRepository membershipRepository;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisRepository redisRepository;
 
     private static final String NEW_USER_REDIRECT_URI = "https://itplace.click/login?step=phoneAuth&verifiedType=oauth";
     private static final String EXIST_USER_REDIRECT_URI = "https://itplace.click/login?oauth=processing";
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+                                        Authentication authentication) throws IOException, ServletException {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 
         if (oAuth2User.isNewUser()) {
@@ -64,7 +61,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             String refreshToken = jwtUtil.createJwt(user.getId(), role, JWTConstants.CATEGORY_REFRESH);
 
             // Redis에 Refresh Token 저장
-            redisTemplate.opsForValue().set("RT:" + user.getId(), refreshToken, jwtUtil.getRefreshTokenValidityInMS(), TimeUnit.MILLISECONDS);
+            redisRepository.saveRefreshToken(String.valueOf(user.getId()), refreshToken);
 
             // 쿠키에 토큰 설정
             cookieUtil.setTokensToCookie(response, accessToken, refreshToken);
