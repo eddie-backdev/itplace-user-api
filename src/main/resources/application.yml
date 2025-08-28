@@ -43,6 +43,12 @@ spring:
     activate:
       on-profile: common
 
+  redis:
+    ttl:
+      otp: 3m       # 3분
+      refresh-token: 7d # 7일
+      oauth-temp: 10m   # 10분
+
   jpa:
     hibernate:
       ddl-auto: update
