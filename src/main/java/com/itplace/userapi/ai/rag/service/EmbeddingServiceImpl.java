@@ -1,48 +1,33 @@
 package com.itplace.userapi.ai.rag.service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
 public class EmbeddingServiceImpl implements EmbeddingService {
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
+    private final EmbeddingModel embeddingModel;
 
-    public List<Float> embed(String text) {
-        WebClient client = WebClient.builder()
-                .baseUrl("https://api.openai.com/v1/embeddings")
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .build();
+    public float[] embed(String text) {
+        Objects.requireNonNull(text, "text");
+        EmbeddingResponse res = embeddingModel.embedForResponse(List.of(text));
 
-        Map<String, Object> body = Map.of(
-                "model", "text-embedding-3-small",
-                "input", text,
-                "encoding_format", "float"
-        );
+        if (res == null || res.getResults() == null || res.getResults().isEmpty()) {
+            throw new IllegalStateException("Embedding failed or empty");
+        }
 
-        Map response = client.post()
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
+        float[] vec = res.getResults().get(0).getOutput();
 
-        List<?> rawVector = (List<?>) ((Map<?, ?>) ((List<?>) response.get("data")).get(0)).get("embedding");
+        if (vec == null || vec.length == 0) {
+            throw new IllegalStateException("Embedding vector is empty");
+        }
 
-        List<Float> vector = rawVector.stream()
-                .map(val -> ((Number) val).floatValue())
-                .collect(Collectors.toList());
-
-        return vector;
+        return vec;
     }
 
 }
