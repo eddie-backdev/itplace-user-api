@@ -1,0 +1,162 @@
+name: Build, Push, and Deploy to EC2
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  # ---------------------------------
+  #  Build Job (PR, Push 둘 다 실행)
+  # ---------------------------------
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.image-tag.outputs.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Prepare prompt resources
+        run: |
+          mkdir -p src/main/resources/prompt
+          echo "${{ secrets.CATEGORIZE_PROMPT }}" | base64 --decode > src/main/resources/prompt/categorizePrompt.txt
+          echo "${{ secrets.REASON_PROMPT }}"   | base64 --decode > src/main/resources/prompt/reasonPrompt.txt
+
+      - name: Build JAR with Gradle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew bootJar --no-daemon -x test --parallel --configure-on-demand
+
+      - name: Set Image Tag
+        id: image-tag
+        run: echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4 # <<< 버전 업데이트
+        with:
+          name: application-jar
+          path: build/libs/*.jar
+
+  # ---------------------------------
+  #  Deploy Job (Push시에만 실행)
+  # ---------------------------------
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-northeast-2
+      ECR_REPOSITORY: itplace-app
+      S3_BUCKET_NAME: itplace-codedeploy-artifacts
+      CODEDEPLOY_APP_NAME: itplace-app-codedeploy
+      CODEDEPLOY_DEPLOYMENT_GROUP: itplace-app-dg-bluegreen
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4 # <<< 버전 업데이트
+        with:
+          name: application-jar
+          path: build/libs
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-OIDC-Role-For-Main-UserAPI
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          platforms: linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create application-secret.yml from GitHub Secret
+        run: |
+          echo "${{ secrets.APPLICATION_SECRET }}" | base64 --decode > application-secret.yml
+
+      - name: Create deployment artifact
+        run: |
+          echo "TAG=${{ env.IMAGE_TAG }}" > scripts/image.env
+          zip -r deploy.zip appspec.yml scripts/ application-secret.yml
+
+      - name: Upload artifact to S3
+        run: aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/deploy-${{ env.IMAGE_TAG }}.zip
+
+      - name: Wait for existing CodeDeploy deployment to finish
+        run: |
+          existing=$(aws deploy list-deployments \
+            --application-name "${{ env.CODEDEPLOY_APP_NAME }}" \
+            --deployment-group-name "${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }}" \
+            --include-only-statuses Created InProgress \
+            --query 'deployments[0]' --output text)
+          
+          if [[ "$existing" == d-* ]]; then
+            echo "진행 중인 배포가 있음: $existing. 끝날 때까지 대기합니다."
+            max_wait=300
+            interval=5
+            waited=0
+            while true; do
+              status=$(aws deploy get-deployment --deployment-id "$existing" --query 'deploymentInfo.status' --output text)
+              echo "현재 상태: $status"
+              if [[ "$status" =~ ^(Succeeded|Failed|Stopped)$ ]]; then
+                break
+              fi
+              if (( waited >= max_wait )); then
+                echo "대기 시간 초과 ($max_wait 초). 계속 진행합니다."
+                break
+              fi
+              sleep $interval
+              (( waited += interval ))
+            done
+            echo "기존 배포가 종료되었거나 타임아웃. 새 배포 생성 가능."
+          else
+            echo "진행 중인 배포 없음. 바로 생성합니다."
+          fi
+
+      - name: Create CodeDeploy Deployment
+        run: |
+          aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APP_NAME }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --s3-location bucket=${{ env.S3_BUCKET_NAME }},key=deploy-${{ env.IMAGE_TAG }}.zip,bundleType=zip \
+            --description "Deployment for commit ${{ env.IMAGE_TAG }}" \
+            --file-exists-behavior OVERWRITE

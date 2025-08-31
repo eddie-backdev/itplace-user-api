@@ -1,0 +1,89 @@
+spring:
+  profiles:
+    active: local
+    group:
+      local: local, common, secret
+      aws: aws, common, secret
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: local
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+server:
+  port: 8080
+
+---
+
+spring:
+  config:
+    import: file:/app/application-secret.yml
+    activate:
+      on-profile: aws
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: https://user-api.itplace.click/login/oauth2/code/kakao
+server:
+  port: 8080
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: common
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+springdoc:
+  swagger-ui:
+    url: /swagger.yml
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+    com.fasterxml.jackson.databind: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - "health"
+          - "info"
+  endpoint:
+    health:
+      show-details: "always"
+  health:
+    mail:
+      enabled: false
+    elasticsearch:
+      enabled: false
+    redis:
+      enabled: false

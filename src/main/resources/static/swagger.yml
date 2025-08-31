@@ -1,0 +1,3630 @@
+openapi: 3.0.4
+info:
+  title: itPlace API Document
+  description: |-
+    지도 기반 내 주변 LG유플러스 멤버십 혜택 정보 조회 서비스 'itPlace'의 API 명세서입니다.
+    
+    모든 API 응답은 표준 응답 포맷(ApiResponse)을 따릅니다.
+  version: 1.0.0
+servers:
+  - url: https://user-api.itplace.click/api/v1
+    description: 개발 서버
+
+  - url: http://localhost:8080/api/v1
+    description: 로컬 테스트 서버
+
+tags:
+  - name: Auth
+    description: 사용자 인증 및 가입 관련 API
+  - name: Verification
+    description: 이메일, 문자 인증 관련 API
+  - name: User
+    description: 사용자 마이페이지 관련 API
+  - name: Benefit
+    description: 제휴사 혜택 정보 조회 관련 API
+  - name: Map
+    description: 지도 기능 관련 API
+  - name: Favorites
+    description: 즐겨찾기 관련 API
+  - name: History
+    description: 멤버십 혜택 사용 내역 관련 API
+  - name: Recommend
+    description: 멤버십 추천 기능 관련 API
+  - name: Question
+    description: 사용자 질문 기반 제휴처 제공 API
+  - name: Event
+    description: 이벤트 기능 제공 API
+
+paths:
+  # =====================================================
+  # 로그인 회원가입 관련 API
+  # =====================================================
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: 자체 로그인
+      description: 사용자의 이메일과 비밀번호로 로그인을 시도하고, 성공 시 이름, 멤버십 등급, JWT 토큰을 발급합니다.
+      operationId: localLogin
+      requestBody:
+        description: 로그인에 필요한 이메일과 비밀번호
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 로그인 성공
+          headers: # 헤더에 대한 명세 추가
+            Set-Cookie:
+              schema:
+                type: string
+                example: "accessToken=eyJhbGciOiJIUzI1NiJ9...; Path=/; HttpOnly"
+              description: >
+                HttpOnly 속성을 가진 accessToken과 refreshToken 쿠키를 설정합니다.
+                (실제 응답에서는 2개의 Set-Cookie 헤더가 반환될 수 있습니다.)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+              example:
+                code: "LOGIN_SUCCESS"
+                status: "OK"
+                message: "로그인에 성공했습니다."
+                data:
+                  name: "홍길동"
+                  membershipGrade: "VVIP"
+                timestamp: "2025-07-04T14:15:00.123Z"
+        '401':
+          description: 로그인 실패 (자격 증명 오류)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "LOGIN_FAIL"
+                status: "UNAUTHORIZED"
+                message: "이메일 또는 비밀번호가 일치하지 않습니다."
+                data: null
+                timestamp: "2025-07-04T14:15:00.456Z"
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: 로그아웃
+      description: |
+        현재 로그인된 사용자를 로그아웃 처리합니다.
+        1.  **서버 처리**: 서버(Redis)에 저장된 사용자의 Refresh Token을 삭제하여 현재 세션을 무효화합니다.
+        2.  **클라이언트 처리**: 응답 헤더의 `Set-Cookie`를 통해 브라우저의 `accessToken`과 `refreshToken` 쿠키를 즉시 만료시킵니다.
+      operationId: logout
+      security:
+        - bearerAuth: [ ] # 이 API는 JWT 인증이 필요함을 명시
+      responses:
+        '200':
+          description: 로그아웃 성공
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "accessToken=; Path=/; Max-Age=0; HttpOnly"
+              description: >
+                HttpOnly 속성을 가진 accessToken과 refreshToken 쿠키를 만료시키기 위해 Max-Age=0으로 설정하여 반환합니다. 
+                (실제 응답에서는 2개의 Set-Cookie 헤더가 반환됩니다.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "LOGOUT_SUCCESS"
+                status: "OK"
+                message: "성공적으로 로그아웃 되었습니다."
+                data: null
+                timestamp: "2025-07-16T15:00:00.123Z"
+        '401':
+          description: 인증 실패 (유효하지 않거나 만료된 토큰으로 인해 사용자를 식별할 수 없음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "UNAUTHORIZED_ACCESS"
+                status: "UNAUTHORIZED"
+                message: "인증 정보가 유효하지 않습니다."
+                data: null
+                timestamp: "2025-07-16T15:00:00.456Z"
+
+  /auth/signUp:
+    post:
+      tags:
+        - Auth
+      summary: 최종 회원가입
+      description: |
+        이메일, 비밀번호, 이름 등을 사용하여 새로운 사용자를 등록합니다.
+        
+        이메일 인증이 사전에 완료되어야 하며, 인증 시 사용한 정보를 기반으로 가입을 처리합니다.
+      operationId: signUp
+      requestBody:
+        description: 회원가입에 필요한 사용자 정보
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+            example:
+              name: "홍길동"
+              email: "user@example.com"
+              phoneNumber: "01011112222"
+              password: "!Password123"
+              passwordConfirm: "!Password123"
+              gender: "MALE"
+              birthday: "20000101"
+              membershipId: "1234567812345678"
+      responses:
+        '201':
+          description: 회원가입 성공.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "SIGNUP_SUCCESS"
+                status: "OK"
+                message: "성공적으로 회원가입이 완료 되었습니다."
+                data: null
+                timestamp: "2025-07-04T14:25:38.123Z"
+        '400':
+          description: 비밀번호 검증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "PASSWORD_MISMATCH"
+                status: "BAD_REQUEST"
+                message: "비밀번호가 일치하지 않습니다."
+                data: null
+                timestamp: "2025-07-04T14:25:38.456Z"
+        '409':
+          description: 데이터 충돌 (중복된 리소스)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                emailExists:
+                  summary: 이메일 중복
+                  value:
+                    code: "DUPLICATE_EMAIL"
+                    status: "CONFLICT"
+                    message: "이미 사용 중인 이메일입니다."
+                    data: null
+                    timestamp: "2025-07-04T14:25:38.789Z"
+                phoneNumberExists:
+                  summary: 전화번호 중복
+                  value:
+                    code: "DUPLICATE_PHONE_NUMBER"
+                    status: "CONFLICT"
+                    message: "이미 사용 중인 전화번호입니다."
+                    data: null
+                    timestamp: "2025-07-04T14:25:38.912Z"
+
+  /auth/loadUplusData:
+    post:
+      tags:
+        - Auth
+      summary: 유플러스 데이터 가져오기
+      description: 유플러스에 기존 데이터가 존재할 경우 해당 데이터를 가져올 것인지 응답을 받습니다.
+      operationId: loadUplusData
+      requestBody:
+        description: 유플러스 데이터를 요청
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UplusDataRequest'
+            example:
+              name: "홍길동"
+              phoneNumber: "01012345678"
+      responses:
+        '200':
+          description: 정상 처리
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UplusDataResponse'
+              example:
+                code: "UPLUS_DATA_FOUND"
+                status: "OK"
+                message: "데이터를 찾았습니다."
+                data:
+                  name: "홍길동"
+                  phoneNumber: "01012345678"
+                  gender: "MALE"
+                  birthday: "20000101"
+                  membershipId: "1234567812345678"
+                timestamp: "2025-07-04T11:27:06.789Z"
+        '400':
+          description: 비정상 처리
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "UPLUS_DATA_NOT_FOUND"
+                status: "BAD_REQUEST"
+                message: "데이터를 찾지 못했습니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.456Z"
+
+  /auth/reissue:
+    post:
+      tags:
+        - Auth
+      summary: Access Token 재발급
+      description: |
+        HttpOnly 속성으로 전달된 Refresh Token 쿠키를 사용하여 만료된 Access Token을 재발급합니다.
+        
+        **요청 시 별도의 Body는 필요 없으며, 브라우저에 저장된 `refreshToken` 쿠키를 자동으로 사용합니다.**
+      operationId: reissueAccessToken
+      responses:
+        '200':
+          description: Access Token 재발급 성공. 새로운 Access Token이 쿠키로 발급됩니다.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "access=eyJhbGciOiJIUzI1NiJ9...; Path=/; Domain=itplace.click; Max-Age=1800; HttpOnly; Secure; SameSite=None"
+              description: "새롭게 발급된 accessToken을 담고 있는 HttpOnly 쿠키입니다."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "RENEW_ACCESS_TOKEN"
+                status: "OK"
+                message: "액세스 토큰이 갱신되었습니다."
+                data: null
+                timestamp: "2025-07-22T14:25:38.123Z"
+        '401':
+          description: 인증 실패. Refresh Token이 유효하지 않은 경우입니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                missingToken:
+                  summary: Refresh Token 없음
+                  value:
+                    code: "REFRESH_TOKEN_REQUIRE"
+                    status: "UNAUTHORIZED"
+                    message: "리프레시 토큰이 필요합니다."
+                    data: null
+                    timestamp: "2025-07-22T14:25:38.456Z"
+                expiredToken:
+                  summary: Refresh Token 만료
+                  value:
+                    code: "REFRESH_TOKEN_EXPIRED"
+                    status: "UNAUTHORIZED"
+                    message: "리프레시 토큰이 만료되었습니다."
+                    data: null
+                    timestamp: "2025-07-22T14:25:38.789Z"
+                invalidToken:
+                  summary: 유효하지 않은 Refresh Token
+                  value:
+                    code: "INVALID_TOKEN"
+                    status: "UNAUTHORIZED"
+                    message: "잘못된 토큰입니다."
+                    data: null
+                    timestamp: "2025-07-22T14:25:39.123Z"
+
+  # =====================================================
+  # 카카오 OAuth 로그인 API (신규 추가)
+  # =====================================================
+  /auth/oauth/kakao:
+    post:
+      tags:
+        - Auth
+      summary: "카카오 로그인 (1/2): 사용자 상태 분기"
+      description: |
+        React 등 프론트엔드에서 카카오로부터 받은 **인가 코드(Authorization Code)**를 이 API로 전송합니다.
+        
+        서버는 코드를 검증하고 DB를 조회하여 아래 두 가지 시나리오 중 하나로 응답합니다.
+        
+        1.  **기존 연동 사용자**: 즉시 로그인을 완료하고 최종 토큰(`accessToken`, `refreshToken`)을 쿠키에 담아 응답합니다.
+        2.  **신규 연동 사용자**: 다음 단계(휴대폰 인증)에서 사용자를 식별하기 위한 임시 토큰(`tempToken`)을 쿠키에 담아 응답합니다.
+        
+        **프론트엔드는 응답 `code` 값을 보고 다음 행동을 결정해야 합니다.**
+      operationId: processKakaoLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KakaoCodeRequest'
+      responses:
+        '200':
+          description: 요청 성공. 응답 `code`에 따라 분기 처리 필요.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                existingUser:
+                  summary: "기존 사용자 로그인 성공"
+                  value:
+                    code: "LOGIN_SUCCESS"
+                    status: "OK"
+                    message: "성공적으로 로그인 되었습니다."
+                    data:
+                      name: "홍길동"
+                      membershipGrade: "VVIP"
+                    timestamp: "2025-07-22T11:00:00.123Z"
+                newUser:
+                  summary: "신규 사용자 휴대폰 인증 필요"
+                  value:
+                    code: "PRE_AUTHENTICATION_SUCCESS"
+                    status: "OK"
+                    message: "임시 인증에 성공했습니다. 추가 정보 입력이 필요합니다."
+                    data: null
+                    timestamp: "2025-07-22T11:00:00.456Z"
+        '400':
+          description: 잘못된 인가 코드.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "INVALID_INPUT_VALUE"
+                status: "BAD_REQUEST"
+                message: "입력값이 올바르지 않습니다."
+                data: null
+                timestamp: "2025-07-22T10:00:00.456Z"
+
+  /auth/oauth/signUp:
+    post:
+      tags:
+        - Auth
+      summary: "신규 OAuth 사용자 최종 가입 (2/2)"
+      description: |
+        **문자 인증 후, `userStatus`가 'NEW_USER'일 때 호출하는 API입니다.**
+        
+        사용자가 입력한 추가 정보와 함께 요청해야 하며, 이전 단계에서 발급받은 `tempToken` 쿠키가 반드시 포함되어야 합니다.
+        
+        성공 시 최종 로그인 토큰을 발급하고 로그인 처리를 완료합니다.
+      operationId: oauthSignUpNew
+      parameters:
+        - name: tempToken
+          in: cookie
+          required: true
+          description: /auth/oauth/kakao API를 통해 발급받은 임시 인증 토큰 쿠키.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthSignUpRequest'
+      responses:
+        '200':
+          description: 최종 회원가입 및 로그인 성공.
+          headers:
+            Set-Cookie:
+              description: "최종 로그인용 accessToken과 refreshToken이 HttpOnly 쿠키로 설정됩니다."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+              example:
+                code: "LOGIN_SUCCESS"
+                status: "OK"
+                message: "성공적으로 로그인 되었습니다."
+                data:
+                  name: "김카카오"
+                  membershipGrade: null
+                timestamp: "2025-07-22T11:05:00.123Z"
+        '401':
+          description: 유효하지 않거나 만료된 임시 토큰.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "INVALID_TOKEN"
+                status: "UNAUTHORIZED"
+                message: "잘못된 토큰입니다."
+                data: null
+                timestamp: "2025-07-22T11:05:00.456Z"
+        '409':
+          description: 이미 가입된 휴대폰 번호.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "DUPLICATE_PHONE_NUMBER"
+                status: "CONFLICT"
+                message: "이미 사용 중인 전화번호입니다."
+                data: null
+                timestamp: "2025-07-22T11:05:00.789Z"
+
+  /auth/oauth/link:
+    post:
+      tags:
+        - Auth
+      summary: "기존 계정에 OAuth 계정 연동 (2/2)"
+      description: |
+        **문자 인증 후, `userStatus`가 'EXISTING_USER'일 때 호출하는 API입니다.**
+        
+        사용자의 휴대폰 번호와 함께 요청해야 하며, 이전 단계에서 발급받은 `tempToken` 쿠키가 반드시 포함되어야 합니다.
+        
+        성공 시 기존 계정에 소셜 계정 정보를 추가(연동)하고 최종 로그인 토큰을 발급합니다.
+      operationId: oauthSignUpLink
+      parameters:
+        - name: tempToken
+          in: cookie
+          required: true
+          description: /auth/oauth/kakao API를 통해 발급받은 임시 인증 토큰 쿠키.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phoneNumber:
+                  type: string
+                  example: "01012345678"
+      responses:
+        '200':
+          description: 계정 연동 및 로그인 성공.
+          headers:
+            Set-Cookie:
+              description: "최종 로그인용 accessToken과 refreshToken이 HttpOnly 쿠키로 설정됩니다."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+              example:
+                code: "LOGIN_SUCCESS"
+                status: "OK"
+                message: "성공적으로 로그인 되었습니다."
+                data:
+                  name: "홍길동"
+                  membershipGrade: "VVIP"
+                timestamp: "2025-07-22T11:05:00.123Z"
+        '401':
+          description: 유효하지 않거나 만료된 임시 토큰.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "INVALID_TOKEN"
+                status: "UNAUTHORIZED"
+                message: "잘못된 토큰입니다."
+                data: null
+                timestamp: "2025-07-22T11:05:00.456Z"
+        '404':
+          description: 해당 휴대폰 번호로 가입된 사용자를 찾을 수 없음.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "USER_NOT_FOUND"
+                status: "NOT_FOUND"
+                message: "사용자 정보를 찾을 수 없습니다."
+                data: null
+                timestamp: "2025-07-22T11:05:00.789Z"
+
+  # =====================================================
+  # 이메일, 문자 인증 관련 API
+  # =====================================================
+  /verification/sms:
+    post:
+      tags:
+        - Verification
+      summary: 문자 인증 코드 발송 요청
+      description: 회원가입을 위해 SMS로 인증 코드를 발송합니다.
+      operationId: requestSmsVerificationCode
+      requestBody:
+        description: 인증 코드 발송에 필요한 정보
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsVerificationRequest'
+            example:
+              name: "홍길동"
+              phoneNumber: "01012345678"
+      responses:
+        '201':
+          description: 인증 코드 발송 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "SMS_SEND_SUCCESS"
+                status: "OK"
+                message: "문자 인증 코드가 성공적으로 발송되었습니다."
+                data:
+                timestamp: "2025-07-04T11:27:06.789Z"
+        '400':
+          description: 잘못된 요청 (입력값 형식 오류)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "INVALID_INPUT"
+                status: "BAD_REQUEST"
+                message: "입력값이 올바르지 않습니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.456Z"
+        '409':
+          description: 데이터 충돌 (이미 사용 중인 리소스)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "DUPLICATE_PHONE_NUMBER"
+                status: "CONFLICT"
+                message: "이미 사용 중인 전화번호입니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.789Z"
+
+  /verification/sms/confirm:
+    post:
+      tags:
+        - Verification
+      summary: 문자 인증 코드 확인
+      description: 서버에서 발송된 인증 코드와 동일한지 확인합니다.
+      operationId: confirmSmsVerificationCode
+      requestBody:
+        description: 인증 코드 확인에 필요한 정보
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsConfirmRequest'
+            example:
+              phoneNumber: "01012345678"
+              verificationCode: "123456"
+      responses:
+        '200':
+          description: 인증 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SmsConfirmResponse'
+              example:
+                code: "SMS_VERIFICATION_SUCCESS"
+                status: "OK"
+                message: "휴대폰 번호 인증에 성공했습니다."
+                data:
+                  uplusDataFound: "true"
+                  userStatus: "NEW_USER"
+                  isLocalUser: "false"
+                timestamp: "2025-07-04T11:27:06.789Z"
+        '400':
+          description: 잘못된 인증 번호
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "SMS_CODE_MISMATCH"
+                status: "BAD_REQUEST"
+                message: "올바른 문자 인증 코드가 아닙니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.456Z"
+        '410':
+          description: 인증 코드 입력 시간 초과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "SMS_CODE_EXPIRED"
+                status: "BAD_REQUEST"
+                message: "문자 인증 코드가 만료되었습니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.789Z"
+
+  /verification/email:
+    post:
+      tags:
+        - Verification
+      summary: 이메일 인증 코드 발송 요청
+      description: 회원가입을 위해 SMS로 인증 코드를 발송합니다.
+      operationId: requestEmailVerificationCode
+      requestBody:
+        description: 인증 코드 발송에 필요한 정보
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+            example:
+              email: "user@example.com"
+      responses:
+        '200':
+          description: 인증 코드 발송 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "EMAIL_SEND_SUCCESS"
+                status: "OK"
+                message: "이메일 인증 코드 발송에 성공했습니다."
+                data: null
+                timestamp: "2025-07-04T11:27:06.789Z"
+        '400':
+          description: 잘못된 요청 (입력값 형식 오류)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "INVALID_INPUT"
+                status: "BAD_REQUEST"
+                message: "입력값이 올바르지 않습니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.456Z"
+
+  /verification/email/confirm:
+    post:
+      tags:
+        - Verification
+      summary: 이메일 인증 코드 확인
+      description: 서버에서 발송된 인증 코드와 동일한지 확인합니다.
+      operationId: confirmEmailVerificationCode
+      requestBody:
+        description: 인증 코드 확인에 필요한 정보
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailConfirmRequest'
+            example:
+              email: "user@example.com"
+              verificationCode: "123456"
+      responses:
+        '200':
+          description: 인증 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "EMAIL_VERIFICATION_SUCCESS"
+                status: "OK"
+                message: "이메일 인증에 성공했습니다."
+                data: null
+                timestamp: "2025-07-04T11:27:06.789Z"
+        '400':
+          description: 잘못된 인증 번호
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "EMAIL_CODE_MISMATCH"
+                status: "BAD_REQUEST"
+                message: "이메일 인증 코드가 일치하지 않습니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.456Z"
+        '409':
+          description: 데이터 충돌 (이미 가입된 리소스)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "DUPLICATE_EMAIL"
+                status: "CONFLICT"
+                message: "이미 사용 중인 이메일입니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.789Z"
+        '410':
+          description: 인증 코드 입력 시간 초과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "EMAIL_CODE_EXPIRED"
+                status: "BAD_REQUEST"
+                message: "이메일 인증 코드가 만료되었습니다."
+                data: null
+                timestamp: "2025-07-04T12:23:00.789Z"
+  # =====================================================
+  # 즐겨찾기
+  # =====================================================
+  /favorites:
+    post:
+      tags:
+        - Favorites
+      summary: 즐겨찾기 등록
+      description: 사용자의 즐겨찾기 목록에 제휴처를 추가합니다.
+      operationId: addFavorite
+      requestBody:
+        description: 혜택 ID를 포함한 요청 객체
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavoriteRequest'
+      responses:
+        '200':
+          description: 즐겨찾기 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: FAVORITE_ADD_SUCCESS
+                status: OK
+                message: 즐겨찾기 등록이 완료되었습니다
+                data: null
+                timestamp: '2025-07-04T14:06:54.631Z'
+
+        '404':
+          description: 사용자 또는 혜택을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                userNotFound:
+                  summary: 사용자 없음
+                  value:
+                    code: USER_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 사용자를 찾을 수 없습니다.
+                    data: null
+                    timestamp: '2025-07-16T15:00:00.000Z'
+                benefitNotFound:
+                  summary: 혜택 없음
+                  value:
+                    code: BENEFIT_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 존재하지 않는 혜택입니다.
+                    data: null
+                    timestamp: '2025-07-16T15:00:00.000Z'
+
+        '409':
+          description: 이미 즐겨찾기에 등록된 경우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: FAVORITE_ALREADY_EXISTS
+                status: CONFLICT
+                message: 이미 즐겨찾기에 등록된 혜택입니다.
+                data: null
+                timestamp: '2025-07-16T15:00:00.000Z'
+
+    delete:
+      tags:
+        - Favorites
+      summary: 즐겨찾기 삭제
+      description: 사용자 ID와 혜택 ID를 기반으로 즐겨찾기를 삭제합니다.
+      operationId: removeFavorites
+      requestBody:
+        description: 혜택 ID를 포함한 요청 객체
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveFavoritesRequest'
+      responses:
+        '200':
+          description: 즐겨찾기 삭제 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: FAVORITE_DELETE_SUCCESS
+                status: OK
+                message: 즐겨찾기 삭제가 완료되었습니다.
+                data: null
+                timestamp: '2025-07-07T12:00:00Z'
+
+        '404':
+          description: 사용자 또는 혜택을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                userNotFound:
+                  summary: 사용자 없음
+                  value:
+                    code: USER_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 사용자를 찾을 수 없습니다.
+                    data: null
+                    timestamp: '2025-07-16T15:00:00.000Z'
+                benefitNotFound:
+                  summary: 혜택 없음
+                  value:
+                    code: BENEFIT_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 존재하지 않는 혜택입니다.
+                    data: null
+                    timestamp: '2025-07-16T15:00:00.000Z'
+
+    get:
+      tags:
+        - Favorites
+      summary: 즐겨찾기한 혜택 목록 조회 - 페이징, 필터링(VIP 콕, 기본 혜택)
+      description: 사용자가 즐겨찾기한 혜택 목록을 보여줍니다.
+      operationId: getFavorites
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            default: null
+          description: 카테고리 설정 없을 시 전체 조회
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: 조회할 페이지 번호 (0부터 시작)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 6
+          description: 페이지당 항목 수 (기본 6개)
+      responses:
+        '200':
+          description: 즐겨찾기 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageResult'
+              examples:
+                success:
+                  summary: 즐겨찾기 목록 예시
+                  value:
+                    code: FAVORITE_BENEFIT_SUCCESS
+                    status: OK
+                    message: 즐겨찾기 목록 조회에 성공했습니다.
+                    data:
+                      content:
+                        - benefitId: 1
+                          benefitName: CGV
+                          partnerName: CGV
+                          partnerImage: S3객체URL
+                        - benefitId: 2
+                          benefitName: GS25
+                          partnerName: GS25
+                          partnerImage: S3객체URL
+                      totalElements: 2
+                      totalPages: 1
+                      currentPage: 0
+                      hasNext: false
+                    timestamp: '2025-07-04T15:30:00.000Z'
+        '404':
+          description: 사용자 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: USER_NOT_FOUND
+                status: NOT_FOUND
+                message: 사용자를 찾을 수 없습니다.
+                data: null
+                timestamp: '2025-07-16T15:00:00.000Z'
+
+  /favorites/search:
+    get:
+      tags:
+        - Favorites
+      summary: 즐겨찾기 혜택 이름 검색
+      description: 로그인된 사용자의 즐겨찾기 목록에서 혜택 이름으로 검색합니다.
+      operationId: searchFavorites
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          description: 검색할 혜택 이름 키워드
+          schema:
+            type: string
+            example: "할리스"
+        - name: category
+          in: query
+          required: false
+          description: 지도 페이지 내 카테고리 검색
+          schema:
+            type: string
+            example: "푸드"
+      responses:
+        '200':
+          description: 즐겨찾기 검색 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: FAVORITE_BENEFIT_SEARCH_SUCCESS
+                status: OK
+                message: 즐겨찾기 검색이 완료되었습니다
+                data:
+                  - benefitId: 1
+                    benefitName: "할리스"
+                    partnerName: "할리스"
+                    partnerImage: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/hollys.png"
+                timestamp: '2025-07-15T02:20:54.631Z'
+
+        '404':
+          description: 사용자 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: USER_NOT_FOUND
+                status: NOT_FOUND
+                message: 사용자를 찾을 수 없습니다.
+                data: null
+                timestamp: '2025-07-16T15:00:00.000Z'
+
+  /favorites/benefits/{benefitId}:
+    get:
+      tags:
+        - Favorites
+      summary: 즐겨찾기 혜택 상세 조회
+      description: 혜택 ID를 기반으로 상세 정보를 조회합니다.
+      operationId: getBenefitDetail
+      parameters:
+        - name: benefitId
+          in: path
+          required: true
+          description: 혜택 ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 혜택 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: FAVORITE_BENEFIT_DETAIL_SUCCESS
+                status: OK
+                message: 혜택 상세 정보 조회 성공
+                data:
+                  benefitId: 3
+                  benefitName: "CGV"
+                  benefitDescription: "영화 그 이상의 감동 CGV"
+                  benefitLimit: "VVIP/VIP 등급 전용\r VIP콕 내 무료예매 연3회/1+1예매 연9회(총 12회)\r (월 1회 사용 가능, CGV/메가박스 중 택 1)"
+                  partnerName: "CGV"
+                  partnerImage: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/cgv.png"
+                  tiers:
+                    - grade: VIP콕
+                      isAll: false
+                      context: "무료 예매 연 3회 / 1+1 예매 연 9회(총 12회)\r\n(월 1회 사용 가능, CGV/메가박스 중 택 1)\r\n※ 1+1이란? 1매 유료로 구매 시, 1매 무료 제공"
+                      discountValue: 14000
+                timestamp: '2025-07-15T12:00:00Z'
+
+        '404':
+          description: 혜택 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: BENEFIT_NOT_FOUND
+                status: NOT_FOUND
+                message: 존재하지 않는 혜택입니다.
+                data: null
+                timestamp: '2025-07-16T15:00:00.000Z'
+
+  # =====================================================
+  # User 관련
+  # =====================================================
+
+  /users:
+    get:
+      tags:
+        - User
+      summary: 사용자 정보 조회
+      description: 사용자 ID를 기반으로 사용자의 기본 정보와 멤버십 정보를 조회합니다.
+      responses:
+        '200':
+          description: 사용자 정보 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserInfoResponse'
+              examples:
+                success:
+                  summary: 사용자 정보 조회 성공 예시
+                  value:
+                    code: USER_INFO_SUCCESS
+                    status: OK
+                    message: 사용자 정보 조회에 성공했습니다.
+                    data:
+                      id: 1
+                      name: "홍길동"
+                      email: "hong@example.com"
+                      phoneNumber: "01012345678"
+                      gender: "MALE"
+                      birthday: "1990-01-01"
+                      membershipId: "M001"
+                      membershipGrade: "BASIC"
+                    timestamp: '2025-07-16T10:00:00.000Z'
+    delete:
+      tags:
+        - User
+      summary: 사용자 탈퇴
+      description: 현재 로그인된 사용자를 탈퇴 처리합니다. 즐겨찾기, 소셜 계정 연관 정보가 모두 삭제되며 복구할 수 없습니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequest'
+            example:
+              password: "1234"
+      responses:
+        '200':
+          description: 사용자 탈퇴 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              examples:
+                success:
+                  summary: 사용자 탈퇴 성공 예시
+                  value:
+                    data: null
+                    code: USER_WITHDRAWAL_SUCCESS
+                    status: OK
+                    message: 회원 탈퇴가 완료되었습니다.
+                    timestamp: '2025-07-23T15:00:00.000Z'
+        '404':
+          description: 사용자 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                userNotFound:
+                  summary: 사용자 없음 예시
+                  value:
+                    data: null
+                    code: USER_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 사용자 정보를 찾을 수 없습니다.
+                    timestamp: '2025-07-23T15:00:00.000Z'
+        '400':
+          description: 비밀번호 불일치
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                userNotFound:
+                  summary: 사용자 없음 예시
+                  value:
+                    data: null
+                    code: PASSWORD_MISMATCH
+                    status: BAD_REQUEST
+                    message: 비밀번호가 일치하지 않습니다.
+                    timestamp: '2025-07-23T15:00:00.000Z'
+
+  /users/findEmail:
+    post:
+      tags:
+        - User
+      summary: 아이디(이메일) 찾기 인증코드 받기
+      description: 사용자 전화번호를 인증하여 가입된 이메일을 찾기 위한 인증 코드를 발급 받습니다.
+      operationId: findEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsVerificationRequest'
+            example:
+              name: "홍길동"
+              phoneNumber: "010-1234-5678"
+      responses:
+        '200':
+          description: 인증 코드 발송 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "SMS_SEND_SUCCESS"
+                status: "OK"
+                message: "문자 인증 코드가 성공적으로 발송되었습니다."
+                data: null
+                timestamp: "2025-07-04T11:27:06.789Z"
+
+  /users/findEmail/confirm:
+    post:
+      tags:
+        - User
+      summary: 아이디(이메일) 찾기 인증코드 확인
+      description: 사용자 전화번호로 받은 인증코드를 인증합니다.
+      operationId: findEmailConfirm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FindEmailConfirmRequest'
+            example:
+              name: "홍길동"
+              phoneNumber: "010-1234-5678"
+              verificationCode: "123456"
+      responses:
+        '200':
+          description: 인증 코드 확인 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FindEmailResponse'
+              example:
+                code: "EMAIL_FIND_SUCCESS"
+                status: "OK"
+                message: "이메일 찾기를 성공했습니다."
+                data:
+                  email: "user@example.com"
+                timestamp: "2025-07-04T11:27:06.789Z"
+
+  /users/findPassword:
+    post:
+      tags:
+        - User
+      summary: 비밀번호 찾기 인증코드 받기
+      description: 사용자 이메일로 인증 코드를 받습니다.
+      operationId: findPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+            example:
+              email: "user@example.com"
+      responses:
+        '200':
+          description: 인증 코드 발송 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "EMAIL_SEND_SUCCESS"
+                status: "OK"
+                message: "이메일 인증 코드 발송에 성공했습니다."
+                data: null
+                timestamp: "2025-07-04T11:27:06.789Z"
+
+  /users/findPasswordConfirm:
+    post:
+      tags:
+        - User
+      summary: 비밀번호 찾기 인증코드 확인
+      description: 사용자 이메일로 받은 인증 코드를 인증합니다.
+      operationId: findPasswordConfirm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailConfirmRequest'
+            example:
+              email: "user@example.com"
+              verificationCode: "123456"
+      responses:
+        '200':
+          description: 인증 코드 확인 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FindPasswordConfirmResponse'
+              example:
+                code: "EMAIL_VERIFICATION_SUCCESS"
+                status: "OK"
+                message: "이메일 인증에 성공했습니다."
+                data:
+                  resetPasswordToken: "42832341-acee-4bdb-8a04-b4c55f6bdccd"
+                timestamp: "2025-07-04T11:27:06.789Z"
+
+  /users/resetPassword:
+    post:
+      tags:
+        - User
+      summary: 비밀번호 재설정
+      description: 인증이 끝난 사용자의 비밀번호를 재설정합니다.
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+            example:
+              resetPasswordToken: "42832341-acee-4bdb-8a04-b4c55f6bdccd"
+              email: "user@example.com"
+              newPassword: "newPassword123"
+              newPasswordConfirm: "newPassword123"
+      responses:
+        '200':
+          description: 비밀번호 변경 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "RESET_PASSWORD_SUCCESS"
+                status: "OK"
+                message: "비밀번호가 변경되었습니다."
+                data: null
+                timestamp: "2025-07-04T11:27:06.789Z"
+
+  /users/changePassword:
+    patch:
+      tags:
+        - User
+      summary: 비밀번호 변경
+      description: 현재 로그인된 사용자의 비밀번호를 변경합니다.
+      operationId: changePassword
+      security:
+        - bearerAuth: [ ] # 이 API는 JWT 인증이 필요함을 명시
+      requestBody:
+        description: 기존 비밀번호와 새로운 비밀번호 정보를 포함합니다.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: 비밀번호 변경 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "PASSWORD_CHANGE_SUCCESS"
+                status: "OK"
+                message: "비밀번호가 성공적으로 변경되었습니다."
+                data: null
+                timestamp: "2025-07-24T09:30:00.123Z"
+        '400':
+          description: 잘못된 요청 (기존 비밀번호 불일치 또는 유효성 검사 실패)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                passwordMismatch:
+                  summary: 기존 비밀번호 불일치
+                  value:
+                    code: "PASSWORD_MISMATCH"
+                    status: "BAD_REQUEST"
+                    message: "비밀번호가 일치하지 않습니다."
+                    data: null
+                    timestamp: "2025-07-24T09:30:00.456Z"
+                validationError:
+                  summary: 유효성 검사 실패
+                  value:
+                    code: "INVALID_INPUT_VALUE"
+                    status: "BAD_REQUEST"
+                    message: "입력값이 올바르지 않습니다."
+                    data: null
+                    timestamp: "2025-07-24T09:30:00.789Z"
+        '401':
+          description: 인증 실패 (토큰이 없거나 유효하지 않음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "UNAUTHORIZED_ACCESS"
+                status: "UNAUTHORIZED"
+                message: "인증 정보가 유효하지 않습니다."
+                data: null
+                timestamp: "2025-07-24T09:30:00.912Z"
+        '404':
+          description: 사용자 정보를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "USER_NOT_FOUND"
+                status: "NOT_FOUND"
+                message: "사용자 정보를 찾을 수 없습니다."
+                data: null
+                timestamp: "2025-07-24T09:30:01.123Z"
+
+  /users/coupon:
+    get:
+      tags:
+        - User
+      summary: 사용자 쿠폰 개수 조회
+      description: 현재 로그인된 사용자의 보유 쿠폰 개수를 조회합니다.
+      operationId: getMyCouponCount
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: 쿠폰 개수 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "COUPON_COUNT_SUCCESS"
+                status: "OK"
+                message: "사용자의 쿠폰 개수 조회에 성공했습니다."
+                data: 3
+                timestamp: "2025-07-24T09:30:00.123Z"
+
+        '404':
+          description: 사용자 정보를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "USER_NOT_FOUND"
+                status: "NOT_FOUND"
+                message: "사용자 정보를 찾을 수 없습니다."
+                data: null
+                timestamp: "2025-07-24T09:30:01.123Z"
+
+  # =====================================================
+  # 지도 관련 기능 API
+  # =====================================================
+  /maps/nearby:
+    get:
+      tags:
+        - Map
+      summary: 사용자 위치 기반 전체 지점 목록 조회
+      description: 사용자의 위치(위도, 경도)를 기반으로 지정된 반경 내의 모든 지점을 조회합니다.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: 위도 좌표
+          schema:
+            type: number
+            format: double
+            example: 37.5665
+        - name: lng
+          in: query
+          required: true
+          description: 경도 좌표
+          schema:
+            type: number
+            format: double
+            example: 126.9780
+        - name: radiusMeters
+          in: query
+          required: true
+          description: 검색 반경 (미터 단위)
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 1000
+      responses:
+        '200':
+          description: 전체 지점 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StoreDetailDto'
+              examples:
+                success:
+                  summary: 전체 지점 목록 조회 성공 예시
+                  value:
+                    code: STORE_LIST_SUCCESS
+                    status: OK
+                    message: 지점 목록 조회에 성공했습니다.
+                    data:
+                      - store:
+                          storeId: 1
+                          storeName: "스타벅스 강남점"
+                          business: "커피전문점"
+                          city: "서울특별시"
+                          town: "강남구"
+                          legalDong: "역삼동"
+                          address: "서울특별시 강남구 역삼동 123-45"
+                          roadName: "강남대로"
+                          roadAddress: "서울특별시 강남구 강남대로 456"
+                          postCode: "06234"
+                        partner:
+                          partnerId: 101
+                          partnerName: "스타벅스"
+                          image: "https://example.com/starbucks-logo.png"
+                          category: "카페"
+                        tierBenefit:
+                          - grade: "BASIC"
+                            context: "5% 할인"
+                          - grade: "VIP"
+                            context: "10% 할인"
+                          - grade: "VVIP"
+                            context: "15% 할인"
+                        distance: 0.5
+                    timestamp: '2025-07-15T11:00:00.000Z'
+  /maps/nearby/category:
+    get:
+      tags:
+        - Map
+      summary: 사용자 위치 기반 카테고리별 지점 목록 조회
+      description: 사용자의 위치를 기반으로 지정된 반경 내의 특정 카테고리 지점을 조회합니다. 카테고리가 null, 빈 문자열, 또는 "전체"인 경우 모든 지점을 반환합니다.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: 위도 좌표
+          schema:
+            type: number
+            format: double
+            example: 37.5665
+        - name: lng
+          in: query
+          required: true
+          description: 경도 좌표
+          schema:
+            type: number
+            format: double
+            example: 126.9780
+        - name: radiusMeters
+          in: query
+          required: true
+          description: 검색 반경 (미터 단위)
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 1000
+        - name: category
+          in: query
+          required: false
+          description: 카테고리 필터 (null, 빈 문자열, 또는 "전체"이면 모든 카테고리 반환)
+          schema:
+            type: string
+            example: "카페"
+      responses:
+        '200':
+          description: 카테고리별 지점 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StoreDetailDto'
+              examples:
+                success:
+                  summary: 카페 카테고리 지점 목록 조회 성공 예시
+                  value:
+                    code: STORE_LIST_SUCCESS
+                    status: OK
+                    message: 지점 목록 조회에 성공했습니다.
+                    data:
+                      - store:
+                          storeId: 1
+                          storeName: "스타벅스 강남점"
+                          business: "커피전문점"
+                          city: "서울특별시"
+                          town: "강남구"
+                          legalDong: "역삼동"
+                          address: "서울특별시 강남구 역삼동 123-45"
+                          roadName: "강남대로"
+                          roadAddress: "서울특별시 강남구 강남대로 456"
+                          postCode: "06234"
+                        partner:
+                          partnerId: 101
+                          partnerName: "스타벅스"
+                          image: "https://example.com/starbucks-logo.png"
+                          category: "카페"
+                        tierBenefit:
+                          - grade: "BASIC"
+                            context: "5% 할인"
+                          - grade: "VIP"
+                            context: "10% 할인"
+                          - grade: "VVIP"
+                            context: "15% 할인"
+                        distance: 0.5
+                      - store:
+                          storeId: 2
+                          storeName: "투썸플레이스 역삼점"
+                          business: "커피전문점"
+                          city: "서울특별시"
+                          town: "강남구"
+                          legalDong: "역삼동"
+                          address: "서울특별시 강남구 역삼동 678-90"
+                          roadName: "테헤란로"
+                          roadAddress: "서울특별시 강남구 테헤란로 123"
+                          postCode: "06233"
+                        partner:
+                          partnerId: 102
+                          partnerName: "투썸플레이스"
+                          image: "https://example.com/twosome-logo.png"
+                          category: "카페"
+                        tierBenefit:
+                          - grade: "BASIC"
+                            context: "3% 할인"
+                          - grade: "VIP"
+                            context: "5% 할인"
+                          - grade: "VVIP"
+                            context: "5% 할인"
+                        distance: 0.8
+                    timestamp: '2025-07-15T11:00:00.000Z'
+
+  /maps/nearby/search:
+    get:
+      tags:
+        - Map
+      summary: 사용자 위치 기반 키워드로 지점 검색
+      description: 사용자의 위치를 기반으로 지정된 반경 내의 지점 중 키워드를 기반으로 검색합니다. 키워드가 지점이름, 제휴사이름, 직종, 카테고리 중 하나라도 포함되어있으면 조회됩니다.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: 위도 좌표
+          schema:
+            type: number
+            format: double
+            example: 37.5665
+        - name: lng
+          in: query
+          required: true
+          description: 경도 좌표
+          schema:
+            type: number
+            format: double
+            example: 126.9780
+        - name: category
+          in: query
+          required: false
+          description: 카테고리 필터 (선택사항)
+          schema:
+            type: string
+            example: "카페"
+        - name: keyword
+          in: query
+          required: true
+          description: 검색 키워드 (지점명, 제휴사명, 업종, 카테고리에서 검색)
+          schema:
+            type: string
+            example: "스타벅스"
+      responses:
+        '200':
+          description: 키워드 검색 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StoreDetailDto'
+              examples:
+                success:
+                  summary: 스타벅스 키워드 검색 성공 예시
+                  value:
+                    code: STORE_LIST_SUCCESS
+                    status: OK
+                    message: 지점 목록 조회에 성공했습니다.
+                    data:
+                      - store:
+                          storeId: 1
+                          storeName: "스타벅스 강남점"
+                          business: "커피전문점"
+                          city: "서울특별시"
+                          town: "강남구"
+                          legalDong: "역삼동"
+                          address: "서울특별시 강남구 역삼동 123-45"
+                          roadName: "강남대로"
+                          roadAddress: "서울특별시 강남구 강남대로 456"
+                          postCode: "06234"
+                        partner:
+                          partnerId: 101
+                          partnerName: "스타벅스"
+                          image: "https://example.com/starbucks-logo.png"
+                          category: "카페"
+                        tierBenefit:
+                          - grade: "BASIC"
+                            context: "5% 할인"
+                          - grade: "VIP"
+                            context: "10% 할인"
+                          - grade: "VVIP"
+                            context: "15% 할인"
+                        distance: 0.5
+                    timestamp: '2025-07-15T11:00:00.000Z'
+        '400':
+          description: 키워드 누락 또는 잘못된 요청 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                keyword_required:
+                  summary: 키워드 누락 에러
+                  value:
+                    code: KEYWORD_REQUIRED
+                    status: BAD_REQUEST
+                    message: 키워드를 입력해주세요
+                    data: null
+                    timestamp: '2025-07-15T11:00:00.000Z'
+
+  /maps/nearby/itplace-ai:
+    get:
+      tags:
+        - Map
+      summary: 잇플 ai가 추천한 제휴처와 사용자 위치 기반으로 매장을 조회
+      description: 제휴처 이름으로 제휴처 id를 얻어 매장을 검색합니다.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: 위도 좌표
+          schema:
+            type: number
+            format: double
+            example: 37.5665
+        - name: lng
+          in: query
+          required: true
+          description: 경도 좌표
+          schema:
+            type: number
+            format: double
+            example: 126.9780
+        - name: partnerName
+          in: query
+          required: true
+          description: 제휴사 이름
+          schema:
+            type: string
+            example: "롯데월드"
+      responses:
+        '200':
+          description: 매장 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StoreDetailDto'
+              examples:
+                success:
+                  summary: 롯데월드 조회 성공 예시
+                  value:
+                    code: STORE_LIST_SUCCESS
+                    status: OK
+                    message: 사용자 위치 기반 매장 조회에 성공했습니다.
+                    data:
+                      - store:
+                          storeId: 10266
+                          storeName: "롯데월드 어드벤처"
+                          business: "테마"
+                          city: "서울특별시"
+                          town: "송파구"
+                          legalDong: "잠실동"
+                          address: "잠실동 40-1"
+                          roadName: "서울특별시 송파구 올림픽로"
+                          roadAddress: "서울특별시 송파구 올림픽로 240"
+                          postCode: "05554"
+                          longitude: 127.097184
+                          latitude: 37.511244
+                        partner:
+                          partnerId: 22
+                          partnerName: "롯데월드"
+                          image: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/lotteworldadventure.jpg"
+                          category: "엑티비티"
+                        tierBenefit:
+                          - grade: "VIP콕"
+                            context: "본인 종합이용권(1 Day / AFTER 4) 42% 할인\r\n (동반 1인 30% 할인)"
+                        distance: 20.5
+                    timestamp: '2025-07-15T11:00:00.000Z'
+                online-benefit:
+                  summary: 매장이 없는 경우(온라인 혜택 같은)
+                  value:
+                    code: STORE_LIST_SUCCESS
+                    status: OK
+                    message: 사용자 위치 기반 매장 조회에 성공했습니다.
+                    data: [ ]
+                    timestamp: '2025-07-15T11:00:00.000Z'
+        '404':
+          description: 없는 제휴처를 요청할 경우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                keyword_required:
+                  summary: 제휴처를 찾을 수 없음
+                  value:
+                    code: PARTNER_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 제휴사를 찾을 수 없습니다.
+                    data: null
+                    timestamp: '2025-07-15T11:00:00.000Z'
+
+  # =====================================================
+  # 혜택 관련 기능 API
+  # =====================================================
+  /benefit:
+    get:
+      tags:
+        - Benefit
+      summary: 전체 혜택 페이지에서 혜택 조회
+      description: 대분류, 카테고리, 정렬(인기순), 필터링, 검색, 페이징 조건에 따라 혜택을 조회합니다.
+      operationId: getBenefits
+      parameters:
+        - name: mainCategory
+          in: query
+          description: VIP콕/기본혜택
+          required: true
+          schema:
+            type: string
+            enum: [ VIP_COCK, BASIC_BENEFIT ]
+
+        - name: category
+          in: query
+          description: 카테고리 이름(엑티비티, 푸드, ...)
+          required: false
+          schema:
+            type: string
+
+        - name: filter
+          in: query
+          description: 온라인/오프라인 필터
+          required: false
+          schema:
+            type: string
+            enum: [ ONLINE, OFFLINE ]
+
+        - name: sort
+          in: query
+          description: 인기순 정렬. 기본 정렬도 인기순이지만 필터 선택을 통한 안가순 정렬도 가능.
+          required: false
+          schema:
+            type: string
+            default: POPULARITY
+
+        - name: keyword
+          in: query
+          description: 검색어(혜택이름에서 결과를 찾음)
+          required: false
+          schema:
+            type: string
+
+        - name: page
+          in: query
+          description: 페이지 번호 (0부터 시작)
+          required: false
+          schema:
+            type: integer
+            default: 0
+
+        - name: size
+          in: query
+          description: 한 페이지당 결과 수. 기본값은 12
+          required: false
+          schema:
+            type: integer
+            default: 12
+
+      responses:
+        '200':
+          description: 혜택 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PagedResponse_BenefitListResponse'
+              example:
+                data:
+                  content:
+                    - benefitId: 34
+                      benefitName: "배스킨라빈스"
+                      mainCategory: "BASIC_BENEFIT"
+                      usageType: "OFFLINE"
+                      partnerId: 30
+                      category: "푸드"
+                      image: ""
+                      tierBenefits:
+                        - grade: "BASIC"
+                          context: "패밀리 사이즈(5가지 맛) 4천원 할인"
+                          isAll: true
+                        - grade: "VIP"
+                          context: "패밀리 사이즈(5가지 맛) 4천원 할인"
+                          isAll: true
+                        - grade: "VVIP"
+                          context: "패밀리 사이즈(5가지 맛) 4천원 할인"
+                          isAll: true
+                      isFavorite: true
+                      favoriteCount: 1200
+                    - benefitId: 30
+                      benefitName: "GS25"
+                      mainCategory: "BASIC_BENEFIT"
+                      usageType: "OFFLINE"
+                      partnerId: 112
+                      category: "생활/편의"
+                      image: ""
+                      tierBenefits:
+                        - grade: "BASIC"
+                          context: "1천원 당 50원 할인 \r\n일 최대 1만원까지 할인 가능\r\n월 최대 10만원까지 할인 가능\r\n※제휴사 지정하는 행사상품은 할인제외"
+                          isAll: false
+                        - grade: "VIP"
+                          context: "1천원 당 100원 할인 \r\n일 최대 2만원까지 할인 가능\r\n월 최대 10만원까지 할인 가능\r\n※제휴사 지정하는 행사상품은 할인제외"
+                          isAll: false
+                        - grade: "VVIP"
+                          context: "1천원 당 100원 할인 \r\n일 최대 2만원까지 할인 가능\r\n월 최대 10만원까지 할인 가능\r\n※제휴사 지정하는 행사상품은 할인제외"
+                          isAll: false
+                      isFavorite: true
+                      favoriteCount: 1000
+                  currentPage: 0
+                  totalPages: 11
+                  totalElements: 121
+                  hasNext: true
+                code: BENEFIT_LIST_SUCCESS
+                status: OK
+                message: 혜택 목록 조회에 성공했습니다.
+                timestamp: '2025-07-04T15:30:00.000Z'
+
+  /benefit/{benefitId}:
+    get:
+      tags:
+        - Benefit
+      summary: 혜택 상세 조회
+      description: 혜택 ID를 통해 혜택의 상세 정보를 조회합니다.
+      operationId: getBenefitDetail
+      parameters:
+        - name: benefitId
+          in: path
+          required: true
+          description: 조회할 혜택의 ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 혜택 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BenefitDetailResponse'
+              example:
+                data:
+                  benefitId: 26
+                  benefitName: "딸기콩"
+                  description: "딸기콩은 웅진씽크빅에서 만든 국내 최대 어린이 오디오북 플랫폼으로 7,000여 개의 어린이 전문 콘텐츠를 기반으로 아이의 연령과 관심 영역에 맞춘 큐레이션을 제공합니다."
+                  benefitLimit: "VIP콕 내 제휴사 통합 월 1회, 연 12회 가능"
+                  manual: "멤버십앱 VIP 특별혜택 > 혜택 > 딸기콩 > 하단 '바로가기' 클릭 > 딸기콩 연동 후 등록\n\n\n\n\n*꼭 확인하세요\n\n\n- 딸기콩 구독권 또는 쿠폰 보유 시, 혜택 적용이 불가합니다.\n\n- 딸기콩 구독권 또는 쿠폰을 보유하고 계실 경우 딸기콩 1:1 문의 또는 웅진 고객센터(1577-1500)를 통해 혜택 적용이 가능합니다.\n\n- 본 혜택은 U+멤버십 혜택이 매달 자동 적용되지 않으며, 고객님께서 해당 페이지를 통해 매달 직접 신청하셔야 합니다.\n\n- 만 19세 이상 고객만 가입할 수 있습니다. \n\n\n\n대표문의\n\n딸기콩 고객센터 1577-1500"
+                  url: "https://www.ddalgicong.com/login/login.html"
+                  partnerName: "딸기콩"
+                  image: ""
+                code: BENEFIT_DETAIL_SUCCESS
+                status: OK
+                message: 혜택 상세 조회에 성공했습니다.
+                timestamp: '2025-07-16T12:00:00.000Z'
+
+        '404':
+          description: 혜택을 찾을 수 없습니다
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data: null
+                code: BENEFIT_NOT_FOUND
+                status: NOT_FOUND
+                message: 존재하지 않는 혜택입니다.
+                timestamp: '2025-07-16T12:00:00.000Z'
+
+  /benefit/map-detail:
+    get:
+      tags:
+        - Benefit
+      summary: 제휴처 지도에서 혜택 상세 조회
+      description: 지점(storeId), 제휴사(partnerId), 혜택 대분류(mainCategory)를 기준으로 혜택 상세 정보를 조회합니다.
+      operationId: getMapBenefitDetail
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          description: 지점 ID
+          schema:
+            type: integer
+            format: int64
+        - name: partnerId
+          in: query
+          required: true
+          description: 제휴사 ID
+          schema:
+            type: integer
+            format: int64
+        - name: mainCategory
+          in: query
+          required: true
+          description: 혜택 대분류
+          schema:
+            type: string
+            enum: [ VIP_COCK, BASIC_BENEFIT ]
+      responses:
+        '200':
+          description: 혜택 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MapBenefitDetailResponse'
+              example:
+                data:
+                  benefitId: 21
+                  benefitName: "롯데월드 어드벤처"
+                  mainCategory: "VIP_COCK"
+                  manual: "결제 시 직원에게 멤버십 카드 제시\n\n\n\n*꼭 확인하세요\n\n- 기타 우대혜택 및 카드할인과 중복적용되지 않습니다.\n\n- 현장 구매 티켓은 당일에 한하여 이용가능합니다. \n\n- 본인 소유임을 확인할 수 있는 멤버십 카드에 한하여 우대가 적용됩니다. \n\n- 플라스틱 또는 모바일 카드와 함께 카드 소유주 확인이 가능한 증빙서류를 지참해 주시기 바랍니다. \n\n- 모바일카드의 경우 APP에서 실행한 카드만 우대가 적용됩니다.\n\n- '롯데월드 어드벤처 부산'은 VIP콕 '롯데월드 어드벤처 부산' 혜택 항목에서 확인하실 수 있습니다.\n\n\n\n대표문의\n\n롯데월드 고객센터 1661-2000"
+                  url: "https://adventure.lotteworld.com/kor/main/index.do"
+                  tierBenefits:
+                    - grade: "VIP콕"
+                      context: "본인 종합이용권(1 Day / AFTER 4) 42% 할인\r\n (동반 1인 30% 할인)"
+                      isAll: false
+                code: BENEFIT_DETAIL_SUCCESS
+                status: OK
+                message: 혜택 상세 조회에 성공했습니다.
+                timestamp: '2025-07-17T10:00:00.000Z'
+        '404':
+          description: 요청한 리소스를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                benefitNotFound:
+                  summary: 혜택이 존재하지 않음
+                  value:
+                    data: null
+                    code: BENEFIT_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 존재하지 않는 혜택입니다.
+                    timestamp: "2025-07-17T18:20:02.2361602"
+                storeNotFound:
+                  summary: 지점을 찾을 수 없음(storeId가 잘못된 경우)
+                  value:
+                    data: null
+                    code: STORE_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 지점을 찾을 수 없습니다.
+                    timestamp: "2025-07-17T18:20:02.2361602"
+                storePartnerMismatch:
+                  summary: 지점과 제휴사가 일치하지 않음(partnerId가 잘못된 경우)
+                  value:
+                    data: null
+                    code: STORE_PARTNER_MISMATCH
+                    status: BAD_REQUEST
+                    message: 지점과 제휴사가 일치하지 않습니다.
+                    timestamp: "2025-07-17T18:20:02.2361602"
+                benefitOfflineNotFound:
+                  summary: 오프라인 사용 가능한 혜택이 없음
+                  value:
+                    data: null
+                    code: BENEFIT_OFFLINE_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 오프라인 사용 가능한 혜택이 존재하지 않습니다.
+                    timestamp: "2025-07-17T18:20:02.2361602"
+
+  /partners/search-ranking:
+    get:
+      tags:
+        - Benefit
+      summary: 제휴처 검색 순위 조회
+      description: 제휴처별 검색 순위를 조회합니다.
+      operationId: getPartnerRanking
+      parameters:
+        - name: recentperiod
+          in: query
+          description: 최근 조회 기간
+          required: false
+          schema:
+            type: integer
+            default: 2
+        - name: prevperiod
+          in: query
+          description: 이전 조회 기간
+          required: false
+          schema:
+            type: integer
+            default: 3
+      responses:
+        '200':
+          description: 제휴처 검색 순위 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                플랫폼 검색 순위 조회 성공:
+                  value:
+                    code: "PARTNERS_SEARCH_RANKING_SUCCESS"
+                    status: "OK"
+                    message: "제휴처 검색 순위가 성공적으로 조회되었습니다."
+                    data:
+                      - partnerName: "네이버플러스 멤버십"
+                        searchCount: 3420
+                        rank: 1
+                        previousRank: 2
+                        rankChange: 1
+                        changeDerection: "UP"
+                      - partnerName: "CGV"
+                        searchCount: 2890
+                        rank: 2
+                        previousRank: 1
+                        rankChange: -1
+                        changeDerection: "DOWN"
+                      - partnerName: "GS25"
+                        searchCount: 2560
+                        rank: 3
+                        previousRank: 0
+                        rankChange: 0
+                        changeDerection: "SAME"
+                      - partnerName: "배스킨라빈스"
+                        searchCount: 2420
+                        rank: 4
+                        previousRank: 5
+                        rankChange: 1
+                        changeDerection: "UP"
+                      - partnerName: "메가박스"
+                        searchCount: 1890
+                        rank: 5
+                        previousRank: 4
+                        rankChange: -1
+                        changeDerection: "DOWN"
+                      - partnerName: "파리바게뜨"
+                        searchCount: 1560
+                        rank: 6
+                        previousRank: 99999
+                        rankChange: 0
+                        changeDerection: "NEW"
+                    timestamp: "2025-07-04T11:27:06.789Z"
+  # =====================================================
+  # 멤버십 혜택 사용 내역 관련 기능 API
+  # =====================================================
+
+  /membership-history:
+    get:
+      tags:
+        - History
+      summary: 마이페이지 내에서 멤버십 사용 내역 조회
+      description: 특정 사용자의 멤버십 사용 내역을 검색어, 날짜, 페이징으로 조회합니다.
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 혜택명 검색어
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: 조회 시작일 (yyyy-MM-dd)
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: 조회 종료일 (yyyy-MM-dd)
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: 페이지 번호 (0부터 시작)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: 페이지당 결과 수
+      responses:
+        '200':
+          description: 멤버십 사용 내역 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResponse_MembershipHistoryResponse'
+              examples:
+                successExample:
+                  value:
+                    data:
+                      content:
+                        - image: ""
+                          benefitName: "오가나셀 피부과의원 청담점"
+                          discountAmount: 5700
+                          usedAt: "2025-05-20T03:53:13"
+                      currentPage: 0
+                      totalPages: 1
+                      totalElements: 1
+                      hasNext: false
+                    code: MEMBERSHIP_HISTORY_SUCCESS
+                    status: OK
+                    message: 멤버십 사용 내역 조회에 성공했습니다.
+                    timestamp: "2025-07-18T11:17:57.4030576"
+                successExampleEmpty:
+                  value:
+                    data:
+                      content: [ ]
+                      totalPages: 0
+                      totalElements: 0
+                      hasNext: false
+                    code: MEMBERSHIP_HISTORY_SUCCESS
+                    status: OK
+                    message: 멤버십 사용 내역 조회에 성공했습니다.
+                    timestamp: "2025-07-18T11:17:57.4030576"
+        '400':
+          description: 멤버십 회원이 아닐경우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data: null
+                code: NO_MEMBERSHIP
+                status: BAD_REQUEST
+                message: 해당 사용자는 멤버십 정보를 가지고 있지 않습니다.
+                timestamp: '2025-07-07T12:00:00Z'
+        '401':
+          description: 로그인이 되어있지 않은 경우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                noMembershipExample:
+                  value:
+                    data: null
+                    code: UNAUTHORIZED_MEMBERSHIP_ACCESS
+                    status: UNAUTHORIZED
+                    message: 멤버십 내역 조회는 로그인 후 이용 가능합니다.
+                    timestamp: "2025-07-18T14:21:00.123456"
+
+  /membership-history/summary:
+    get:
+      tags:
+        - History
+      summary: 이번 달 총 할인 금액
+      description: 사용자 ID를 기반으로 이번 달 총 할인 금액을 조회합니다.
+      responses:
+        '200':
+          description: 이번 달 할인 금액 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyDiscountResponse'
+              examples:
+                successExample:
+                  value:
+                    data:
+                      userId: 1608
+                      yearMonth: "2025-07"
+                      totalDiscountAmount: 10000
+                    code: MEMBERSHIP_HISTORY_SUMMARY_SUCCESS
+                    status: OK
+                    message: 이번 달 할인 금액 조회에 성공했습니다.
+                    timestamp: "2025-07-18T14:21:00.123456"
+        '400':
+          description: 멤버십 정보가 없거나 사용자를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                noMembershipExample:
+                  value:
+                    data: null
+                    code: NO_MEMBERSHIP
+                    status: BAD_REQUEST
+                    message: 해당 사용자는 멤버십 정보를 가지고 있지 않습니다.
+                    timestamp: "2025-07-18T14:21:00.123456"
+                userNotFoundExample:
+                  value:
+                    data: null
+                    code: USER_NOT_FOUND
+                    status: BAD_REQUEST
+                    message: 해당 사용자를 찾을 수 없습니다.
+                    timestamp: "2025-07-18T14:21:00.123456"
+        '401':
+          description: 로그인이 되어있지 않은 경우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                noMembershipExample:
+                  value:
+                    data: null
+                    code: UNAUTHORIZED_MEMBERSHIP_ACCESS
+                    status: UNAUTHORIZED
+                    message: 멤버십 내역 조회는 로그인 후 이용 가능합니다.
+                    timestamp: "2025-07-18T14:21:00.123456"
+  /membership-history/use:
+    post:
+      tags:
+        - History
+      summary: 멤버십 혜택 사용
+      description: 로그인된 사용자가 특정 혜택을 사용할 때 사용 내역을 기록합니다.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembershipUseRequest'
+            examples:
+              discountBenefit:
+                summary: 혜택id와 사용금액을 입력
+                value:
+                  benefitId: 101
+                  amount: 30000
+      responses:
+        '200':
+          description: 멤버십 혜택 사용 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              examples:
+                success:
+                  summary: 멤버십 혜택 사용 성공 예시
+                  value:
+                    data: null
+                    code: MEMBERSHIP_USE_SUCCESS
+                    status: OK
+                    message: 멤버십 혜택 사용에 성공했습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+        '400':
+          description: 잘못된 요청(사용 제한 또는 금액 누락 등)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                amountRequired:
+                  summary: 금액 입력 누락(% 할인의 경우)
+                  value:
+                    data: null
+                    code: AMOUNT_REQUIRED
+                    status: BAD_REQUEST
+                    message: 할인 금액 계산을 위해 유효한 금액을 입력해야 합니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                alreadyUsedToday:
+                  summary: 일일 사용 제한 위반
+                  value:
+                    data: null
+                    code: ALREADY_USED_TODAY
+                    status: BAD_REQUEST
+                    message: 오늘 이미 사용한 혜택입니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                alreadyUsedMonth:
+                  summary: 월 사용 제한 위반
+                  value:
+                    data: null
+                    code: ALREADY_USED_THIS_MONTH
+                    status: BAD_REQUEST
+                    message: 이번 달에 이미 사용한 혜택입니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                alreadyUsedOnce:
+                  summary: 최초 1회 사용 제한 위반
+                  value:
+                    data: null
+                    code: ALREADY_USED_ONCE
+                    status: BAD_REQUEST
+                    message: 해당 혜택은 최초 1회만 사용할 수 있습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                invalidGrade:
+                  summary: BASIC 등급에서 VIP_COCK 혜택 사용 시
+                  value:
+                    data: null
+                    code: INVALID_GRADE_FOR_BENEFIT
+                    status: BAD_REQUEST
+                    message: 해당 등급은 이 혜택을 사용할 수 없습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                noMembership:
+                  summary: 멤버십 없음
+                  value:
+                    data: null
+                    code: NO_MEMBERSHIP
+                    status: BAD_REQUEST
+                    message: 해당 사용자는 멤버십 정보를 가지고 있지 않습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                tierBenefitNotFound:
+                  summary: tierBenefit 정보 없음
+                  value:
+                    data: null
+                    code: TIER_BENEFIT_NOT_FOUND
+                    status: BAD_REQUEST
+                    message: 해당 등급은 이 혜택을 사용할 수 없습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                invalidBenefitType:
+                  summary: 잘못된 benefitType
+                  value:
+                    data: null
+                    code: INVALID_BENEFIT_TYPE
+                    status: BAD_REQUEST
+                    message: 잘못된 혜택 타입입니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+        '404':
+          description: 사용자, 혜택 정보, 멤버십 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                userNotFound:
+                  summary: 사용자 없음
+                  value:
+                    data: null
+                    code: USER_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 사용자 정보를 찾을 수 없습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                benefitNotFound:
+                  summary: 혜택 없음
+                  value:
+                    data: null
+                    code: BENEFIT_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 존재하지 않는 혜택입니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+                membershipNotFound:
+                  summary: 멤버십 정보 없음
+                  value:
+                    data: null
+                    code: MEMBERSHIP_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 해당 멤버십 정보를 찾을 수 없습니다.
+                    timestamp: '2025-07-28T15:00:00.000Z'
+
+  # =====================================================
+  # 멤버십 추천 관련 기능 API
+  # =====================================================
+  /recommendations:
+    get:
+      tags:
+        - Recommend
+      summary: 지도 페이지 내 사용자 맞춤 추천 결과 조회
+      description: 로그인한 사용자의 ID를 기반으로 맞춤 추천 결과를 조회합니다.
+      parameters:
+        - name: topK
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: 추천 결과 개수 (기본값 10개)
+      responses:
+        '200':
+          description: 추천 결과 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                successExample:
+                  value:
+                    data:
+                      - rank: 1
+                        partnerName: "DBR동아비즈니스리뷰"
+                        reason: "사용자님이 경제와 비즈니스에 관심이 많다면, DBR의 다양한 콘텐츠를 2,500원 할인된 가격에 무제한으로 즐기실 수 있어서 추천 드리는 걸요!"
+                        imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/DBRBusiness.png"
+                      - rank: 2
+                        partnerName: "네이버플러스 멤버십"
+                        reason: "네이버 쇼핑 적립 혜택도 받고, 디지털 콘텐츠도 누릴 수 있어 유용할 것 같아 추천합니다!"
+                        imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/naverplus.jpg"
+                    code: RECOMMENDATION_SUCCESS
+                    status: OK
+                    message: 추천 결과 생성 성공
+                    timestamp: "2025-07-24T15:30:00.000000"
+        '400':
+          description: 멤버십 회원이 아님
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                notMembershipExample:
+                  value:
+                    data: null
+                    code: RECOMMENDATION_USER_NOT_MEMBERSHIP
+                    status: BAD_REQUEST
+                    message: 멤버십 회원이 아닙니다.
+                    timestamp: "2025-07-24T15:30:00.000000"
+
+
+        '404':
+          description: 사용자를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                notFoundExample:
+                  value:
+                    data: null
+                    code: SECURITYCODE_USER_NOT_FOUND
+                    status: NOT_FOUND
+                    message: 사용자를 찾을 수 없습니다.
+                    timestamp: "2025-07-24T15:30:00.000000"
+        '500':
+          description: 추천 생성 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                failExample:
+                  value:
+                    data: null
+                    code: RECOMMENDATION_RESULT_FAIL
+                    status: INTERNAL_SERVER_ERROR
+                    message: 추천 결과 생성 실패
+                    timestamp: "2025-07-24T15:30:00.000000"
+
+  # =====================================================
+  # 사용자 질문 기반 제휴처 제공 API
+  # =====================================================
+  /questions/recommend:
+    get:
+      tags:
+        - Question
+      summary: 질문 기반 제휴처 추천
+      description: |
+        사용자의 질문에 기반하여 유사 질문 카테고리를 분석하고, 해당 카테고리의 주변 제휴처를 추천합니다.  
+        금칙어가 포함된 경우 400 에러로 응답되며, 추천할 제휴처가 없을 경우 404를 반환합니다.
+      parameters:
+        - name: question
+          in: query
+          description: 사용자 질문 텍스트
+          required: true
+          schema:
+            type: string
+            example: 패밀리 레스토랑 제휴처가 있나?
+        - name: lat
+          in: query
+          description: 사용자 위도
+          required: true
+          schema:
+            type: number
+            format: double
+            example: 37.285428
+        - name: lng
+          in: query
+          description: 사용자 경도
+          required: true
+          schema:
+            type: number
+            format: double
+            example: 126.980717
+      responses:
+        '200':
+          description: 추천 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "QUESTION_SUCCESS"
+                status: "OK"
+                message: "정보를 성공적으로 조회했습니다."
+                data:
+                  reason: "패밀리 레스토랑을 즐기고 싶다면 VIPS와 온더보더가 좋은 선택입니다. VIPS는 신선한 재료로 만든 다양한 샐러드바와 스테이크를 제공하며, 가족 모두가 함께 즐길 수 있는 편안한 분위기를 자랑합니다. 온더보더는 멕시코 요리의 진수를 경험할 수 있는 곳으로, 색다른 메뉴와 활기찬 분위기가 가족 모임에 안성맞춤입니다. 두 곳 모두 다양한 메뉴와 넓은 공간을 제공하여 가족들이 즐거운 시간을 보낼 수 있는 이상적인 장소입니다."
+                  partners:
+                    - partnerName: "VIPS"
+                      imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/vips.png"
+                    - partnerName: "온더보더"
+                      imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/ontheborder.png"
+                timestamp: "2025-07-30T13:08:37.4218203"
+        
+        '400':
+          description: 금칙어가 포함된 질문입니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "FORBIDDEN_WORD_DETECTED"
+                status: "BAD_REQUEST"
+                message: "금칙어가 포함된 질문입니다."
+                data: null
+                timestamp: "2025-07-30T13:38:52.0538393"
+
+
+        '404':
+          description: 추천 가능한 제휴처가 없습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "NO_STORE_FOUND"
+                status: "NOT_FOUND"
+                message: "제공할 제휴처가 없습니다."
+                data: null
+                timestamp: "2025-07-30T13:45:22.1029371"
+
+
+  # =====================================================
+  # 이벤트 기능 제공 API
+  # =====================================================
+  /gifts:
+    get:
+      tags:
+        - Event
+      summary: 상품 리스트
+      description: |
+        상품 리스트를 반환합니다.
+      responses:
+        '200':
+          description: 경품 목록을 불러왔습니다
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  - giftName: "[브람스] 루카S 안마의자"
+                  - giftName: "[모즈스웨덴] 와인셀러 와인냉장고 71L (22병)"
+                  - giftName: "[로보락] 2025년 NEW F25 RT 아쿠아청소기"
+                  - giftName: "[쿠쿠전자] W8200 타워형 공기청정기"
+                  - giftName: "[소니] WH-CH520"
+                code: "GIFT_LIST"
+                status: "OK"
+                message: "경품 목록를 불러왔습니다."
+                timestamp: "2025-07-30T13:08:37.4218203"
+
+  /gifts/scratch:
+    post:
+      tags:
+        - Event
+      summary: "쿠폰 긁기 - 당첨 예시, 꽝 예시 다 적어놓았습니다."
+      description: "당첨 결과를 반환합니다. total은 총 50명에게 증정 giftCount는 잔여수량"
+      responses:
+        '200':
+          description: "복권을 성공적으로 긁었습니다."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              examples:
+                success:
+                  summary: 당첨 예시
+                  value:
+                    data:
+                      success: true
+                      message: "🎉 [소니] WH-CH520 당첨!"
+                      gift:
+                        giftId: 5
+                        giftName: "[소니] WH-CH520"
+                        giftCount: 47
+                        total: 50
+                        imgUrl: "https://itplacegift.s3.ap-northeast-2.amazonaws.com/sony.jpg"
+                    code: "SCRATCH_SUCCESS"
+                    status: "OK"
+                    message: "복권을 성공적으로 긁었습니다."
+                    timestamp: "2025-08-01T10:44:13.6421078"
+
+                fail:
+                  summary: 꽝 예시
+                  value:
+                    data:
+                      success: false
+                      message: "꽝입니다. 다음 기회를 노려보세요!"
+                      gift: null
+                    code: "SCRATCH_SUCCESS"
+                    status: "OK"
+                    message: "복권을 성공적으로 긁었습니다."
+                    timestamp: "2025-08-01T10:44:13.642"
+
+        '400':
+          description: "쿠폰이 부족하여 복권을 긁을 수 없습니다."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  success: false
+                  message: "별이 부족합니다. 별을 다시 모은 후 시도해주세요."
+                  gift: null
+                code: "COUPON_LACK"
+                status: "BAD_REQUEST"
+                message: "별이 부족합니다."
+                timestamp: "2025-08-01T10:51:08.4131952"
+
+  /gifts/history:
+    get:
+      tags:
+        - Event
+      summary: 쿠폰 사용 이력 조회
+      description: 사용자의 쿠폰 사용 이력을 조회합니다. 타입 필터를 통해 성공/실패 결과만 조회할 수 있습니다.
+      parameters:
+        - name: type
+          in: query
+          description: 결과 타입 필터
+          required: false
+          schema:
+            type: string
+          example: SUCCESS
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: 쿠폰 사용 이력 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  - userId: 1633
+                    historyId: 1
+                    giftName: "[브람스] 루카S 안마의자"
+                    result: "FAIL"
+                    usedDate: "2025-07-31"
+                  - userId: 1633
+                    historyId: 2
+                    giftName: "[로보락] 2025년 NEW F25 RT 아쿠아청소기"
+                    result: "SUCCESS"
+                    usedDate: "2025-08-01"
+                code: "COUPON_HISTORY_SUCCESS"
+                status: "OK"
+                message: "쿠폰 사용이력을 성공적으로 조회했습니다."
+                timestamp: "2025-08-01T13:40:07.235427"
+        '400':
+          description: 잘못된 결과 타입
+          content:
+            application/json:
+              example:
+                code: "INVALID_RESULT_TYPE"
+                status: "BAD_REQUEST"
+                message: "유효하지 않은 결과 타입입니다."
+                timestamp: "2025-08-01T13:40:07.235427"
+        '404':
+          description: 사용자를 찾을 수 없음
+          content:
+            application/json:
+              example:
+                code: "USER_NOT_FOUND"
+                status: "NOT_FOUND"
+                message: "사용자를 찾을 수 없습니다."
+                timestamp: "2025-08-01T13:40:07.235427"
+
+
+components:
+  schemas:
+    # ----------------------------------------------------
+    # API 표준 응답 포맷
+    # ----------------------------------------------------
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: "서버에서 정의한 응답 코드"
+          example: "SUCCESS_200_1"
+        status:
+          type: string
+          description: "HTTP 상태 메시지"
+          example: "OK"
+        message:
+          type: string
+          description: "응답에 대한 설명 메시지"
+          example: "요청이 정상적으로 처리되었습니다."
+        data:
+          type: object
+          description: "실제 응답 데이터 (nullable)"
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          description: "응답 시간"
+
+    # ----------------------------------------------------
+    # Request DTOs
+    # ----------------------------------------------------
+    LoginRequest:
+      type: object
+      required: [ email, password ]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "!Password123"
+
+    SignUpRequest:
+      type: object
+      required: [ name, email, password, passwordConfirm, phoneNumber, gender, birthday ]
+      properties:
+        name:
+          type: string
+          description: "이름"
+          example: "홍길동"
+        email:
+          type: string
+          format: email
+          description: "아이디로 사용할 이메일 주소"
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          description: "비밀번호 (영문, 숫자, 특수문자 포함 8자 이상)"
+          example: "!Password123"
+          minLength: 6
+        passwordConfirm:
+          type: string
+          format: password
+          description: "비밀번호 확인"
+          example: "!Password123"
+          minLength: 6
+        phoneNumber:
+          type: string
+          format: phoneNumber
+          description: "전화번호"
+          example: "01011112222"
+        gender:
+          type: string
+          description: "성별"
+          enum: [ MALE, FEMALE ]
+          example: "MALE"
+        birthday:
+          type: string
+          description: "생년월일"
+          example: "20000101"
+        membershipId:
+          type: string
+          description: "멤버십 번호 16자리"
+          example: "1234567812345678"
+
+    UplusDataRequest:
+      type: object
+      required: [ name, phoneNumber ]
+      properties:
+        email:
+          type: string
+          format: string
+          example: "홍길동"
+        password:
+          type: string
+          format: string
+          example: "01012345678"
+
+    SmsVerificationRequest:
+      type: object
+      description: "문자 인증 코드 발송 요청 DTO"
+      required: [ name, phoneNumber ]
+      properties:
+        name:
+          type: string
+          description: "가입자 이름"
+          example: "홍길동"
+        phoneNumber:
+          type: string
+          description: "인증을 진행할 전화번호"
+          example: "01012345678"
+
+    SmsConfirmRequest:
+      type: object
+      description: "문자 인증 코드 확인 요청 DTO"
+      required: [ phoneNumber, verificationCode ]
+      properties:
+        phoneNumber:
+          type: string
+          description: "인증을 진행할 전화번호"
+          example: "01012345678"
+        verificationCode:
+          type: string
+          description: "인증코드"
+          example: "123456"
+
+    FindEmailConfirmRequest:
+      type: object
+      description: "문자 인증 코드 발송 요청 DTO"
+      required: [ name, phoneNumber, verificationCode ]
+      properties:
+        name:
+          type: string
+          description: "가입자 이름"
+          example: "홍길동"
+        phoneNumber:
+          type: string
+          description: "인증을 진행할 전화번호"
+          example: "01012345678"
+        verificationCode:
+          type: string
+          description: "인증 코드"
+          example: "123456"
+
+    EmailVerificationRequest:
+      type: object
+      description: "이메일 인증 코드 발송 요청 DTO"
+      required: [ email ]
+      properties:
+        email:
+          type: string
+          format: email
+          description: "아이디로 사용할 이메일"
+          example: "user@example.com"
+
+    EmailConfirmRequest:
+      type: object
+      description: "이메일 인증 코드 확인 요청 DTO"
+      required: [ email, verificationCode ]
+      properties:
+        email:
+          type: string
+          format: email
+          description: "아이디로 사용할 이메일"
+          example: "user@example.com"
+        verificationCode:
+          type: string
+          description: "인증 번호"
+          example: "123456"
+
+    ResetPasswordRequest:
+      type: object
+      description: "이메일 인증 코드 확인 요청 DTO"
+      required: [ resetPasswordToken, email, newPassword, newPasswordConfirm ]
+      properties:
+        resetPasswordToken:
+          type: string
+          description: "비밀번호 재설정 토큰"
+          example: "42832341-acee-4bdb-8a04-b4c55f6bdccd"
+        email:
+          type: string
+          format: email
+          description: "재설정할 이메일"
+          example: "user@example.com"
+        newPassword:
+          type: string
+          description: "새로운 비밀번호"
+          example: "!newPassword123"
+        newPasswordConfirm:
+          type: string
+          format: email
+          description: "새로운 비밀번호 확인"
+          example: "!newPassword123"
+
+    KakaoCodeRequest:
+      type: object
+      required: [ code ]
+      properties:
+        code:
+          type: string
+          description: "카카오 서버로부터 받은 인가 코드(Authorization Code)"
+          example: "abcdefg12345..."
+
+    OAuthSignUpRequest:
+      type: object
+      required: [ name, gender, birthday, phoneNumber ]
+      properties:
+        name:
+          type: string
+          description: "사용자 이름"
+          example: "홍길동"
+        gender:
+          type: string
+          enum: [ MALE, FEMALE ]
+          description: "성별"
+          example: "MALE"
+        birthday:
+          type: string
+          format: date
+          description: "생년월일 (yyyy-MM-dd 형식)"
+          example: "2000-01-01"
+        phoneNumber:
+          type: string
+          description: "휴대폰 번호 ('-' 제외)"
+          example: "01012345678"
+        membershipId:
+          type: string
+          description: "멤버십 ID (선택 사항)"
+          example: "1234567812345678"
+          nullable: true
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - oldPassword
+        - newPassword
+        - newPasswordConfirm
+      properties:
+        oldPassword:
+          type: string
+          description: "사용자의 현재 비밀번호"
+          example: "currentPassword123!"
+        newPassword:
+          type: string
+          description: "새롭게 설정할 비밀번호 (6자 이상 30자 이하)"
+          example: "newStrongPassword456!"
+        newPasswordConfirm:
+          type: string
+          description: "새 비밀번호 확인"
+          example: "newStrongPassword456!"
+
+    WithdrawRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          description: 사용자가 입력한 비밀번호
+
+    MembershipUseRequest:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          format: int64
+        amount:
+          type: integer
+
+    # ----------------------------------------------------
+    # Response DTOs
+    # ----------------------------------------------------
+    LoginResponse:
+      type: object
+      required: [ name, accessToken, refreshToken ]
+      properties:
+        name:
+          type: string
+          format: name
+          example: "홍길동"
+        membershipGrade:
+          type: string
+          example: "VVIP"
+          enum: [ VVIP, VIP, BASIC ]
+        accessToken:
+          type: string
+          format: string
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWI..."
+        refreshToken:
+          type: string
+          format: string
+          example: "ZJQp8a0aZJmGqGqG7aJ..."
+
+    SmsConfirmResponse:
+      type: object
+      description: "문자 인증 코드 확인 응답 DTO"
+      required: [ registrationId, uplusDataFound ]
+      properties:
+        registrationId:
+          type: string
+          format: UUID
+          description: "회원가입 세션 Id"
+          example: "f79c2e9c-958d-4925-a562-3b3ad44353c8"
+        uplusDataFound:
+          type: boolean
+          description: "Uplus 데이터 존재 유무"
+          example: "true"
+    
+    FindEmailResponse:
+      type: object
+      required: [ email ]
+      properties:
+        name:
+          type: string
+          format: email
+          example: "user@example.com"
+
+    FindPasswordConfirmResponse:
+      type: object
+      required: [ resetPasswordToken ]
+      properties:
+        resetPasswordToken:
+          type: string
+          format: string
+          example: "42832341-acee-4bdb-8a04-b4c55f6bdccd"
+
+    BenefitResultResponse:
+      type: object
+      required: [ name, accessToken, refreshToken ]
+      properties:
+        tabType:
+          type: string
+          example: "VIP 콕"
+        title:
+          type: string
+          example: "할리스"
+        category:
+          type: string
+          example: "카페/음료"
+        description:
+          type: string
+          example: "할리스 아메리카노 R사이즈 1잔 무료 제공 (ICE/HOT 선택 가능)"
+        keywords:
+          type: array
+          example: [ "스타벅스", "커피", "무료" ]
+
+    RecommendedResponse:
+      type: object
+      required: [ name, accessToken, refreshToken ]
+      properties:
+        benefitId:
+          type: integer
+          example: "101"
+        benefitName:
+          type: string
+          example: "스타벅스 아메리카노 무료"
+        partnerName:
+          type: string
+          example: "스타벅스"
+        category:
+          type: string
+          example: "카페"
+        type:
+          type: string
+          example: [ "스타벅스", "커피", "무료" ]
+        description:
+          type: string
+          example: "VIP 콕"
+        image:
+          type: string
+          example: "VIP 콕"
+
+    UplusDataResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "홍길동"
+        phoneNumber:
+          type: string
+          example: "01012345678"
+        gender:
+          type: string
+          enum: [ MALE, FEMALE ]
+          example: "MALE"
+        birthday:
+          type: string
+          example: "20000101"
+        membershipId:
+          type: integer
+          example: "1234567812345678"
+
+    FavoriteRequest:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          example: 100
+
+
+    RemoveFavoritesRequest:
+      type: object
+      properties:
+        benefitIds:
+          type: array
+          items:
+            type: integer
+            example: [ 100, 101, 102 ]
+
+
+    FavoriteResponse:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          example: 100
+        benefitName:
+          type: string
+          example: "CGV"
+        partnerName:
+          type: string
+          example: "CGV"
+        partnerImage:
+          type: string
+          example: "https://example.com/image.png"
+
+    TierBenefitDetail:
+      type: object
+      properties:
+        grade:
+          type: string
+          example: "VIP콕"
+        isAll:
+          type: boolean
+          example: false
+        context:
+          type: string
+          example: "무료 예매 연 3회 / 1+1 예매 연 9회(총 12회)\r\n(월 1회 사용 가능, CGV/메가박스 중 택 1)\r\n※ 1+1이란? 1매 유료로 구매 시, 1매 무료 제공"
+        discountValue:
+          type: integer
+          example: 14000
+
+    FavoriteDetailResponse:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+        benefitName:
+          type: string
+        benefitDescription:
+          type: string
+        benefitLimit:
+          type: string
+        partnerName:
+          type: string
+        partnerImage:
+          type: string
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBenefitDetail'
+
+    PageResult:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/FavoriteResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+
+    UserInfoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 사용자 ID
+          example: 1
+        name:
+          type: string
+          description: 사용자 이름
+          example: "홍길동"
+        email:
+          type: string
+          format: email
+          description: 사용자 이메일
+          example: "hong@example.com"
+        phoneNumber:
+          type: string
+          description: 사용자 전화번호
+          example: "010-1234-5678"
+        gender:
+          type: string
+          description: 사용자 성별
+          enum: [ MALE, FEMALE, OTHER ]
+          example: "MALE"
+        birthday:
+          type: string
+          format: date
+          description: 사용자 생년월일
+          example: "1990-01-01"
+        membershipId:
+          type: string
+          description: 멤버십 ID (없는 경우 null)
+          example: "M001"
+          nullable: true
+        membershipGrade:
+          type: string
+          description: 멤버십 등급 (없는 경우 null)
+          enum: [ VVIP, VIP, BASIC ]
+          example: "BASIC"
+          nullable: true
+
+    StoreDetailDto:
+      type: object
+      properties:
+        store:
+          $ref: '#/components/schemas/StoreDto'
+        partner:
+          $ref: '#/components/schemas/PartnerDto'
+        tierBenefit:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBenefitDto'
+        distance:
+          type: number
+          format: double
+          description: 사용자 위치로부터의 거리 (km)
+          example: 0.5
+
+    StoreDto:
+      type: object
+      properties:
+        storeId:
+          type: integer
+          format: int64
+          description: 지점 ID
+          example: 1
+        storeName:
+          type: string
+          description: 지점명
+          example: "스타벅스 강남점"
+        business:
+          type: string
+          description: 업종
+          example: "커피전문점"
+        city:
+          type: string
+          description: 시
+          example: "서울특별시"
+        town:
+          type: string
+          description: 구
+          example: "강남구"
+        legalDong:
+          type: string
+          description: 법정동
+          example: "역삼동"
+        address:
+          type: string
+          description: 지번주소
+          example: "서울특별시 강남구 역삼동 123-45"
+        roadName:
+          type: string
+          description: 도로명
+          example: "강남대로"
+        roadAddress:
+          type: string
+          description: 도로명주소
+          example: "서울특별시 강남구 강남대로 456"
+        postCode:
+          type: string
+          description: 우편번호
+          example: "06234"
+
+    PartnerDto:
+      type: object
+      properties:
+        partnerId:
+          type: integer
+          format: int64
+          description: 파트너 ID
+          example: 101
+        partnerName:
+          type: string
+          description: 파트너명
+          example: "스타벅스"
+        image:
+          type: string
+          description: 파트너 이미지 URL
+          example: "https://example.com/starbucks-logo.png"
+        category:
+          type: string
+          description: 카테고리
+          example: "카페"
+
+    TierBenefitDto:
+      type: object
+      properties:
+        grade:
+          type: string
+        context:
+          type: string
+
+    BenefitListResponse:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          format: int64
+        benefitName:
+          type: string
+        mainCategory:
+          type: string
+          enum: [ VIP_COCK, BASIC_BENEFIT ]
+        usageType:
+          type: string
+          enum: [ ONLINE, OFFLINE, BOTH ]
+        partnerId:
+          type: integer
+          format: int64
+        category:
+          type: string
+        image:
+          type: string
+          format: uri
+        tierBenefits:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBenefitInfo'
+        isFavorite:
+          type: boolean
+        favoriteCount:
+          type: integer
+          format: int64
+
+    TierBenefitInfo:
+      type: object
+      properties:
+        grade:
+          type: string
+          enum: [ BASIC, VIP, VVIP, VIP콕 ]
+        context:
+          type: string
+        isAll:
+          type: boolean
+
+    PagedResponse_BenefitListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/BenefitListResponse'
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        hasNext:
+          type: boolean
+
+    BenefitDetailResponse:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          format: int64
+        benefitName:
+          type: string
+        description:
+          type: string
+        benefitLimit:
+          type: string
+        manual:
+          type: string
+        url:
+          type: string
+          format: uri
+        partnerName:
+          type: string
+        image:
+          type: string
+          format: uri
+
+    MapBenefitDetailResponse:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          format: int64
+        benefitName:
+          type: string
+        mainCategory:
+          type: string
+          enum: [ VIP_COCK, BASIC_BENEFIT ]
+        manual:
+          type: string
+        url:
+          type: string
+          format: uri
+        tierBenefits:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBenefitInfo'
+
+    MembershipHistoryResponse:
+      type: object
+      properties:
+        image:
+          type: string
+          format: uri
+        benefitName:
+          type: string
+        discountAmount:
+          type: integer
+          format: int64
+        usedAt:
+          type: string
+          format: date-time
+
+    PagedResponse_MembershipHistoryResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                content:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MembershipHistoryResponse'
+                totalPages:
+                  type: integer
+                totalElements:
+                  type: integer
+                currentPage:
+                  type: integer
+                hasNext:
+                  type: boolean
+
+    MonthlyDiscountResponse:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+        yearMonth:
+          type: string
+          description: 조회 대상 연월
+        totalDiscountAmount:
+          type: integer
+          format: int64
+          description: 총 할인 금액
+
+    RecommendationResponse:
+      type: object
+      properties:
+        reason:
+          type: string
+          example: 패밀리 레스토랑을 즐기고 싶다면 VIPS와 온더보더가 좋은 선택입니다.
+        partners:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartnerSummary'
+
+    PartnerSummary:
+      type: object
+      properties:
+        partnerName:
+          type: string
+          example: VIPS
+        imgUrl:
+          type: string
+          format: uri
+          example: https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/vips.png
+
+    HistoryResponse:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: 사용자 ID
+          example: 1633
+        historyId:
+          type: integer
+          format: int64
+          description: 이력 ID
+          example: 1
+        giftName:
+          type: string
+          description: 선물 이름
+          example: "[브람스] 루카S 안마의자"
+        result:
+          type: string
+          enum: [ SUCCESS, FAIL ]
+          description: 쿠폰 사용 결과
+          example: "FAIL"
+        usedDate:
+          type: string
+          format: date
+          description: 사용 날짜
+          example: "2025-07-31"
