@@ -13,47 +13,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1) 러너에서 base64로 인코딩 (로그에 원문 안 남음)
       - name: Encode secrets to base64
         id: enc
         shell: bash
         run: |
-          # 줄바꿈 포함 그대로 인코딩, 한 줄 출력(-w0)
-          printf %s "${{ secrets.ENV }}"               | base64 -w0 > env.b64
-          printf %s "${{ secrets.PROMPT_CATEGORIZE }}" | base64 -w0 > cat.b64
-          printf %s "${{ secrets.PROMPT_REASON }}"     | base64 -w0 > reason.b64
+          cat <<'EOF' | base64 -w0 > env.b64
+  ${{ secrets.ENV }}
+  EOF
+  cat <<'EOF' | base64 -w0 > cat.b64
+  ${{ secrets.PROMPT_CATEGORIZE }}
+  EOF
+  cat <<'EOF' | base64 -w0 > reason.b64
+  ${{ secrets.PROMPT_REASON }}
+  EOF
 
-          echo "ENV_B64=$(cat env.b64)"       >> "$GITHUB_OUTPUT"
-          echo "CAT_B64=$(cat cat.b64)"       >> "$GITHUB_OUTPUT"
-          echo "REASON_B64=$(cat reason.b64)" >> "$GITHUB_OUTPUT"
-
-      # 2) SSH로 원격에 전달 → 디코딩해서 파일 생성
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          ENV_B64: ${{ steps.enc.outputs.ENV_B64 }}
-          CAT_B64: ${{ steps.enc.outputs.CAT_B64 }}
-          REASON_B64: ${{ steps.enc.outputs.REASON_B64 }}
-        with:
-          host: ${{ secrets.OCI_SSH_HOST }}
-          username: ${{ secrets.OCI_SSH_USER }}
-          key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
-          envs: ENV_B64,CAT_B64,REASON_B64
-          script_stop: true
-          script: |
-            set -Eeuo pipefail
-            cd /home/ubuntu
-            mkdir -p prompts
-
-            # 민감 파일 권한: 600
-            umask 077
-            echo "$ENV_B64"    | base64 -d > .env
-            echo "$CAT_B64"    | base64 -d > prompts/categorizePrompt.txt
-            echo "$REASON_B64" | base64 -d > prompts/reasonPrompt.txt
-
-            # 존재/크기 확인(바이트 수만)
-            stat -c '%n %s bytes' .env prompts/categorizePrompt.txt prompts/reasonPrompt.txt || true
-
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
+  {
+    echo "ENV_B64=$(cat env.b64)"
+    echo "CAT_B64=$(cat cat.b64)"
+    echo "REASON_B64=$(cat reason.b64)"
+  } >> "$GITHUB_OUTPUT"
+  
+  - name: Deploy to server (SSH)
+    uses: appleboy/ssh-action@v1.0.3
+    env:
+      ENV_B64:    ${{ steps.enc.outputs.ENV_B64 }}
+      CAT_B64:    ${{ steps.enc.outputs.CAT_B64 }}
+      REASON_B64: ${{ steps.enc.outputs.REASON_B64 }}
+    with:
+      host:     ${{ secrets.OCI_SSH_HOST }}
+      username: ${{ secrets.OCI_SSH_USER }}
+      key:      ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+      envs:     ENV_B64,CAT_B64,REASON_B64
+      script_stop: true
+      script: |
+        set -Eeuo pipefail
+        cd /home/ubuntu
+        mkdir -p prompts
+        umask 077
+        echo "$ENV_B64"    | base64 -d > .env
+        echo "$CAT_B64"    | base64 -d > prompts/categorizePrompt.txt
+        echo "$REASON_B64" | base64 -d > prompts/reasonPrompt.txt
+        stat -c '%n %s bytes' .env prompts/categorizePrompt.txt prompts/reasonPrompt.txt || true
+        docker compose pull
+        docker compose up -d --remove-orphans
+        docker image prune -f
