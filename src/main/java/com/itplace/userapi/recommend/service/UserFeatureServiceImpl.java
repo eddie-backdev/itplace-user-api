@@ -113,7 +113,7 @@ public class UserFeatureServiceImpl implements UserFeatureService {
     }
 
 
-    public float[] embedUserFeatures(UserFeature uf) {
+    public List<Float> embedUserFeatures(UserFeature uf) {
         return embeddingService.embed(uf.getEmbeddingText());
     }
 

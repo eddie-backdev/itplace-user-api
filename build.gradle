@@ -36,7 +36,7 @@ dependencies {
 
     // AI 관련
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
-    implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc'
+//    implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc'
 
     // 인증 관련
     implementation 'org.springframework.boot:spring-boot-starter-mail'
@@ -72,6 +72,12 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom "org.springframework.ai:spring-ai-bom:$springAiVersion"
+    }
+}
+
+bootJar {
+    layered {
+
     }
 }
 

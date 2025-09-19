@@ -27,8 +27,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
-    private final ObjectMapper objectMapper;
-    private final MembershipRepository membershipRepository;
     private final RedisTemplate<String, String> redisTemplate;
 
     private static final String NEW_USER_REDIRECT_URI = "https://itplace.click/login?step=phoneAuth&verifiedType=oauth";

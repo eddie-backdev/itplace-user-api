@@ -62,7 +62,7 @@ public class SecurityConfig {
                                 "http://localhost:8080", // 로컬 개발 환경
                                 "https://itplace.click",
                                 "https://www.itplace.click",
-                                "https://user-api.itplace.click"
+                                "https://userapi.itplace.click"
                         ));
 
                         configuration.setAllowedMethods(Collections.singletonList("*"));

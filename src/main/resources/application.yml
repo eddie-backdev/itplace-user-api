@@ -1,48 +1,4 @@
 spring:
-  profiles:
-    active: local
-    group:
-      local: local, common, secret
-      aws: aws, common, secret
-
----
-
-spring:
-  config:
-    activate:
-      on-profile: local
-  security:
-    oauth2:
-      client:
-        registration:
-          kakao:
-            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
-server:
-  port: 8080
-
----
-
-spring:
-  config:
-    import: file:/app/application-secret.yml
-    activate:
-      on-profile: aws
-  security:
-    oauth2:
-      client:
-        registration:
-          kakao:
-            redirect-uri: https://user-api.itplace.click/login/oauth2/code/kakao
-server:
-  port: 8080
-
----
-
-spring:
-  config:
-    activate:
-      on-profile: common
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -50,15 +6,114 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     database-platform: org.hibernate.dialect.MySQLDialect
 
+  datasource:
+    source:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbc-url: ${JDBC_URL}
+      username: ${SPRING_DATASOURCE_USERNAME}
+      password: ${SPRING_DATASOURCE_PASSWORD}
+      hikari:
+        maximum-pool-size: 30
+        minimum-idle: 10
+        idle-timeout: 30000
+        max-lifetime: 600000
+        connection-timeout: 30000
+        leak-detection-threshold: 30000
+    replica:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbc-url: ${JDBC_URL}
+      username: ${SPRING_DATASOURCE_USERNAME}
+      password: ${SPRING_DATASOURCE_PASSWORD}
+      hikari:
+        maximum-pool-size: 30
+        minimum-idle: 10
+        idle-timeout: 30000
+        max-lifetime: 600000
+        connection-timeout: 30000
+        leak-detection-threshold: 30000
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: 6379
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+      ssl:
+        enabled: true
+    mongodb:
+      uri: ${MONGO_DB_URL}
+
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-validity-in-seconds: 3600
+    refresh-token-validity-in-seconds: 86400
+  ai:
+    chat:
+      categorizePrompt: classpath:prompt/categorizePrompt.txt
+      reasonPrompt: classpath:prompt/reasonPrompt.txt
+
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      organization-id: ${OPENAI_ORGANIZATION_ID}
+      base-url: https://api.openai.com/
+      chat:
+        model: gpt-4.1-nano
+      embedding:
+        model: text-embedding-3-small
+      audio:
+        enabled: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: ${KAKAO_REDIRECT_URI}
+            client-name: kakao
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            scope:
+              - account_email
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
   mail:
     host: smtp.gmail.com
     port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST}
+  port: 9200
+  username: ${ELASTICSEARCH_USERNAME}
+  password: ${ELASTICSEARCH_PASSWORD}
+  scheme: http
+  connectTimeoutMs: 2000
+  socketTimeoutMs: 30000
+
+coolsms:
+  api:
+    key: ${COOLSMS_API_KEY}
+    secret: ${COOLSMS_API_SECRET}
+  fromPhone: ${COOLSMS_FROM_PHONE}
+
+google:
+  recaptcha:
+    key:
+      url: https://www.google.com/recaptcha/api/siteverify
+      secret: ${GOOGLE_RECAPTCHA_SECRET}
 
 springdoc:
   swagger-ui:
@@ -74,9 +129,7 @@ management:
   endpoints:
     web:
       exposure:
-        include:
-          - "health"
-          - "info"
+        include: [ "health", "info" ]
   endpoint:
     health:
       show-details: "always"

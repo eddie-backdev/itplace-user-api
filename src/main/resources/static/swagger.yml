@@ -7,7 +7,7 @@ info:
     모든 API 응답은 표준 응답 포맷(ApiResponse)을 따릅니다.
   version: 1.0.0
 servers:
-  - url: https://user-api.itplace.click/api/v1
+  - url: https://userapi.itplace.click/api/v1
     description: 개발 서버
 
   - url: http://localhost:8080/api/v1

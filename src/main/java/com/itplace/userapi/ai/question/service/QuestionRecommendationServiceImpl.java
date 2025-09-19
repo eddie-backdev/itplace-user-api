@@ -1,70 +1,84 @@
 package com.itplace.userapi.ai.question.service;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.itplace.userapi.ai.forbiddenword.exception.ForbiddenWordException;
 import com.itplace.userapi.ai.forbiddenword.service.ForbiddenWordService;
 import com.itplace.userapi.ai.llm.dto.RecommendationResponse;
-import com.itplace.userapi.ai.llm.service.LLMService;
+import com.itplace.userapi.ai.llm.service.OpenAIService;
 import com.itplace.userapi.ai.question.QuestionCode;
 import com.itplace.userapi.ai.question.exception.QuestionException;
+import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.map.dto.StoreDetailDto;
 import com.itplace.userapi.map.service.StoreService;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class QuestionRecommendationServiceImpl implements QuestionRecommendationService {
-
-    private final VectorStore vectorStore;                 // PgVector 기반 VectorStore만 사용
+    private final EmbeddingService embeddingService;
+    private final ElasticsearchClient esClient;
     private final StoreService storeService;
-    private final LLMService llmService;
+    private final OpenAIService openAIService;
+    private final ElasticQuestionService elasticQuestionService;
     private final ForbiddenWordService forbiddenWordService;
 
-    @Override
-    public RecommendationResponse recommendByQuestion(String question, double lat, double lng) {
-        // 0) 금칙어 필터
-        String censored = forbiddenWordService.censor(question);
-        if (censored.contains("입력할 수 없는 단어")) {
-            throw new ForbiddenWordException();
-        }
 
-        // 1) 유사 질문 검색 (임베딩 + pgvector 검색 자동)
-        List<Document> hits = vectorStore.similaritySearch(
-                SearchRequest.builder()
-                        .query(question)
-                        .topK(1)
-                        .build()
+    public RecommendationResponse recommendByQuestion(String question, double lat, double lng) throws Exception {
+        // 0. 금칙어 필터링
+        String result = forbiddenWordService.censor(question);
+        if (result.contains("입력할 수 없는 단어")) {
+            throw new ForbiddenWordException();
+
+        }
+        // 1. 사용자 질문 임베딩
+        List<Float> embedding = embeddingService.embed(question);
+
+        // 2. ES에서 top1 검색
+        SearchResponse<Map> response = esClient.search(s -> s
+                        .index("questions")
+                        .knn(knn -> knn
+                                .field("embedding")
+                                .k(1)
+                                .numCandidates(10)
+                                .queryVector(embedding)
+                        ),
+                Map.class
         );
 
+        List<Hit<Map>> hits = response.hits().hits();
+
         String category;
-        if (hits.isEmpty()) {
-            // 2-a) 매칭 결과가 없으면 LLM으로 카테고리 분류
-            category = llmService.categorize(question);
+
+        if (hits.isEmpty() || (hits.get(0).score() != null && hits.get(0).score() < 0.7)) {
+            // 3. score가 낮거나 검색 실패한 경우 → LLM으로 카테고리 분류
+            category = openAIService.categorize(question);
+            // LLM이 카테고리를 못 준 경우 처리
             if (category == null || category.isBlank()) {
                 throw new QuestionException(QuestionCode.NO_CATEGORY_FOUND);
             }
-            // ※ 원한다면 여기서 CSV/DB에 새로 문서 추가해도 됨 (vectorStore.add)
-            // vectorStore.add(List.of(new Document(question, Map.of("category", category))));
+            // 질문 + LLM 카테고리 + 임베딩 결과를 ES에 저장
+            elasticQuestionService.saveQuestion(
+                    "questions",
+                    UUID.randomUUID().toString(),
+                    question,
+                    category,
+                    embedding
+            );
         } else {
-            // 2-b) 매칭 결과의 메타데이터에서 카테고리 사용
-            Document top = hits.get(0);
-            Object cat = top.getMetadata().get("category");
-            category = cat != null ? String.valueOf(cat) : null;
-            if (category == null || category.isBlank()) {
-                // 카테고리 메타데이터가 비어있으면 LLM fallback
-                category = llmService.categorize(question);
-                if (category == null || category.isBlank()) {
-                    throw new QuestionException(QuestionCode.NO_CATEGORY_FOUND);
-                }
-            }
+            // 3-2. score가 높으면 ES 결과에서 카테고리 추출
+            category = (String) hits.get(0).source().get("category");
         }
 
-        // 3) 제휴처 검색
+        System.out.println("카테고리 분류: " + category);
+        // 4. 제휴처 목록 조회
         List<StoreDetailDto> stores = storeService.findNearbyByKeyword(lat, lng, null, category, 0, 0);
+
         if (stores.isEmpty()) {
             throw new QuestionException(QuestionCode.NO_STORE_FOUND);
         }
@@ -75,11 +89,11 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 .limit(5)
                 .toList();
 
-        // 4) 추천 이유 생성
-        String reason = llmService.generateReasons(question, category, partnerNames);
+        // 5. 추천 이유 생성
+        String reason = openAIService.generateReasons(question, category, partnerNames);
 
-        // 5) 응답 조립
-        var partners = partnerNames.stream()
+        // 6. partnerName + imgUrl 조립
+        List<RecommendationResponse.PartnerSummary> partners = partnerNames.stream()
                 .map(name -> {
                     String imgUrl = stores.stream()
                             .filter(s -> s.getPartner().getPartnerName().equals(name))
@@ -92,6 +106,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                             .build();
                 }).toList();
 
+        // 최종 응답 조립
         return RecommendationResponse.builder()
                 .reason(reason)
                 .partners(partners)

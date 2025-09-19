@@ -1,0 +1,33 @@
+name: CD - Deploy to OCI
+
+on:
+  workflow_run:
+    workflows: CI - Build and Push Docker Image
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.OCI_SSH_HOST }}
+          username: ${{ secrets.OCI_SSH_USER }}
+          key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          script: |
+            #.env 파일 생성
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >.env
+            echo "ELASTIC_PASSWORD=${{ secrets.ELASTIC_PASSWORD }}" >>.env
+            
+            # 최신 이미지 풀링 및 애플리케이션 재시작
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+            
+            # 사용되지 않는 Docker 이미지 정리
+            docker image prune -f

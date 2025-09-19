@@ -51,27 +51,21 @@ public class StoreServiceImpl implements StoreService {
 
         // 1. 반경에 따라 전략 선택
         if (radiusMeters <= WIDE_RADIUS_THRESHOLD) {
-            // 좁은 반경: 단일 쿼리로 모든 ID 조회 후 앱에서 셔플
-            log.info("좁은 반경 검색 실행 ({}m)", radiusMeters);
+            // 좁은 반경: 단일 쿼리로 모든 ID 조회
             allStoreIds = findNearbyWithSingleQuery(lat, lng, radiusMeters);
         } else {
             // 넓은 반경: 그리드 기반 샘플링
-            log.info("넓은 반경 검색 실행 ({}m)", radiusMeters);
             allStoreIds = findNearbyWithGridSampling(lat, lng, radiusMeters);
         }
-
-        log.info("============ 샘플링된 전체 store ID 개수: {} =============", allStoreIds.size());
 
         if (allStoreIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // 2. 최종 150개 선택 및 상세 정보 조회
+        // 2. 최종 300개 선택 및 상세 정보 조회
         Collections.shuffle(allStoreIds);
         List<Long> limitedStoreIds = allStoreIds.subList(0, Math.min(allStoreIds.size(), FINAL_LIMIT));
         List<Store> limitedStores = storeRepository.findAllById(limitedStoreIds);
-
-        // --- (이하 N+1 문제 해결 로직은 기존과 동일) ---
         List<Long> partnerIds = limitedStores.stream()
                 .map(store -> store.getPartner().getPartnerId())
                 .distinct()
