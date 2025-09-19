@@ -36,7 +36,7 @@ RUN java -Djarmode=layertools -jar application.jar extract
 
 # --- 3단계: Final Image ---
 # 경량 JRE에 계층만 복사해 최종 실행 이미지 구성
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # 보안을 위해 비-루트 사용자로 실행
