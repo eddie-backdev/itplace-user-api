@@ -45,10 +45,10 @@ RUN groupadd -r appgroup && useradd --no-log-init -r -g appgroup appuser
 USER appuser
 
 # 레이어 순서: 의존성 → 로더 → 스냅샷 의존성 → 앱
-COPY --from=extractor dependencies/ ./
-COPY --from=extractor spring-boot-loader/ ./
-COPY --from=extractor snapshot-dependencies/ ./
-COPY --from=extractor application/ ./
+COPY --from=extractor /app/dependencies/ ./dependencies/
+COPY --from=extractor /app/spring-boot-loader/ ./spring-boot-loader/
+COPY --from=extractor /app/snapshot-dependencies/ ./snapshot-dependencies/
+COPY --from=extractor /app/application/ ./application/
 
 # (선택) 포트 노출
 # EXPOSE 8080
