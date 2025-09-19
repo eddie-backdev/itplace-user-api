@@ -1,5 +1,4 @@
 # --- 1단계: Builder ---
-# Gradle + JDK17이 포함된 ARM64 이미지로 빌드
 FROM gradle:jdk17 AS builder
 WORKDIR /app
 
@@ -17,13 +16,15 @@ COPY build.gradle settings.gradle ./
 RUN chmod +x ./gradlew
 
 # 의존성만 먼저 다운로드 (캐시 전용 단계)
-RUN ./gradlew dependencies --no-daemon || true
+RUN --mount=type=cache,target=/home/gradle/.gradle \
+    ./gradlew dependencies --no-daemon || true
 
 # 애플리케이션 소스 복사
 COPY src ./src
 
 # 테스트 제외 빌드 (필요시 -x test 제거)
-RUN ./gradlew build -x test --no-daemon
+RUN --mount=type=cache,target=/home/gradle/.gradle \
+    ./gradlew build -x test --no-daemon
 
 
 # --- 2단계: Layer Extractor ---

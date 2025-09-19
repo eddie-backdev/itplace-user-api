@@ -1,3 +1,4 @@
+# .github/workflows/ci.yml
 name: CI - Build and Push Docker Image
 
 on:
@@ -7,6 +8,7 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,3 +35,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/springboot-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/springboot-app:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
