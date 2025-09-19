@@ -1,6 +1,6 @@
 # --- 1단계: Builder ---
 # Gradle + JDK17이 포함된 ARM64 이미지로 빌드
-FROM --platform=linux/arm64 gradle:jdk17-alpine AS builder
+FROM gradle:jdk17-alpine AS builder
 WORKDIR /app
 
 # (선택) Gradle 캐시 디렉터리 지정 → 레이어 캐시 효율↑
@@ -28,7 +28,7 @@ RUN ./gradlew build -x test --no-daemon
 
 # --- 2단계: Layer Extractor ---
 # 빌드된 fat JAR에서 Spring Boot layertools로 계층 추출
-FROM --platform=linux/arm64 eclipse-temurin:17-jdk-jammy AS extractor
+FROM eclipse-temurin:17-jdk-jammy AS extractor
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar application.jar
 RUN java -Djarmode=layertools -jar application.jar extract
@@ -36,7 +36,7 @@ RUN java -Djarmode=layertools -jar application.jar extract
 
 # --- 3단계: Final Image ---
 # 경량 JRE에 계층만 복사해 최종 실행 이미지 구성
-FROM --platform=linux/arm64 eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # 보안을 위해 비-루트 사용자로 실행
