@@ -23,9 +23,11 @@ jobs:
           script: |
             # GitHub Secrets에 저장된 ENV 변수 전체를 서버에 .env 파일로 생성합니다.
             cd /home/ubuntu
-            echo "${{ secrets.ENV }}" > .env
-            echo "${{ secrets.PROMPT_CATEGORIZE }}" > ./prompts/categorizePrompt.txt
-            echo "${{ secrets.PROMPT_REASON }}" > ./prompts/reasonPrompt.txt
+            cat > ./.env <<'__ENV_EOF__' ${{ secrets.ENV }} __ENV_EOF__
+            
+            cat > ./prompts/categorizePrompt.txt <<'__CAT_EOF__' ${{ secrets.PROMPT_CATEGORIZE }} __CAT_EOF__
+            
+            cat > ./prompts/reasonPrompt.txt <<'__REASON_EOF__' ${{ secrets.PROMPT_REASON }} __REASON_EOF__
 
             # docker-compose.yml에 명시된 서비스의 최신 이미지를 받아옵니다.
             docker compose pull
