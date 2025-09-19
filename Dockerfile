@@ -40,7 +40,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # 보안을 위해 비-루트 사용자로 실행
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN groupadd -r appgroup && useradd --no-log-init -r -g appgroup appuser
 USER appuser
 
 # 레이어 순서: 의존성 → 로더 → 스냅샷 의존성 → 앱
