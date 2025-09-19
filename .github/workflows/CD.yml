@@ -25,10 +25,10 @@ jobs:
             echo "${{ secrets.ENV }}" > .env
 
             # docker-compose.yml에 명시된 서비스의 최신 이미지를 받아옵니다.
-            docker-compose pull
+            docker compose pull
 
             # .env 파일을 참조하여 컨테이너를 백그라운드에서 실행합니다.
-            docker-compose up -d --remove-orphans
+            docker compose up -d --remove-orphans
 
             # 사용되지 않는 Docker 이미지를 정리하여 서버 용량을 확보합니다.
             docker image prune -f
