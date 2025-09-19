@@ -3,37 +3,57 @@ name: CD - Deploy to OCI
 on:
   workflow_run:
     workflows: CI - Build and Push Docker Image
-    types:
-      - completed
+    types: [ completed ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) 러너에서 base64로 인코딩 (로그에 원문 안 남음)
+      - name: Encode secrets to base64
+        id: enc
+        shell: bash
+        run: |
+          # 줄바꿈 포함 그대로 인코딩, 한 줄 출력(-w0)
+          printf %s "${{ secrets.ENV }}"               | base64 -w0 > env.b64
+          printf %s "${{ secrets.PROMPT_CATEGORIZE }}" | base64 -w0 > cat.b64
+          printf %s "${{ secrets.PROMPT_REASON }}"     | base64 -w0 > reason.b64
+
+          echo "ENV_B64=$(cat env.b64)"       >> "$GITHUB_OUTPUT"
+          echo "CAT_B64=$(cat cat.b64)"       >> "$GITHUB_OUTPUT"
+          echo "REASON_B64=$(cat reason.b64)" >> "$GITHUB_OUTPUT"
+
+      # 2) SSH로 원격에 전달 → 디코딩해서 파일 생성
       - name: Deploy to server
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          ENV_B64: ${{ steps.enc.outputs.ENV_B64 }}
+          CAT_B64: ${{ steps.enc.outputs.CAT_B64 }}
+          REASON_B64: ${{ steps.enc.outputs.REASON_B64 }}
         with:
           host: ${{ secrets.OCI_SSH_HOST }}
           username: ${{ secrets.OCI_SSH_USER }}
           key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          envs: ENV_B64,CAT_B64,REASON_B64
+          script_stop: true
           script: |
-            # GitHub Secrets에 저장된 ENV 변수 전체를 서버에 .env 파일로 생성합니다.
+            set -Eeuo pipefail
             cd /home/ubuntu
-            cat > ./.env <<'__ENV_EOF__' ${{ secrets.ENV }} __ENV_EOF__
-            
-            cat > ./prompts/categorizePrompt.txt <<'__CAT_EOF__' ${{ secrets.PROMPT_CATEGORIZE }} __CAT_EOF__
-            
-            cat > ./prompts/reasonPrompt.txt <<'__REASON_EOF__' ${{ secrets.PROMPT_REASON }} __REASON_EOF__
+            mkdir -p prompts
 
-            # docker-compose.yml에 명시된 서비스의 최신 이미지를 받아옵니다.
+            # 민감 파일 권한: 600
+            umask 077
+            echo "$ENV_B64"    | base64 -d > .env
+            echo "$CAT_B64"    | base64 -d > prompts/categorizePrompt.txt
+            echo "$REASON_B64" | base64 -d > prompts/reasonPrompt.txt
+
+            # 존재/크기 확인(바이트 수만)
+            stat -c '%n %s bytes' .env prompts/categorizePrompt.txt prompts/reasonPrompt.txt || true
+
             docker compose pull
-
-            # .env 파일을 참조하여 컨테이너를 백그라운드에서 실행합니다.
             docker compose up -d --remove-orphans
-
-            # 사용되지 않는 Docker 이미지를 정리하여 서버 용량을 확보합니다.
             docker image prune -f
