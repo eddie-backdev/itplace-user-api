@@ -21,13 +21,14 @@ jobs:
           username: ${{ secrets.OCI_SSH_USER }}
           key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
           script: |
-            #.env 파일 생성
-            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >.env
-            echo "ELASTIC_PASSWORD=${{ secrets.ELASTIC_PASSWORD }}" >>.env
-            
-            # 최신 이미지 풀링 및 애플리케이션 재시작
+            # GitHub Secrets에 저장된 ENV 변수 전체를 서버에 .env 파일로 생성합니다.
+            echo "${{ secrets.ENV }}" > .env
+
+            # docker-compose.yml에 명시된 서비스의 최신 이미지를 받아옵니다.
             docker-compose pull
+
+            # .env 파일을 참조하여 컨테이너를 백그라운드에서 실행합니다.
             docker-compose up -d --remove-orphans
-            
-            # 사용되지 않는 Docker 이미지 정리
+
+            # 사용되지 않는 Docker 이미지를 정리하여 서버 용량을 확보합니다.
             docker image prune -f
