@@ -1,6 +1,6 @@
 # --- 1단계: Builder ---
 # Gradle + JDK17이 포함된 ARM64 이미지로 빌드
-FROM gradle:jdk17-alpine AS builder
+FROM gradle:jdk17 AS builder
 WORKDIR /app
 
 # (선택) Gradle 캐시 디렉터리 지정 → 레이어 캐시 효율↑
