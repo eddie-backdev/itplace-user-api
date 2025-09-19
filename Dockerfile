@@ -56,5 +56,5 @@ COPY --from=extractor /app/application/ ./application/
 # (선택) JVM 옵션 주입용
 ENV JAVA_OPTS=""
 
-# Spring Boot Loader로 실행
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+# Spring Boot Loader로 실행 (PropertiesLauncher 사용)
+ENTRYPOINT ["java", "org.springframework.boot.loader.PropertiesLauncher"]
