@@ -48,8 +48,8 @@ spring:
     refresh-token-validity-in-seconds: 86400
   ai:
     chat:
-      categorizePrompt: classpath:prompt/categorizePrompt.txt
-      reasonPrompt: classpath:prompt/reasonPrompt.txt
+      categorizePrompt: file:/app/prompts/categorizePrompt.txt
+      reasonPrompt: file:/app/prompts/reasonPrompt.txt
 
     openai:
       api-key: ${OPENAI_API_KEY}
