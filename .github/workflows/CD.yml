@@ -3,53 +3,34 @@ name: CD - Deploy to OCI
 on:
   workflow_run:
     workflows: CI - Build and Push Docker Image
-    types: [ completed ]
+    types:
+      - completed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Encode secrets to base64
-        id: enc
-        shell: bash
-        run: |
-          cat <<'__ENV_EOF_3b7a8__' | base64 -w0 > env.b64 ${{ secrets.ENV }} __ENV_EOF_3b7a8__
-          
-          cat <<'__CAT_EOF_3b7a8__' | base64 -w0 > cat.b64 ${{ secrets.PROMPT_CATEGORIZE }} __CAT_EOF_3b7a8__
-          
-          cat <<'__REASON_EOF_3b7a8__' | base64 -w0 > reason.b64 ${{ secrets.PROMPT_REASON }} __REASON_EOF_3b7a8__
-          
-          {
-            echo "ENV_B64=$(cat env.b64)"
-            echo "CAT_B64=$(cat cat.b64)"
-            echo "REASON_B64=$(cat reason.b64)"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Deploy to server (SSH)
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          ENV_B64: ${{ steps.enc.outputs.ENV_B64 }}
-          CAT_B64: ${{ steps.enc.outputs.CAT_B64 }}
-          REASON_B64: ${{ steps.enc.outputs.REASON_B64 }}
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.OCI_SSH_HOST }}
           username: ${{ secrets.OCI_SSH_USER }}
           key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
-          envs: ENV_B64,CAT_B64,REASON_B64
-          script_stop: true
           script: |
-            set -Eeuo pipefail
-            cd /home/ubuntu
-            mkdir -p prompts
-            umask 077
-            echo "$ENV_B64"    | base64 -d > .env
-            echo "$CAT_B64"    | base64 -d > prompts/categorizePrompt.txt
-            echo "$REASON_B64" | base64 -d > prompts/reasonPrompt.txt
-            stat -c '%n %s bytes' .env prompts/categorizePrompt.txt prompts/reasonPrompt.txt || true
+            # GitHub Secrets에 저장된 ENV 변수 전체를 서버에 .env 파일로 생성합니다.
+            echo "${{ secrets.ENV }}" | base64 --decode > .env
+            echo "${{ secrets.PROMPT_CATEGORIZE }}" | base64 --decode > ./prompts/categorizePrompt.txt
+            echo "${{ secrets.PROMPT_REASON }}" | base64 --decode > ./prompts/reasonPrompt.txt
+
+            # docker-compose.yml에 명시된 서비스의 최신 이미지를 받아옵니다.
             docker compose pull
+
+            # .env 파일을 참조하여 컨테이너를 백그라운드에서 실행합니다.
             docker compose up -d --remove-orphans
+
+            # 사용되지 않는 Docker 이미지를 정리하여 서버 용량을 확보합니다.
             docker image prune -f
