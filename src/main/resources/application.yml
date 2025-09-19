@@ -37,8 +37,6 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST}
       port: 6379
       password: ${SPRING_DATA_REDIS_PASSWORD}
-      ssl:
-        enabled: true
     mongodb:
       uri: ${MONGO_DB_URL}
 
