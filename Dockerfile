@@ -57,4 +57,4 @@ COPY --from=extractor /app/application/             ./application/
 ENV JAVA_OPTS=""
 
 # Spring Boot Loader로 실행
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -cp .:spring-boot-loader/* org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
