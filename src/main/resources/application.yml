@@ -1,7 +1,7 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -9,9 +9,9 @@ spring:
   datasource:
     source:
       driver-class-name: com.mysql.cj.jdbc.Driver
-      jdbc-url: ${JDBC_URL}
-      username: ${SPRING_DATASOURCE_USERNAME}
-      password: ${SPRING_DATASOURCE_PASSWORD}
+      jdbc-url: ${MYSQL_URL}
+      username: ${MYSQL_USERNAME}
+      password: ${MYSQL_PASSWORD}
       hikari:
         maximum-pool-size: 30
         minimum-idle: 10
@@ -21,9 +21,9 @@ spring:
         leak-detection-threshold: 30000
     replica:
       driver-class-name: com.mysql.cj.jdbc.Driver
-      jdbc-url: ${JDBC_URL}
-      username: ${SPRING_DATASOURCE_USERNAME}
-      password: ${SPRING_DATASOURCE_PASSWORD}
+      jdbc-url: ${MYSQL_REPLICA_URL:${MYSQL_URL}}
+      username: ${MYSQL_REPLICA_USERNAME:${MYSQL_USERNAME}}
+      password: ${MYSQL_REPLICA_PASSWORD:${MYSQL_PASSWORD}}
       hikari:
         maximum-pool-size: 30
         minimum-idle: 10
@@ -34,16 +34,16 @@ spring:
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST}
+      host: ${REDIS_HOST}
       port: 6379
-      password: ${SPRING_DATA_REDIS_PASSWORD}
+      password: ${REDIS_PASSWORD:}
     mongodb:
-      uri: ${MONGO_DB_URL}
+      uri: ${MONGODB_URI}
 
   jwt:
     secret: ${JWT_SECRET}
-    access-token-validity-in-seconds: 3600
-    refresh-token-validity-in-seconds: 86400
+    access-token-validity-in-seconds: 3600    # 액세스 토큰 유효기간: 1시간
+    refresh-token-validity-in-seconds: 86400  # 리프레시 토큰 유효기간: 24시간
   ai:
     chat:
       categorizePrompt: file:/app/prompts/categorizePrompt.txt
@@ -116,12 +116,6 @@ google:
 springdoc:
   swagger-ui:
     url: /swagger.yml
-
-logging:
-  level:
-    org.springframework.web: DEBUG
-    org.springframework.web.servlet.DispatcherServlet: DEBUG
-    com.fasterxml.jackson.databind: DEBUG
 
 management:
   endpoints:
