@@ -2,8 +2,8 @@ package com.itplace.userapi.security.verification.email.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.SecurityCode;
-import com.itplace.userapi.security.verification.email.dto.EmailConfirmRequest;
-import com.itplace.userapi.security.verification.email.dto.EmailVerificationRequest;
+import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
+import com.itplace.userapi.security.verification.email.dto.request.EmailVerificationRequest;
 import com.itplace.userapi.security.verification.email.service.EmailService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

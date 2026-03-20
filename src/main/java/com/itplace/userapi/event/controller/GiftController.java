@@ -2,9 +2,9 @@ package com.itplace.userapi.event.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.event.GiftCode;
-import com.itplace.userapi.event.dto.GiftResponse;
-import com.itplace.userapi.event.dto.HistoryResponse;
-import com.itplace.userapi.event.dto.ScratchResult;
+import com.itplace.userapi.event.dto.response.GiftResponse;
+import com.itplace.userapi.event.dto.response.HistoryResponse;
+import com.itplace.userapi.event.dto.response.ScratchResult;
 import com.itplace.userapi.event.service.CouponHistoryService;
 import com.itplace.userapi.event.service.GiftService;
 import com.itplace.userapi.event.service.ScratchService;

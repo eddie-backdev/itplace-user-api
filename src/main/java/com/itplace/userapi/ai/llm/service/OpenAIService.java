@@ -1,6 +1,6 @@
 package com.itplace.userapi.ai.llm.service;
 
-import com.itplace.userapi.ai.llm.dto.CategoryResponse;
+import com.itplace.userapi.ai.llm.dto.response.CategoryResponse;
 import com.itplace.userapi.ai.llm.dto.RecommendReason;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;

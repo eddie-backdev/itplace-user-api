@@ -8,7 +8,7 @@ import com.itplace.userapi.security.exception.PasswordMismatchException;
 import com.itplace.userapi.security.exception.SmsVerificationException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.verification.OtpUtil;
-import com.itplace.userapi.security.verification.email.dto.EmailConfirmRequest;
+import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
 import com.itplace.userapi.user.dto.request.FindEmailConfirmRequest;

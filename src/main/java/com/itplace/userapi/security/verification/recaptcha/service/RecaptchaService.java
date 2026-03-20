@@ -1,7 +1,7 @@
 package com.itplace.userapi.security.verification.recaptcha.service;
 
-import com.itplace.userapi.security.verification.recaptcha.dto.RecaptchaRequest;
-import com.itplace.userapi.security.verification.recaptcha.dto.RecaptchaResponse;
+import com.itplace.userapi.security.verification.recaptcha.dto.request.RecaptchaRequest;
+import com.itplace.userapi.security.verification.recaptcha.dto.response.RecaptchaResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

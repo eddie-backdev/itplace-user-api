@@ -1,6 +1,6 @@
 package com.itplace.userapi.event.service;
 
-import com.itplace.userapi.event.dto.GiftResponse;
+import com.itplace.userapi.event.dto.response.GiftResponse;
 import com.itplace.userapi.event.repository.GiftRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

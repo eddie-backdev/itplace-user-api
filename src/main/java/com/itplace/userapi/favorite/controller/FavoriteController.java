@@ -1,11 +1,11 @@
 package com.itplace.userapi.favorite.controller;
 
 import com.itplace.userapi.common.ApiResponse;
-import com.itplace.userapi.favorite.dto.FavoriteDetailResponse;
-import com.itplace.userapi.favorite.dto.FavoriteRequest;
-import com.itplace.userapi.favorite.dto.FavoriteResponse;
+import com.itplace.userapi.favorite.dto.response.FavoriteDetailResponse;
+import com.itplace.userapi.favorite.dto.request.FavoriteRequest;
+import com.itplace.userapi.favorite.dto.response.FavoriteResponse;
 import com.itplace.userapi.favorite.dto.PageResult;
-import com.itplace.userapi.favorite.dto.RemoveFavoritesRequest;
+import com.itplace.userapi.favorite.dto.request.RemoveFavoritesRequest;
 import com.itplace.userapi.favorite.enums.FavoriteCode;
 import com.itplace.userapi.favorite.service.FavoriteService;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;

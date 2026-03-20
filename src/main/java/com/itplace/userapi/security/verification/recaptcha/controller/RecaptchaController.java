@@ -2,7 +2,7 @@ package com.itplace.userapi.security.verification.recaptcha.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.SecurityCode;
-import com.itplace.userapi.security.verification.recaptcha.dto.RecaptchaRequest;
+import com.itplace.userapi.security.verification.recaptcha.dto.request.RecaptchaRequest;
 import com.itplace.userapi.security.verification.recaptcha.service.RecaptchaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

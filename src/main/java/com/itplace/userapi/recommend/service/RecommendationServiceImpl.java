@@ -5,7 +5,7 @@ import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.recommend.domain.UserFeature;
 import com.itplace.userapi.recommend.dto.Candidate;
-import com.itplace.userapi.recommend.dto.Recommendations;
+import com.itplace.userapi.recommend.dto.response.Recommendations;
 import com.itplace.userapi.recommend.entity.Recommendation;
 import com.itplace.userapi.recommend.mapper.RecommendationMapper;
 import com.itplace.userapi.recommend.repository.RecommendationRepository;

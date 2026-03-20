@@ -1,6 +1,6 @@
 package com.itplace.userapi.log.service;
 
-import com.itplace.userapi.log.dto.SearchRankResponse;
+import com.itplace.userapi.log.dto.response.SearchRankResponse;
 import java.util.List;
 
 public interface LogService {

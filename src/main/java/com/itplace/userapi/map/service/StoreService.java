@@ -1,6 +1,6 @@
 package com.itplace.userapi.map.service;
 
-import com.itplace.userapi.map.dto.StoreDetailDto;
+import com.itplace.userapi.map.dto.response.StoreDetailDto;
 import java.util.List;
 
 public interface StoreService {

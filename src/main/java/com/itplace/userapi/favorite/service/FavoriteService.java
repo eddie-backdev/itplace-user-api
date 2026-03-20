@@ -1,7 +1,7 @@
 package com.itplace.userapi.favorite.service;
 
-import com.itplace.userapi.favorite.dto.FavoriteDetailResponse;
-import com.itplace.userapi.favorite.dto.FavoriteResponse;
+import com.itplace.userapi.favorite.dto.response.FavoriteDetailResponse;
+import com.itplace.userapi.favorite.dto.response.FavoriteResponse;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

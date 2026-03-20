@@ -12,7 +12,7 @@ import com.itplace.userapi.partner.repository.PartnerRepository;
 import com.itplace.userapi.recommend.domain.UserFeature;
 import com.itplace.userapi.recommend.dto.Candidate;
 import com.itplace.userapi.recommend.dto.ChatCompletionResponse;
-import com.itplace.userapi.recommend.dto.Recommendations;
+import com.itplace.userapi.recommend.dto.response.Recommendations;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

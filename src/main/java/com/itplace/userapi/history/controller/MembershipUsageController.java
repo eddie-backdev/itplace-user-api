@@ -2,7 +2,7 @@ package com.itplace.userapi.history.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.history.MembershipHistoryCode;
-import com.itplace.userapi.history.dto.MembershipUseRequest;
+import com.itplace.userapi.history.dto.request.MembershipUseRequest;
 import com.itplace.userapi.history.service.MembershipHistoryService;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import lombok.RequiredArgsConstructor;

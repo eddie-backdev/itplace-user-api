@@ -1,6 +1,6 @@
 package com.itplace.userapi.ai.question.controller;
 
-import com.itplace.userapi.ai.question.dto.QuestionSaveRequest;
+import com.itplace.userapi.ai.question.dto.request.QuestionSaveRequest;
 import com.itplace.userapi.ai.question.service.ElasticQuestionService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import java.util.List;

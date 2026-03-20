@@ -2,9 +2,9 @@ package com.itplace.userapi.security.verification.sms.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.SecurityCode;
-import com.itplace.userapi.security.verification.sms.dto.SmsConfirmRequest;
-import com.itplace.userapi.security.verification.sms.dto.SmsConfirmResponse;
-import com.itplace.userapi.security.verification.sms.dto.SmsVerificationRequest;
+import com.itplace.userapi.security.verification.sms.dto.request.SmsConfirmRequest;
+import com.itplace.userapi.security.verification.sms.dto.response.SmsConfirmResponse;
+import com.itplace.userapi.security.verification.sms.dto.request.SmsVerificationRequest;
 import com.itplace.userapi.security.verification.sms.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

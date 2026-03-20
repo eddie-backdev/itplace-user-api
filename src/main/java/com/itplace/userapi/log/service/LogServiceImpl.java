@@ -3,7 +3,7 @@ package com.itplace.userapi.log.service;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.log.dto.RankResult;
-import com.itplace.userapi.log.dto.SearchRankResponse;
+import com.itplace.userapi.log.dto.response.SearchRankResponse;
 import com.itplace.userapi.log.entity.LogDocument;
 import com.itplace.userapi.log.repository.LogRepository;
 import com.itplace.userapi.partner.entity.Partner;

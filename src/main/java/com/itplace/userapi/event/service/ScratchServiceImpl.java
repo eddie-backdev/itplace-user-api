@@ -1,6 +1,6 @@
 package com.itplace.userapi.event.service;
 
-import com.itplace.userapi.event.dto.ScratchResult;
+import com.itplace.userapi.event.dto.response.ScratchResult;
 import com.itplace.userapi.event.entity.CouponHistory;
 import com.itplace.userapi.event.entity.Gift;
 import com.itplace.userapi.event.entity.ResultType;

@@ -1,7 +1,7 @@
 package com.itplace.userapi.event.service;
 
 import com.itplace.userapi.event.GiftCode;
-import com.itplace.userapi.event.dto.HistoryResponse;
+import com.itplace.userapi.event.dto.response.HistoryResponse;
 import com.itplace.userapi.event.entity.CouponHistory;
 import com.itplace.userapi.event.entity.ResultType;
 import com.itplace.userapi.event.exception.InvalidResultTypeException;

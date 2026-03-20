@@ -2,7 +2,7 @@ package com.itplace.userapi.log.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.log.LogCode;
-import com.itplace.userapi.log.dto.SearchRankResponse;
+import com.itplace.userapi.log.dto.response.SearchRankResponse;
 import com.itplace.userapi.log.service.LogService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

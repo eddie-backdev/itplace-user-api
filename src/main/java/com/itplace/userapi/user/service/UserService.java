@@ -1,7 +1,7 @@
 package com.itplace.userapi.user.service;
 
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
-import com.itplace.userapi.security.verification.email.dto.EmailConfirmRequest;
+import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
 import com.itplace.userapi.user.dto.request.FindEmailConfirmRequest;
 import com.itplace.userapi.user.dto.request.ResetPasswordRequest;

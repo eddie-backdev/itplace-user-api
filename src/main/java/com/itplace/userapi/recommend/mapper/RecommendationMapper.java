@@ -1,7 +1,7 @@
 package com.itplace.userapi.recommend.mapper;
 
 import com.itplace.userapi.benefit.entity.Benefit;
-import com.itplace.userapi.recommend.dto.Recommendations;
+import com.itplace.userapi.recommend.dto.response.Recommendations;
 import com.itplace.userapi.recommend.entity.Recommendation;
 import com.itplace.userapi.user.entity.User;
 import java.util.List;

@@ -2,7 +2,7 @@ package com.itplace.userapi.map.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.map.StoreCode;
-import com.itplace.userapi.map.dto.StoreDetailDto;
+import com.itplace.userapi.map.dto.response.StoreDetailDto;
 import com.itplace.userapi.map.service.StoreService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

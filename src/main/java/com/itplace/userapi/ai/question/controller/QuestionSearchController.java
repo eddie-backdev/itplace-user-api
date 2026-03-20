@@ -3,7 +3,7 @@ package com.itplace.userapi.ai.question.controller;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
-import com.itplace.userapi.ai.llm.dto.RecommendationResponse;
+import com.itplace.userapi.ai.llm.dto.response.RecommendationResponse;
 import com.itplace.userapi.ai.question.QuestionCode;
 import com.itplace.userapi.ai.question.service.QuestionRecommendationService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
