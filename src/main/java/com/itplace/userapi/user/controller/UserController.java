@@ -3,7 +3,7 @@ package com.itplace.userapi.user.controller;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.verification.email.dto.EmailConfirmRequest;
 import com.itplace.userapi.security.verification.email.dto.EmailVerificationRequest;
 import com.itplace.userapi.security.verification.email.service.EmailService;

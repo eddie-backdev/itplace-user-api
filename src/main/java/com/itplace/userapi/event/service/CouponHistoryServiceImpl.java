@@ -6,7 +6,7 @@ import com.itplace.userapi.event.entity.CouponHistory;
 import com.itplace.userapi.event.entity.ResultType;
 import com.itplace.userapi.event.exception.InvalidResultTypeException;
 import com.itplace.userapi.event.repository.CouponHistoryRepository;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;

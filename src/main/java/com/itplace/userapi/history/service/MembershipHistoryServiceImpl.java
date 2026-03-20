@@ -24,7 +24,7 @@ import com.itplace.userapi.map.exception.StoreNotFoundException;
 import com.itplace.userapi.map.exception.StorePartnerMismatchException;
 import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.partner.entity.Partner;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.entity.User;

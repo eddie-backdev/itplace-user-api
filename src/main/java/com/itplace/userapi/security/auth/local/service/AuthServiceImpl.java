@@ -13,7 +13,7 @@ import com.itplace.userapi.security.exception.DuplicateEmailException;
 import com.itplace.userapi.security.exception.DuplicatePhoneNumberException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.entity.Role;

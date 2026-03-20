@@ -14,7 +14,7 @@ import com.itplace.userapi.favorite.exception.DuplicateFavoriteException;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.security.SecurityCode;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
 import java.util.List;

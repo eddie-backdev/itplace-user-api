@@ -9,7 +9,7 @@ import com.itplace.userapi.security.auth.oauth.dto.request.OAuthSignUpRequest;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
 import com.itplace.userapi.security.exception.DuplicatePhoneNumberException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.entity.Membership;

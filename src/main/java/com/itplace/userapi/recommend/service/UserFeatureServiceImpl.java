@@ -10,7 +10,7 @@ import com.itplace.userapi.recommend.domain.UserFeature;
 import com.itplace.userapi.recommend.projection.BenefitCount;
 import com.itplace.userapi.recommend.projection.CategoryCount;
 import com.itplace.userapi.security.SecurityCode;
-import com.itplace.userapi.security.exception.UserNotFoundException;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.MembershipRepository;
