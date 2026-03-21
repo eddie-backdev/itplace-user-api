@@ -2,7 +2,7 @@ package com.itplace.userapi.log.advice;
 
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
-import com.itplace.userapi.benefit.dto.response.PagedResponse;
+import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
@@ -66,7 +66,7 @@ public class BenefitLogAdvice implements ResponseBodyAdvice<Object> {
         }
 
         Object data = topRes.getData();
-        if (!(data instanceof PagedResponse<?> dataRes)) {
+        if (!(data instanceof PageResult<?> dataRes)) {
             log.info("==== saveResonseLog(detail) 저장 ====");
             if (data instanceof MapBenefitDetailResponse detail) {
 

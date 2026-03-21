@@ -1,6 +1,6 @@
 package com.itplace.userapi.history.controller;
 
-import com.itplace.userapi.benefit.dto.response.PagedResponse;
+import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.history.MembershipHistoryCode;
 import com.itplace.userapi.history.dto.response.MembershipHistoryResponse;
@@ -27,7 +27,7 @@ public class MembershipHistoryController {
     private final MembershipHistoryService membershipHistoryService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PagedResponse<MembershipHistoryResponse>>> getHistory(
+    public ResponseEntity<ApiResponse<PageResult<MembershipHistoryResponse>>> getHistory(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false)
@@ -41,10 +41,10 @@ public class MembershipHistoryController {
             throw new UnauthorizedAccessException(MembershipHistoryCode.UNAUTHORIZED_MEMBERSHIP_ACCESS);
         }
         Pageable pageable = PageRequest.of(page, size);
-        PagedResponse<MembershipHistoryResponse> result =
+        PageResult<MembershipHistoryResponse> result =
                 membershipHistoryService.getUserHistory(principalDetails.getUserId(), keyword, startDate, endDate,
                         pageable);
-        ApiResponse<PagedResponse<MembershipHistoryResponse>> body = ApiResponse.of(
+        ApiResponse<PageResult<MembershipHistoryResponse>> body = ApiResponse.of(
                 MembershipHistoryCode.MEMBERSHIP_HISTORY_SUCCESS, result);
         return new ResponseEntity<>(body, body.getStatus());
     }

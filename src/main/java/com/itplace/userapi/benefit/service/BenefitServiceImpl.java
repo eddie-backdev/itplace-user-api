@@ -4,7 +4,7 @@ import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
-import com.itplace.userapi.benefit.dto.response.PagedResponse;
+import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.benefit.dto.response.TierBenefitInfo;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.TierBenefit;
@@ -45,7 +45,7 @@ public class BenefitServiceImpl implements BenefitService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<BenefitListResponse> getBenefitList(
+    public PageResult<BenefitListResponse> getBenefitList(
             MainCategory mainCategory,
             String category,
             UsageType filter,
@@ -111,13 +111,13 @@ public class BenefitServiceImpl implements BenefitService {
                 })
                 .toList();
 
-        return new PagedResponse<>(
-                result,
-                benefitPage.getNumber(),
-                benefitPage.getTotalPages(),
-                benefitPage.getTotalElements(),
-                benefitPage.hasNext()
-        );
+        return PageResult.<BenefitListResponse>builder()
+                .content(result)
+                .currentPage(benefitPage.getNumber())
+                .totalPages(benefitPage.getTotalPages())
+                .totalElements(benefitPage.getTotalElements())
+                .hasNext(benefitPage.hasNext())
+                .build();
     }
 
     @Override

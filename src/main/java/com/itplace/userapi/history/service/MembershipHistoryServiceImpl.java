@@ -1,7 +1,7 @@
 package com.itplace.userapi.history.service;
 
 import com.itplace.userapi.benefit.BenefitCode;
-import com.itplace.userapi.benefit.dto.response.PagedResponse;
+import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitPolicy;
 import com.itplace.userapi.benefit.entity.TierBenefit;
@@ -57,7 +57,7 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<MembershipHistoryResponse> getUserHistory(
+    public PageResult<MembershipHistoryResponse> getUserHistory(
             Long userId,
             String keyword,
             LocalDateTime startDate,
@@ -93,13 +93,13 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
                 })
                 .toList();
 
-        return new PagedResponse<>(
-                dtoList,
-                page.getNumber(),
-                page.getTotalPages(),
-                page.getTotalElements(),
-                page.hasNext()
-        );
+        return PageResult.<MembershipHistoryResponse>builder()
+                .content(dtoList)
+                .currentPage(page.getNumber())
+                .totalPages(page.getTotalPages())
+                .totalElements(page.getTotalElements())
+                .hasNext(page.hasNext())
+                .build();
     }
 
     @Override

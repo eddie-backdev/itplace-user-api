@@ -1,4 +1,4 @@
-package com.itplace.userapi.favorite.enums;
+package com.itplace.userapi.favorite;
 
 import com.itplace.userapi.common.BaseCode;
 import org.springframework.http.HttpStatus;
@@ -19,4 +19,3 @@ public enum FavoriteCode implements BaseCode {
     private final HttpStatus status;
     private final String message;
 }
-

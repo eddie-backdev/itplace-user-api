@@ -1,13 +1,13 @@
 package com.itplace.userapi.history.service;
 
-import com.itplace.userapi.benefit.dto.response.PagedResponse;
+import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.history.dto.response.MembershipHistoryResponse;
 import com.itplace.userapi.history.dto.response.MonthlyDiscountResponse;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Pageable;
 
 public interface MembershipHistoryService {
-    PagedResponse<MembershipHistoryResponse> getUserHistory(
+    PageResult<MembershipHistoryResponse> getUserHistory(
             Long userId,
             String keyword,
             LocalDateTime startDate,

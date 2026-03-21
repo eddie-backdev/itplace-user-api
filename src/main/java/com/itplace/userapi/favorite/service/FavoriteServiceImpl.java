@@ -9,7 +9,7 @@ import com.itplace.userapi.favorite.dto.response.FavoriteDetailResponse;
 import com.itplace.userapi.favorite.dto.response.FavoriteResponse;
 import com.itplace.userapi.favorite.dto.TierBenefitDetail;
 import com.itplace.userapi.favorite.entity.Favorite;
-import com.itplace.userapi.favorite.enums.FavoriteCode;
+import com.itplace.userapi.favorite.FavoriteCode;
 import com.itplace.userapi.favorite.exception.DuplicateFavoriteException;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.partner.entity.Partner;

@@ -4,7 +4,7 @@ import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
-import com.itplace.userapi.benefit.dto.response.PagedResponse;
+import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.service.BenefitService;
@@ -28,7 +28,7 @@ public class BenefitController {
     private final BenefitService benefitService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PagedResponse<BenefitListResponse>>> getBenefits(
+    public ResponseEntity<ApiResponse<PageResult<BenefitListResponse>>> getBenefits(
             @RequestParam MainCategory mainCategory,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) UsageType filter,
@@ -40,10 +40,10 @@ public class BenefitController {
     ) {
         Pageable pageable = PageRequest.of(page, size);
         Long userId = (principalDetails != null) ? principalDetails.getUserId() : null;
-        PagedResponse<BenefitListResponse> result = benefitService.getBenefitList(
+        PageResult<BenefitListResponse> result = benefitService.getBenefitList(
                 mainCategory, category, filter, keyword, userId, pageable
         );
-        ApiResponse<PagedResponse<BenefitListResponse>> body = ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result);
+        ApiResponse<PageResult<BenefitListResponse>> body = ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result);
         return new ResponseEntity<>(body, body.getStatus());
     }
 

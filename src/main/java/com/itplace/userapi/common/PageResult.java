@@ -1,4 +1,4 @@
-package com.itplace.userapi.favorite.dto;
+package com.itplace.userapi.common;
 
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -26,4 +26,3 @@ public class PageResult<T> {
                 .build();
     }
 }
-

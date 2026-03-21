@@ -1,4 +1,4 @@
-package com.itplace.userapi.recommend.enums;
+package com.itplace.userapi.recommend;
 
 import com.itplace.userapi.common.BaseCode;
 import lombok.Getter;
@@ -20,4 +20,3 @@ public enum RecommendationCode implements BaseCode {
 
 
 }
-

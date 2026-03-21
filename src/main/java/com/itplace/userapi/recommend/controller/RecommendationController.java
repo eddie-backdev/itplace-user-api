@@ -2,7 +2,7 @@ package com.itplace.userapi.recommend.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.recommend.dto.response.Recommendations;
-import com.itplace.userapi.recommend.enums.RecommendationCode;
+import com.itplace.userapi.recommend.RecommendationCode;
 import com.itplace.userapi.recommend.exception.NotMembershipUserException;
 import com.itplace.userapi.recommend.service.RecommendationServiceImpl;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
