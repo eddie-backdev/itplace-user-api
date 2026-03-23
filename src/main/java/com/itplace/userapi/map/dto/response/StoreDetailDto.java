@@ -40,7 +40,7 @@ public class StoreDetailDto {
                 .partnerId(partner.getPartnerId())
                 .partnerName(partner.getPartnerName())
                 .image(partner.getImage())
-                .category(partner.getCategory().trim())
+                .category(partner.getCategory() != null ? partner.getCategory().trim() : null)
                 .build();
 
         // 최종 StoreDetailDto 빌드 및 반환
