@@ -23,7 +23,8 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
 
     List<Benefit> findAllByPartner_PartnerIdIn(List<Long> partnerIds);
 
-    @Query("""
+    @Query(
+            value = """
                 SELECT b
                 FROM Benefit b
                 LEFT JOIN FETCH b.partner p
@@ -41,7 +42,25 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
                 GROUP BY b
                 ORDER BY COUNT(f) DESC
-            """)
+            """,
+            countQuery = """
+                SELECT COUNT(DISTINCT b)
+                FROM Benefit b
+                JOIN b.partner p
+                LEFT JOIN Favorite f ON f.benefit = b
+                WHERE b.mainCategory = :mainCategory
+                  AND (:category IS NULL OR
+                       REPLACE(REPLACE(p.category, CHAR(13), ''), CHAR(10), '') =
+                       REPLACE(REPLACE(:category, CHAR(13), ''), CHAR(10), '')
+                  )
+                  AND (
+                       :filter IS NULL OR
+                       (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
+                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH'))
+                  )
+                  AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            """
+    )
     Page<Benefit> findFilteredBenefits(
             @Param("mainCategory") MainCategory mainCategory,
             @Param("category") String category,
