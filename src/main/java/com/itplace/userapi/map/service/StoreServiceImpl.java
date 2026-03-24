@@ -17,6 +17,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,7 @@ public class StoreServiceImpl implements StoreService {
     private static final int STORES_PER_CELL = 5;
     private static final int FINAL_LIMIT = 300;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
+    private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @Override
     @Transactional(readOnly = true)
@@ -130,7 +133,8 @@ public class StoreServiceImpl implements StoreService {
                 double cellMaxLng = cellMinLng + lngStep;
 
                 futures.add(CompletableFuture.supplyAsync(() ->
-                        storeRepository.findRandomStoreIdsInBounds(cellMinLat, cellMaxLat, cellMinLng, cellMaxLng, STORES_PER_CELL)
+                        storeRepository.findRandomStoreIdsInBounds(cellMinLat, cellMaxLat, cellMinLng, cellMaxLng, STORES_PER_CELL),
+                        GRID_EXECUTOR
                 ));
             }
         }
