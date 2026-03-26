@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.jsonwebtoken.JwtException;
 import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -41,43 +42,50 @@ public class JWTFilter extends OncePerRequestFilter {
             }
         }
 
-        // 2) 토큰이 없거나 만료되었으면 다음 필터로 패스
+        // 2) 토큰이 없으면 다음 필터로 패스
         if (token == null) {
             log.info("쿠키에 토큰이 없습니다.");
             filterChain.doFilter(request, response);
             return;
         }
-        if (jwtUtil.isExpired(token)) {
-            log.info("토큰이 만료되었습니다.");
+
+        try {
+            // 3) 만료 여부 확인 — isExpired() 내부에서 JwtException 발생 가능
+            if (jwtUtil.isExpired(token)) {
+                log.info("토큰이 만료되었습니다.");
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 4) 카테고리 확인 (access 토큰 여부)
+            String category = jwtUtil.getCategory(token);
+            if (!JWTConstants.CATEGORY_ACCESS.equals(category)) {
+                log.info("Access 토큰이 아닙니다.");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+            // 5) 토큰에서 사용자 정보 꺼내서 Authentication 설정
+            Long userId = jwtUtil.getUserId(token);
+            Role role = jwtUtil.getRole(token);
+
+            User user = User.builder()
+                    .id(userId)
+                    .password(UUID.randomUUID().toString())  // 실제 패스워드는 사용되지 않음
+                    .role(role)
+                    .build();
+
+            CustomUserDetails principal = new CustomUserDetails(user);
+            Authentication authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            principal, null, principal.getAuthorities()
+                    );
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+
             filterChain.doFilter(request, response);
-            return;
+        } catch (JwtException e) {
+            log.warn("유효하지 않은 토큰: {}", e.getMessage());
+            filterChain.doFilter(request, response);
         }
-
-        // 3) 카테고리 확인 (access 토큰 여부)
-        String category = jwtUtil.getCategory(token);
-        if (!JWTConstants.CATEGORY_ACCESS.equals(category)) {
-            log.info("Access 토큰이 아닙니다.");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        // 4) 토큰에서 사용자 정보 꺼내서 Authentication 설정
-        Long userId = jwtUtil.getUserId(token);
-        Role role = jwtUtil.getRole(token);
-
-        User user = User.builder()
-                .id(userId)
-                .password(UUID.randomUUID().toString())  // 실제 패스워드는 사용되지 않음
-                .role(role)
-                .build();
-
-        CustomUserDetails principal = new CustomUserDetails(user);
-        Authentication authToken =
-                new UsernamePasswordAuthenticationToken(
-                        principal, null, principal.getAuthorities()
-                );
-        SecurityContextHolder.getContext().setAuthentication(authToken);
-
-        filterChain.doFilter(request, response);
     }
 }
