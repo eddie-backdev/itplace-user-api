@@ -87,11 +87,18 @@ public class UserFeatureServiceImpl implements UserFeatureService {
                 .toList();
 
         // 상위 제휴사 이름 추출
-        List<String> topPartners = benefitUsage.entrySet().stream()
+        List<Long> sortedBenefitIds = benefitUsage.entrySet().stream()
                 .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
-                .map(e -> {
-                    Benefit b = benefitRepo.findById(e.getKey())
-                            .orElseThrow(() -> new RuntimeException("혜택 ID 없음: " + e.getKey()));
+                .map(Map.Entry::getKey)
+                .toList();
+
+        Map<Long, Benefit> benefitMap = benefitRepo.findAllById(sortedBenefitIds).stream()
+                .collect(Collectors.toMap(Benefit::getBenefitId, b -> b));
+
+        List<String> topPartners = sortedBenefitIds.stream()
+                .map(id -> {
+                    Benefit b = benefitMap.get(id);
+                    if (b == null) throw new RuntimeException("혜택 ID 없음: " + id);
                     return b.getPartner().getPartnerName();
                 })
                 .distinct()
