@@ -11,6 +11,7 @@ import com.itplace.userapi.partner.PartnerCode;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
 import com.itplace.userapi.partner.repository.PartnerRepository;
+import jakarta.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,6 +44,11 @@ public class StoreServiceImpl implements StoreService {
     private static final int FINAL_LIMIT = 300;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
+
+    @PreDestroy
+    public void shutdownExecutor() {
+        GRID_EXECUTOR.shutdown();
+    }
 
     @Override
     @Transactional(readOnly = true)
