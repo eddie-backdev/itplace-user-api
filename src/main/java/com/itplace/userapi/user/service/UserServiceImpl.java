@@ -48,7 +48,6 @@ public class UserServiceImpl implements UserService {
     private final SocialAccountRepository socialAccountRepository;
 
     private static final String RESET_PASSWORD_PREFIX = "resetPassword:";
-    private static final String RESET_PASSWORD_VALUE = "true";
 
     @Override
     @Transactional(readOnly = true)
@@ -96,7 +95,7 @@ public class UserServiceImpl implements UserService {
             log.info("Email 인증 성공");
             String resetPasswordToken = UUID.randomUUID().toString();
             String key = RESET_PASSWORD_PREFIX + resetPasswordToken;
-            redisTemplate.opsForValue().set(key, RESET_PASSWORD_VALUE, 5, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set(key, request.getEmail(), 5, TimeUnit.MINUTES);
             return FindPasswordConfirmResponse.builder()
                     .resetPasswordToken(resetPasswordToken)
                     .build();
@@ -109,20 +108,21 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        String resetPasswordToken = request.getResetPasswordToken();
-        String value = redisTemplate.opsForValue().get(RESET_PASSWORD_PREFIX + resetPasswordToken);
-        if (RESET_PASSWORD_VALUE.equals(value)) {
-            if (request.getNewPassword().equals(request.getNewPasswordConfirm())) {
-                User user = userRepository.findByEmail(request.getEmail())
-                        .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
-                user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-                userRepository.save(user);
-            } else {
-                throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
-            }
-        } else {
+        String key = RESET_PASSWORD_PREFIX + request.getResetPasswordToken();
+        String storedEmail = redisTemplate.opsForValue().get(key);
+
+        if (storedEmail == null || !storedEmail.equals(request.getEmail())) {
             throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
         }
+        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        }
+
+        redisTemplate.delete(key);
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     @Override
@@ -172,7 +172,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(principalDetails.getUserId())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         String phoneNumber = user.getPhoneNumber();
-        UplusData uplusData = uplusDataRepository.findByPhoneNumber(phoneNumber).get();
+        UplusData uplusData = uplusDataRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new UserNotFoundException(UserCode.UPLUS_DATA_NOT_EXISTS));
         user.setGender(uplusData.getGender());
         user.setBirthday(uplusData.getBirthday());
         user.setMembershipId(uplusData.getMembershipId());
