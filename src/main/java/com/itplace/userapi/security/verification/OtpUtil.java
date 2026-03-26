@@ -5,6 +5,7 @@ import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -12,6 +13,8 @@ public class OtpUtil {
 
     private static final String SMS_PREFIX = "sms:";
     private static final String EMAIL_PREFIX = "email:";
+    private static final String ATTEMPT_SUFFIX = ":attempts";
+    private static final int MAX_OTP_ATTEMPTS = 5;
     private static final SecureRandom random = new SecureRandom();
 
     private final StringRedisTemplate redisTemplate;
@@ -51,11 +54,24 @@ public class OtpUtil {
      */
     public boolean validateOtp(String key, String otp, String prefix) {
         String redisKey = prefix + key;
-        String storedOtp = redisTemplate.opsForValue().get(redisKey);
+        String attemptKey = redisKey + ATTEMPT_SUFFIX;
 
+        String attemptStr = redisTemplate.opsForValue().get(attemptKey);
+        int attempts = StringUtils.hasText(attemptStr) ? Integer.parseInt(attemptStr) : 0;
+        if (attempts >= MAX_OTP_ATTEMPTS) {
+            return false;
+        }
+
+        String storedOtp = redisTemplate.opsForValue().get(redisKey);
         if (storedOtp != null && storedOtp.equals(otp)) {
-            redisTemplate.delete(redisKey); // 인증 성공 시 즉시 삭제
+            redisTemplate.delete(redisKey);
+            redisTemplate.delete(attemptKey);
             return true;
+        }
+
+        Long newAttempts = redisTemplate.opsForValue().increment(attemptKey);
+        if (newAttempts != null && newAttempts == 1) {
+            redisTemplate.expire(attemptKey, Duration.ofMinutes(ttlInMinutes));
         }
         return false;
     }
