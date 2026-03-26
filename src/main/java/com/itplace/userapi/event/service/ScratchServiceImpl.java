@@ -10,7 +10,7 @@ import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Random;
@@ -79,7 +79,7 @@ public class ScratchServiceImpl implements ScratchService {
                 .mapToInt(Gift::getTotal)
                 .sum();
 
-        int randomValue = new Random().nextInt(totalWeight);
+        int randomValue = random.nextInt(totalWeight);
         int cumulativeWeight = 0;
 
         for (Gift gift : gifts) {
