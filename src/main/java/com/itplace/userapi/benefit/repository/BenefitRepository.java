@@ -29,8 +29,8 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 LEFT JOIN Favorite f ON f.benefit = b
                 WHERE b.mainCategory = :mainCategory
                   AND (:category IS NULL OR
-                       REPLACE(REPLACE(p.category, CHAR(13), ''), CHAR(10), '') =
-                       REPLACE(REPLACE(:category, CHAR(13), ''), CHAR(10), '')
+                       REPLACE(REPLACE(p.category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '') =
+                       REPLACE(REPLACE(:category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '')
                   )
                   AND (
                        :filter IS NULL OR
@@ -48,8 +48,8 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 LEFT JOIN Favorite f ON f.benefit = b
                 WHERE b.mainCategory = :mainCategory
                   AND (:category IS NULL OR
-                       REPLACE(REPLACE(p.category, CHAR(13), ''), CHAR(10), '') =
-                       REPLACE(REPLACE(:category, CHAR(13), ''), CHAR(10), '')
+                       REPLACE(REPLACE(p.category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '') =
+                       REPLACE(REPLACE(:category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '')
                   )
                   AND (
                        :filter IS NULL OR

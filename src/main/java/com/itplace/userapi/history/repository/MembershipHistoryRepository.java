@@ -38,8 +38,8 @@ public interface MembershipHistoryRepository extends JpaRepository<MembershipHis
                 SELECT COALESCE(SUM(mh.discountAmount), 0)
                 FROM MembershipHistory mh
                 WHERE mh.membership.membershipId = :membershipId
-                  AND YEAR(mh.usedAt) = :year
-                  AND MONTH(mh.usedAt) = :month
+                  AND EXTRACT(YEAR FROM mh.usedAt) = :year
+                  AND EXTRACT(MONTH FROM mh.usedAt) = :month
             """)
     Long sumDiscountAmountThisMonth(
             @Param("membershipId") String membershipId,

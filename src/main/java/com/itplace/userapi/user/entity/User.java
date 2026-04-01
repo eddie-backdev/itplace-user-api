@@ -34,7 +34,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 @ToString(exclude = "socialAccounts")
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "user")
+@Table(name = "users")
 public class User extends BaseTimeEntity {
 
     @Id
