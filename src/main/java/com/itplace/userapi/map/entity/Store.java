@@ -68,7 +68,7 @@ public class Store {
     @Column(name = "latitude", precision = 9, scale = 6)
     private BigDecimal latitude;
 
-    @Column(name = "location", columnDefinition = "POINT SRID 4326", nullable = false)
+    @Column(name = "location", columnDefinition = "geometry(Point, 4326)", nullable = false)
     private Point location;
 
     @Column(name = "hasCoupon")

@@ -15,7 +15,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     WHERE
                         longitude BETWEEN :minLng AND :maxLng
                         AND latitude BETWEEN :minLat AND :maxLat
-                        AND ST_Distance_Sphere(location, ST_SRID(POINT(:lng, :lat), 4326)) <= :radiusMeters
+                        AND ST_DistanceSphere(location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) <= :radiusMeters
                     """,
             nativeQuery = true
     )
@@ -35,7 +35,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     WHERE
                         longitude BETWEEN :minLng AND :maxLng
                         AND latitude BETWEEN :minLat AND :maxLat
-                    ORDER BY RAND()
+                    ORDER BY RANDOM()
                     LIMIT :limit
                     """,
             nativeQuery = true
@@ -54,8 +54,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE p.category = :category
-                    AND ST_Distance_Sphere(s.location, ST_SRID(POINT(:lng, :lat), 4326)) <= :radiusMeters
-                    ORDER BY RAND()
+                    AND ST_DistanceSphere(s.location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) <= :radiusMeters
+                    ORDER BY RANDOM()
                     LIMIT :limit
                     """,
             nativeQuery = true
@@ -71,15 +71,21 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     @Query(
             value = """
                     SELECT s.*, CASE WHEN s.storeName = :keyword THEN 1 ELSE 0 END AS is_exact,
-                    (MATCH(s.storeName, s.business) AGAINST(:keyword IN NATURAL LANGUAGE MODE)
-                    + MATCH(p.partnerName, p.category) AGAINST(:keyword IN NATURAL LANGUAGE MODE)) AS relevance,
-                    ST_Distance_Sphere(s.location, ST_SRID(Point(:lng, :lat), 4326)) AS distance
+                    (ts_rank(to_tsvector('simple', COALESCE(s.storeName,'') || ' ' || COALESCE(s.business,'')),
+                             plainto_tsquery('simple', :keyword))
+                    + ts_rank(to_tsvector('simple', COALESCE(p.partnerName,'') || ' ' || COALESCE(p.category,'')),
+                              plainto_tsquery('simple', :keyword))) AS relevance,
+                    ST_DistanceSphere(s.location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) AS distance
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE s.location IS NOT NULL
                     AND (:category IS NULL OR p.category = :category)
-                    AND (MATCH(s.storeName, s.business) AGAINST(CONCAT('+', :keyword, '*') IN BOOLEAN MODE)
-                    OR MATCH(p.partnerName, p.category) AGAINST(CONCAT('+', :keyword, '*') IN BOOLEAN MODE))
+                    AND (
+                        to_tsvector('simple', COALESCE(s.storeName,'') || ' ' || COALESCE(s.business,''))
+                            @@ to_tsquery('simple', :keyword || ':*')
+                        OR to_tsvector('simple', COALESCE(p.partnerName,'') || ' ' || COALESCE(p.category,''))
+                            @@ to_tsquery('simple', :keyword || ':*')
+                    )
                     ORDER BY
                         is_exact DESC,
                         distance ASC,
@@ -99,7 +105,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     FROM store s
                     WHERE s.location IS NOT NULL
                       AND s.partnerId = :partnerId
-                    ORDER BY ST_Distance_Sphere(location, ST_SRID(Point(:lng, :lat),4326)) ASC
+                    ORDER BY ST_DistanceSphere(location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) ASC
                     LIMIT 30
                     """,
             nativeQuery = true
