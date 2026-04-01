@@ -7,14 +7,14 @@ spring:
       ddl-auto: validate
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-    database-platform: org.hibernate.dialect.MySQLDialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
 
   datasource:
     source:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      jdbc-url: ${MYSQL_URL}
-      username: ${MYSQL_USERNAME}
-      password: ${MYSQL_PASSWORD}
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: ${PG_URL}
+      username: ${PG_USERNAME}
+      password: ${PG_PASSWORD}
       hikari:
         maximum-pool-size: 30
         minimum-idle: 10
@@ -23,10 +23,10 @@ spring:
         connection-timeout: 30000
         leak-detection-threshold: 30000
     replica:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      jdbc-url: ${MYSQL_REPLICA_URL:${MYSQL_URL}}
-      username: ${MYSQL_REPLICA_USERNAME:${MYSQL_USERNAME}}
-      password: ${MYSQL_REPLICA_PASSWORD:${MYSQL_PASSWORD}}
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: ${PG_REPLICA_URL:${PG_URL}}
+      username: ${PG_REPLICA_USERNAME:${PG_USERNAME}}
+      password: ${PG_REPLICA_PASSWORD:${PG_PASSWORD}}
       hikari:
         maximum-pool-size: 30
         minimum-idle: 10
