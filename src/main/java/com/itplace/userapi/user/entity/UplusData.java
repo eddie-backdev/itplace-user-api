@@ -23,7 +23,7 @@ public class UplusData {
     @Column(name = "phoneNumber", length = 11)
     private String phoneNumber;
 
-    @Column(name = "gender", length = 5)
+    @Column(name = "gender", length = 6)
     @Enumerated(EnumType.STRING)
     private Gender gender;
 

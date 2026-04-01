@@ -54,7 +54,7 @@ public class User extends BaseTimeEntity {
     @Column(name = "phoneNumber", length = 11, unique = true)
     private String phoneNumber;
 
-    @Column(name = "gender", length = 5)
+    @Column(name = "gender", length = 6)
     @Enumerated(EnumType.STRING)
     private Gender gender;
 

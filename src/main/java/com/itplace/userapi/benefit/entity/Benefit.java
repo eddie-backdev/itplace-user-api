@@ -11,13 +11,14 @@ import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.partner.entity.Partner;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -52,10 +53,10 @@ public class Benefit extends BaseTimeEntity {
     @Convert(converter = BenefitTypeConverter.class)
     private BenefitType type;
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     private String description;
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     private String manual;
 
     @Column(name = "usageType")

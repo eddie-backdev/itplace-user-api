@@ -54,7 +54,7 @@ public class BenefitServiceImpl implements BenefitService {
             Pageable pageable
     ) {
         Page<Benefit> benefitPage = benefitRepository.findFilteredBenefits(
-                mainCategory,
+                mainCategory.getLabel(),
                 category,
                 filter != null ? filter.name() : null,
                 keyword,

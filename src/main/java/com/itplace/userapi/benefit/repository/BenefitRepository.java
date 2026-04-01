@@ -23,44 +23,33 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
 
     @Query(
             value = """
-                SELECT b
-                FROM Benefit b
-                LEFT JOIN FETCH b.partner p
-                LEFT JOIN Favorite f ON f.benefit = b
+                SELECT b.* FROM benefit b
+                LEFT JOIN partner p ON p.partnerId = b.partnerId
+                LEFT JOIN favorite f ON f.benefitId = b.benefitId
                 WHERE b.mainCategory = :mainCategory
-                  AND (:category IS NULL OR
-                       REPLACE(REPLACE(p.category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '') =
-                       REPLACE(REPLACE(:category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '')
-                  )
-                  AND (
-                       :filter IS NULL OR
+                  AND (:category IS NULL OR p.category = :category)
+                  AND (:filter IS NULL OR
                        (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
-                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH'))
-                  )
+                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                GROUP BY b
-                ORDER BY COUNT(f) DESC
+                GROUP BY b.benefitId
+                ORDER BY COUNT(f.benefitId) DESC
             """,
             countQuery = """
-                SELECT COUNT(DISTINCT b)
-                FROM Benefit b
-                JOIN b.partner p
-                LEFT JOIN Favorite f ON f.benefit = b
+                SELECT COUNT(DISTINCT b.benefitId) FROM benefit b
+                LEFT JOIN partner p ON p.partnerId = b.partnerId
+                LEFT JOIN favorite f ON f.benefitId = b.benefitId
                 WHERE b.mainCategory = :mainCategory
-                  AND (:category IS NULL OR
-                       REPLACE(REPLACE(p.category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '') =
-                       REPLACE(REPLACE(:category, FUNCTION('CHR', 13), ''), FUNCTION('CHR', 10), '')
-                  )
-                  AND (
-                       :filter IS NULL OR
+                  AND (:category IS NULL OR p.category = :category)
+                  AND (:filter IS NULL OR
                        (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
-                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH'))
-                  )
+                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-            """
+            """,
+            nativeQuery = true
     )
     Page<Benefit> findFilteredBenefits(
-            @Param("mainCategory") MainCategory mainCategory,
+            @Param("mainCategory") String mainCategory,
             @Param("category") String category,
             @Param("filter") String filter,
             @Param("keyword") String keyword,
