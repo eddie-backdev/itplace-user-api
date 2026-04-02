@@ -97,6 +97,9 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     List<Store> searchNearbyStores(@Param("lng") double lng, @Param("lat") double lat,
                                    @Param("category") String category, @Param("keyword") String keyword);
 
+    @Query("SELECT s FROM Store s JOIN FETCH s.partner")
+    List<Store> findAllWithPartner();
+
     Store findByStoreName(String storeName);
 
     @Query(

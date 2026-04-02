@@ -17,10 +17,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class StoreServiceImpl implements StoreService {
     // 이유: 각 메서드마다 benefit/tierBenefit을 DB에서 직접 조회하는 방식에서,
     //       Redis 캐시를 통해 조회하는 방식으로 전환하여 DB 부하 절감.
     private final PartnerBenefitCacheService partnerBenefitCacheService;
+    private final StoreSearchService storeSearchService;
 
     private static final int GRID_SIZE = 10;
     private static final int STORES_PER_CELL = 5;
@@ -212,44 +215,64 @@ public class StoreServiceImpl implements StoreService {
             category = category.trim();
         }
 
-        List<Store> stores = storeRepository.searchNearbyStores(lng, lat, category, keyword);
-
-        if (stores.isEmpty()) {
+        // 1단계: ES nori 형태소 분석으로 브랜드 매치 / 매장명 매치 분리
+        StoreSearchResult searchResult = storeSearchService.searchByKeyword(keyword, category);
+        if (searchResult.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<Long> partnerIds = stores.stream()
+        // 2단계: DB에서 매장 데이터 일괄 로드
+        List<Long> allIds = Stream.concat(
+                searchResult.brandMatchIds().stream(),
+                searchResult.nameMatchIds().stream()
+        ).toList();
+
+        List<Store> allStores = storeRepository.findAllById(allIds);
+        if (allStores.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> partnerIds = allStores.stream()
                 .map(store -> store.getPartner().getPartnerId())
                 .distinct()
                 .toList();
 
-        // [변경] 기존: 루프 내에서 매 혜택(benefit)마다 tierBenefitRepository.findAllByBenefit_BenefitId()를
-        //        개별 호출하는 N+1 문제가 있었음.
-        //        또한 partnerId + storeName 조합으로 결과를 로컬 HashMap에 캐싱하는 임시 방어 코드가 존재했음.
-        // 변경 후: 캐시 서비스를 통해 파트너 단위로 혜택을 한 번에 조회.
-        //         N+1 문제 해소 및 임시 로컬 캐시 HashMap 제거.
         Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerIds.stream()
                 .collect(Collectors.toMap(id -> id, partnerBenefitCacheService::getBenefits));
 
-        return stores.stream()
-                .map(store -> {
-                    Partner partner = store.getPartner();
-                    double storeLat = store.getLocation().getY();
-                    double storeLng = store.getLocation().getX();
-                    double distance = userLat == 0 || userLng == 0
-                            ? 0 : calculateDistance(userLat, userLng, storeLat, storeLng);
-                    List<BenefitCacheDto> finalBenefits = selectBenefits(
-                            partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
-                            store.getStoreName()
-                    );
-                    // [변경] 기존: tierBenefitRepository를 루프 내에서 직접 호출하여 TierBenefitDto 생성.
-                    // 변경 후: BenefitCacheDto.getTierBenefits()에서 바로 꺼냄.
-                    List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
-                            .flatMap(b -> b.getTierBenefits().stream())
-                            .toList();
-                    return StoreDetailDto.of(store, partner, tierBenefitDtos, distance);
-                })
-                .toList();
+        // storeId → DTO 맵 구성
+        Map<Long, StoreDetailDto> dtoMap = allStores.stream()
+                .collect(Collectors.toMap(
+                        store -> store.getStoreId(),
+                        store -> {
+                            Partner partner = store.getPartner();
+                            double storeLat = store.getLocation().getY();
+                            double storeLng = store.getLocation().getX();
+                            double distance = userLat == 0 || userLng == 0
+                                    ? 0 : calculateDistance(userLat, userLng, storeLat, storeLng);
+                            List<BenefitCacheDto> finalBenefits = selectBenefits(
+                                    partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
+                                    store.getStoreName()
+                            );
+                            List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
+                                    .flatMap(b -> b.getTierBenefits().stream())
+                                    .toList();
+                            return StoreDetailDto.of(store, partner, tierBenefitDtos, distance);
+                        }
+                ));
+
+        // 브랜드 매치(partnerName) 그룹을 거리순 정렬 후 우선 노출
+        // 매장명 매치(storeName/business) 그룹은 거리순 정렬 후 후순위 노출
+        return Stream.concat(
+                searchResult.brandMatchIds().stream()
+                        .map(dtoMap::get)
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparing(StoreDetailDto::getDistance)),
+                searchResult.nameMatchIds().stream()
+                        .map(dtoMap::get)
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparing(StoreDetailDto::getDistance))
+        ).toList();
     }
 
     @Override
