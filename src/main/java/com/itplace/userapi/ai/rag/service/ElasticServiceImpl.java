@@ -2,6 +2,7 @@ package com.itplace.userapi.ai.rag.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import java.io.IOException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +36,39 @@ public class ElasticServiceImpl implements ElasticService {
             }
         } catch (Exception e) {
             throw new IllegalStateException("Could not create index", e);
+        }
+    }
+
+    public void createStoreIndexIfNotExists() {
+        try {
+            boolean exists = esClient.indices().exists(e -> e.index("store")).value();
+            if (!exists) {
+                esClient.indices().create(c -> c
+                        .index("store")
+                        .settings(s -> s
+                                .analysis(a -> a
+                                        .analyzer("korean", an -> an
+                                                .custom(cu -> cu
+                                                        .tokenizer("nori_tokenizer")
+                                                        .filter(List.of("nori_part_of_speech"))
+                                                )
+                                        )
+                                )
+                        )
+                        .mappings(m -> m
+                                .properties("storeId", p -> p.long_(l -> l))
+                                .properties("storeName", p -> p.text(t -> t.analyzer("korean")))
+                                .properties("business", p -> p.text(t -> t.analyzer("korean")))
+                                .properties("partnerName", p -> p.text(t -> t.analyzer("korean")))
+                                .properties("category", p -> p.keyword(k -> k))
+                                .properties("city", p -> p.keyword(k -> k))
+                                .properties("town", p -> p.keyword(k -> k))
+                        )
+                );
+                System.out.println("Created store index");
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("store 인덱스 생성 실패", e);
         }
     }
 
