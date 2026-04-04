@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +26,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OpenAIServiceImpl implements OpenAIService {
     private final ObjectMapper mapper;
     @Qualifier("openAiWebClient")
@@ -56,7 +58,7 @@ public class OpenAIServiceImpl implements OpenAIService {
     public List<Recommendations> rerankAndExplain(UserFeature uf, List<Candidate> cands, int topK) {
         String url = baseUrl + "/v1/chat/completions";
 
-        System.out.println("후보 사이즈: " + cands.size());
+        log.debug("후보 사이즈: {}", cands.size());
         StringBuilder items = new StringBuilder();
         for (int i = 0; i < cands.size(); i++) {
             Candidate c = cands.get(i);
@@ -136,7 +138,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                 Map.of("role", "user", "content", prompt)
         );
 
-        System.out.println("추천 후보 리스트: " + prompt);
+        log.debug("추천 후보 리스트: {}", prompt);
 
         Map<String, Object> body = Map.of(
                 "model", model,
@@ -154,7 +156,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                 .block();
 
         long end = System.nanoTime();
-        System.out.println("LLM 응답 생성 시간 (ms): " + (end - start) / 1_000_000);
+        log.info("LLM 응답 생성 시간 (ms): {}", (end - start) / 1_000_000);
 
         if (cr != null && !cr.getChoices().isEmpty()) {
             String jsonString = cr.getChoices().get(0).getMessage().getContent();

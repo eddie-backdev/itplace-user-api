@@ -16,10 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class QuestionRecommendationServiceImpl implements QuestionRecommendationService {
     private final EmbeddingService embeddingService;
     private final ElasticsearchClient esClient;
@@ -75,7 +77,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
             category = (String) hits.get(0).source().get("category");
         }
 
-        System.out.println("카테고리 분류: " + category);
+        log.debug("카테고리 분류: {}", category);
         // 4. 제휴처 목록 조회
         List<StoreDetailDto> stores = storeService.findNearbyByKeyword(lat, lng, null, category, 0, 0);
 

@@ -19,8 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -148,7 +151,18 @@ public class StoreServiceImpl implements StoreService {
             }
         }
 
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .get(10, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.warn("그리드 검색 타임아웃 (10s), 완료된 결과만 반환");
+        } catch (ExecutionException | InterruptedException e) {
+            log.error("그리드 검색 중 오류", e);
+            Thread.currentThread().interrupt();
+        }
+
         return futures.stream()
+                .filter(f -> f.isDone() && !f.isCompletedExceptionally())
                 .map(CompletableFuture::join)
                 .flatMap(List::stream)
                 .distinct()

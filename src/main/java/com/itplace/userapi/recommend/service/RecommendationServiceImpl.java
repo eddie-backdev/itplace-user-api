@@ -16,6 +16,8 @@ import com.itplace.userapi.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -55,11 +57,19 @@ public class RecommendationServiceImpl implements RecommendationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
+        List<Long> allBenefitIds = recommendations.stream()
+                .flatMap(dto -> dto.getBenefitIds().stream())
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, Benefit> benefitMap = benefitRepository.findAllById(allBenefitIds).stream()
+                .collect(Collectors.toMap(Benefit::getBenefitId, b -> b));
+
         List<Recommendation> entities = recommendations.stream()
                 .map(dto -> {
                     List<Benefit> benefits = dto.getBenefitIds().stream()
-                            .map(benefitRepository::getReferenceById)
-                            .toList();
+                            .map(benefitMap::get)
+                            .collect(Collectors.toList());
                     return RecommendationMapper.toEntity(dto, user, benefits);
                 })
                 .toList();

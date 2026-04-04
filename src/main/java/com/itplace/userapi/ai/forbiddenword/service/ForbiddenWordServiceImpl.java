@@ -80,7 +80,7 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
                     .map(word -> normalize(word.getWord()))
                     .collect(Collectors.toSet());
 
-            System.out.println("금칙어 및 예외 단어 재로딩 완료");
+            log.info("금칙어 및 예외 단어 재로딩 완료");
         }
     }
 

@@ -8,10 +8,13 @@ import com.itplace.userapi.ai.question.QuestionCode;
 import com.itplace.userapi.ai.question.service.QuestionRecommendationService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.common.ApiResponse;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/questions")
+@Validated
 public class QuestionSearchController {
 
     private final EmbeddingService embeddingService;
@@ -27,7 +31,8 @@ public class QuestionSearchController {
     private final QuestionRecommendationService questionRecommendationService;
 
     @GetMapping("/search")
-    public Map<String, Object> searchSimilarQuestion(@RequestParam String query) throws Exception {
+    public Map<String, Object> searchSimilarQuestion(
+            @RequestParam @NotBlank @Size(max = 200) String query) throws Exception {
         List<Float> embedding = embeddingService.embed(query);
 
         SearchResponse<Map> response = elasticsearchClient.search(s -> s
@@ -56,7 +61,7 @@ public class QuestionSearchController {
 
     @GetMapping("/recommend")
     public ResponseEntity<ApiResponse<RecommendationResponse>> recommend(
-            @RequestParam String question,
+            @RequestParam @NotBlank @Size(max = 200) String question,
             @RequestParam double lat,
             @RequestParam double lng) throws Exception {
 

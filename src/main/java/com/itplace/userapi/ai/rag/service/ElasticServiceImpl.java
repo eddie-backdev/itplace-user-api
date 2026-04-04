@@ -4,10 +4,12 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ElasticServiceImpl implements ElasticService {
 
     private final ElasticsearchClient esClient;
@@ -30,9 +32,9 @@ public class ElasticServiceImpl implements ElasticService {
                                 .properties("imgUrl", p -> p.text(t -> t))
                         )
                 );
-                System.out.println("Created index: " + indexName);
+                log.info("Created index: {}", indexName);
             } else {
-                System.out.println("Index already exists");
+                log.info("Index already exists: {}", indexName);
             }
         } catch (Exception e) {
             throw new IllegalStateException("Could not create index", e);
@@ -65,7 +67,7 @@ public class ElasticServiceImpl implements ElasticService {
                                 .properties("town", p -> p.keyword(k -> k))
                         )
                 );
-                System.out.println("Created store index");
+                log.info("Created store index");
             }
         } catch (Exception e) {
             throw new IllegalStateException("store 인덱스 생성 실패", e);

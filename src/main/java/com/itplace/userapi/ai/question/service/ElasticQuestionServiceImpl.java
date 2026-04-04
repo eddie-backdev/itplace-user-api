@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import java.io.IOException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ElasticQuestionServiceImpl implements ElasticQuestionService {
     private final ElasticsearchClient esClient;
 
@@ -34,9 +36,9 @@ public class ElasticQuestionServiceImpl implements ElasticQuestionService {
                                 ))
                         )
                 );
-                System.out.println("Created index: " + indexName);
+                log.info("Created index: {}", indexName);
             } else {
-                System.out.println("Index already exists: " + indexName);
+                log.info("Index already exists: {}", indexName);
             }
 
         } catch (Exception e) {

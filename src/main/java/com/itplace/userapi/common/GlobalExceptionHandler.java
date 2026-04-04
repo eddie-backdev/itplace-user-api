@@ -2,9 +2,11 @@ package com.itplace.userapi.common;
 
 import com.itplace.userapi.common.exception.BusinessException;
 import com.itplace.userapi.security.SecurityCode;
+import jakarta.validation.ConstraintViolationException;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,14 +15,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleIllegalStateException(Exception ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception ex) {
+        log.error("Unhandled exception", ex);
+        ApiResponse<Void> body = ApiResponse.of(SecurityCode.INTERNAL_SERVER_ERROR, null);
+        return new ResponseEntity<>(body, body.getStatus());
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
-        log.info("ex: ", ex);
-        ApiResponse<String> body = ApiResponse.of(SecurityCode.INTERNAL_SERVER_ERROR, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
+        log.error("Unhandled runtime exception", ex);
+        ApiResponse<Void> body = ApiResponse.of(SecurityCode.INTERNAL_SERVER_ERROR, null);
         return new ResponseEntity<>(body, body.getStatus());
     }
 
@@ -31,8 +35,20 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
-        ApiResponse<Void> body = ApiResponse.of(SecurityCode.INVALID_INPUT_VALUE, null);
+    public ResponseEntity<ApiResponse<String>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
+        String errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        ApiResponse<String> body = ApiResponse.of(SecurityCode.INVALID_INPUT_VALUE, errors);
+        return new ResponseEntity<>(body, body.getStatus());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<String>> handleConstraintViolationException(ConstraintViolationException ex) {
+        String errors = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining(", "));
+        ApiResponse<String> body = ApiResponse.of(SecurityCode.INVALID_INPUT_VALUE, errors);
         return new ResponseEntity<>(body, body.getStatus());
     }
 }
