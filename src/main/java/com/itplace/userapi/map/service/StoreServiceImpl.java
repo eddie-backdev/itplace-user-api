@@ -2,7 +2,7 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
-import com.itplace.userapi.map.dto.response.StoreDetailDto;
+import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.exception.StoreKeywordException;
@@ -58,7 +58,7 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StoreDetailDto> findNearby(double lat, double lng, double radiusMeters, double userLat,
+    public List<StoreDetailResponse> findNearby(double lat, double lng, double radiusMeters, double userLat,
                                            double userLng) {
         List<Long> allStoreIds;
 
@@ -103,9 +103,9 @@ public class StoreServiceImpl implements StoreService {
                             .toList();
                     double distance = calculateDistance(userLat, userLng,
                             store.getLocation().getY(), store.getLocation().getX());
-                    return StoreDetailDto.of(store, partner, tierBenefitDtos, distance);
+                    return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
-                .sorted(Comparator.comparing(StoreDetailDto::getDistance))
+                .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
                 .toList();
     }
 
@@ -171,7 +171,7 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StoreDetailDto> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
+    public List<StoreDetailResponse> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
                                                      double userLat, double userLng) {
         if (category == null || category.isBlank() || category.equalsIgnoreCase("전체")) {
             return findNearby(lat, lng, radiusMeters, userLat, userLng);
@@ -210,14 +210,14 @@ public class StoreServiceImpl implements StoreService {
                             .toList();
                     double distance = calculateDistance(userLat, userLng,
                             store.getLocation().getY(), store.getLocation().getX());
-                    return StoreDetailDto.of(store, partner, tierBenefitDtos, distance);
+                    return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<StoreDetailDto> findNearbyByKeyword(double lat, double lng, String category,
+    public List<StoreDetailResponse> findNearbyByKeyword(double lat, double lng, String category,
                                                     String keyword, double userLat, double userLng) {
         if (keyword == null || keyword.isBlank()) {
             throw new StoreKeywordException(StoreCode.KEYWORD_REQUEST);
@@ -255,7 +255,7 @@ public class StoreServiceImpl implements StoreService {
                 .collect(Collectors.toMap(id -> id, partnerBenefitCacheService::getBenefits));
 
         // storeId → DTO 맵 구성
-        Map<Long, StoreDetailDto> dtoMap = allStores.stream()
+        Map<Long, StoreDetailResponse> dtoMap = allStores.stream()
                 .collect(Collectors.toMap(
                         store -> store.getStoreId(),
                         store -> {
@@ -271,7 +271,7 @@ public class StoreServiceImpl implements StoreService {
                             List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
                                     .flatMap(b -> b.getTierBenefits().stream())
                                     .toList();
-                            return StoreDetailDto.of(store, partner, tierBenefitDtos, distance);
+                            return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                         }
                 ));
 
@@ -281,17 +281,17 @@ public class StoreServiceImpl implements StoreService {
                 searchResult.brandMatchIds().stream()
                         .map(dtoMap::get)
                         .filter(Objects::nonNull)
-                        .sorted(Comparator.comparing(StoreDetailDto::getDistance)),
+                        .sorted(Comparator.comparing(StoreDetailResponse::getDistance)),
                 searchResult.nameMatchIds().stream()
                         .map(dtoMap::get)
                         .filter(Objects::nonNull)
-                        .sorted(Comparator.comparing(StoreDetailDto::getDistance))
+                        .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
         ).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<StoreDetailDto> findNearbyByPartnerName(double lat, double lng, String partnerName, double userLat,
+    public List<StoreDetailResponse> findNearbyByPartnerName(double lat, double lng, String partnerName, double userLat,
                                                         double userLng) {
         if (partnerName == null || partnerName.isBlank()) {
             throw new StoreKeywordException(StoreCode.PARTNERNAME_REQUEST);
@@ -318,7 +318,7 @@ public class StoreServiceImpl implements StoreService {
                     List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
                             .flatMap(b -> b.getTierBenefits().stream())
                             .toList();
-                    return StoreDetailDto.of(store, partner, tierBenefitDtos, distance);
+                    return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
                 .toList();
     }

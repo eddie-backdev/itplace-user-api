@@ -1,17 +1,17 @@
 package com.itplace.userapi.map.service;
 
-import com.itplace.userapi.map.dto.response.StoreDetailDto;
+import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import java.util.List;
 
 public interface StoreService {
-    List<StoreDetailDto> findNearby(double lat, double lng, double radiusMeters, double userLat, double userLng);
+    List<StoreDetailResponse> findNearby(double lat, double lng, double radiusMeters, double userLat, double userLng);
 
-    List<StoreDetailDto> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
+    List<StoreDetailResponse> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
                                               double userLat, double userLng);
 
-    List<StoreDetailDto> findNearbyByKeyword(double lat, double lng, String category, String keyword, double userLat,
+    List<StoreDetailResponse> findNearbyByKeyword(double lat, double lng, String category, String keyword, double userLat,
                                              double userLng);
 
-    List<StoreDetailDto> findNearbyByPartnerName(double lat, double lng, String partnerName, double userLat,
+    List<StoreDetailResponse> findNearbyByPartnerName(double lat, double lng, String partnerName, double userLat,
                                                  double userLng);
 }

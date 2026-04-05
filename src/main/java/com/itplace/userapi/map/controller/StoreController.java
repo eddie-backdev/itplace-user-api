@@ -2,7 +2,7 @@ package com.itplace.userapi.map.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.map.StoreCode;
-import com.itplace.userapi.map.dto.response.StoreDetailDto;
+import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.service.StoreService;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -31,7 +31,7 @@ public class StoreController {
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
-        List<StoreDetailDto> stores = storeService.findNearby(lat, lng, radiusMeters, userLat, userLng);
+        List<StoreDetailResponse> stores = storeService.findNearby(lat, lng, radiusMeters, userLat, userLng);
         ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
         return new ResponseEntity<>(body, body.getStatus());
@@ -47,7 +47,7 @@ public class StoreController {
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
-        List<StoreDetailDto> stores = storeService.findNearbyByCategory(lat, lng, radiusMeters, category, userLat,
+        List<StoreDetailResponse> stores = storeService.findNearbyByCategory(lat, lng, radiusMeters, category, userLat,
                 userLng);
         ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
@@ -64,7 +64,7 @@ public class StoreController {
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
-        List<StoreDetailDto> stores = storeService.findNearbyByKeyword(lat, lng, category, keyword, userLat, userLng);
+        List<StoreDetailResponse> stores = storeService.findNearbyByKeyword(lat, lng, category, keyword, userLat, userLng);
         ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
         return new ResponseEntity<>(body, body.getStatus());
@@ -78,7 +78,7 @@ public class StoreController {
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
-        List<StoreDetailDto> stores = storeService.findNearbyByPartnerName(lat, lng, partnerName, userLat, userLng);
+        List<StoreDetailResponse> stores = storeService.findNearbyByPartnerName(lat, lng, partnerName, userLat, userLng);
         ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
         return ResponseEntity.status(body.getStatus()).body(body);

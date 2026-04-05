@@ -11,14 +11,13 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class StoreDetailDto {
+public class StoreDetailResponse {
     private StoreDto store;
     private PartnerDto partner;
     private List<TierBenefitDto> tierBenefit;
     private double distance;
 
-    public static StoreDetailDto of(Store store, Partner partner, List<TierBenefitDto> tierBenefitDtos, double distance) {
-        // Store 엔티티를 StoreDto로 변환
+    public static StoreDetailResponse of(Store store, Partner partner, List<TierBenefitDto> tierBenefitDtos, double distance) {
         StoreDto storeDto = StoreDto.builder()
                 .storeId(store.getStoreId())
                 .storeName(store.getStoreName())
@@ -35,7 +34,6 @@ public class StoreDetailDto {
                 .hasCoupon(store.isHasCoupon())
                 .build();
 
-        // Partner 엔티티를 PartnerDto로 변환
         PartnerDto partnerDto = PartnerDto.builder()
                 .partnerId(partner.getPartnerId())
                 .partnerName(partner.getPartnerName())
@@ -43,8 +41,7 @@ public class StoreDetailDto {
                 .category(partner.getCategory() != null ? partner.getCategory().trim() : null)
                 .build();
 
-        // 최종 StoreDetailDto 빌드 및 반환
-        return StoreDetailDto.builder()
+        return StoreDetailResponse.builder()
                 .store(storeDto)
                 .partner(partnerDto)
                 .tierBenefit(tierBenefitDtos)

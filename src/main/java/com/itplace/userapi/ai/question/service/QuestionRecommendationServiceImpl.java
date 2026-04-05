@@ -10,7 +10,7 @@ import com.itplace.userapi.ai.llm.service.OpenAIService;
 import com.itplace.userapi.ai.question.QuestionCode;
 import com.itplace.userapi.ai.question.exception.QuestionException;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
-import com.itplace.userapi.map.dto.response.StoreDetailDto;
+import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.service.StoreService;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +79,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
 
         log.debug("카테고리 분류: {}", category);
         // 4. 제휴처 목록 조회
-        List<StoreDetailDto> stores = storeService.findNearbyByKeyword(lat, lng, null, category, 0, 0);
+        List<StoreDetailResponse> stores = storeService.findNearbyByKeyword(lat, lng, null, category, 0, 0);
 
         if (stores.isEmpty()) {
             throw new QuestionException(QuestionCode.NO_STORE_FOUND);
