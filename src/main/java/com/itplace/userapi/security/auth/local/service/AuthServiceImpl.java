@@ -2,6 +2,7 @@ package com.itplace.userapi.security.auth.local.service;
 
 import static com.itplace.userapi.security.auth.local.filter.LoginFilter.REFRESH_TOKEN_PREFIX;
 
+import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.local.dto.request.LinkLocalRequest;
 import com.itplace.userapi.security.auth.local.dto.request.LoadOAuthDataRequest;
@@ -27,7 +28,6 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JWTUtil jwtUtil;
+    private final CookieUtil cookieUtil;
 
     @Override
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -61,15 +62,7 @@ public class AuthServiceImpl implements AuthService {
         String newAccessToken = validateRefreshTokenAndGetNewAccessToken(refreshToken);
 
         // 새 Access Token을 쿠키에 담아 응답
-        ResponseCookie accessTokenCookie = ResponseCookie.from(JWTConstants.CATEGORY_ACCESS, newAccessToken)
-                .path("/")
-                .secure(true) // 로컬이 아닐때만 secure
-                .sameSite("None")
-                .httpOnly(true)
-                .domain("itplace.click")
-                .maxAge(jwtUtil.getAccessTokenValidityInMS() / 1000)
-                .build();
-        response.addHeader("Set-Cookie", accessTokenCookie.toString());
+        cookieUtil.setAccessTokenCookie(response, newAccessToken);
     }
 
     private String validateRefreshTokenAndGetNewAccessToken(String refreshToken) {
@@ -108,7 +101,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout(Long userId) {
-        redisTemplate.delete("RT:" + userId);
+        redisTemplate.delete(REFRESH_TOKEN_PREFIX + userId);
     }
 
     @Override
@@ -119,7 +112,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void signUp(SignUpRequest request) {
-        log.info("회원가입 시작 request: {}", request);
+        log.info("회원가입 시작 email: {}", request.getEmail());
 
         if (!request.getPassword().equals(request.getPasswordConfirm())) {
             log.info("비밀번호가 일치하지 않음");
@@ -141,8 +134,6 @@ public class AuthServiceImpl implements AuthService {
                 .birthday(request.getBirthday())
                 .role(Role.USER)
                 .build();
-
-        log.info("User 정보: {}", user);
 
         userRepository.findByEmailOrPhoneNumber(request.getEmail(), request.getPhoneNumber())
                 .ifPresent(existUser -> {

@@ -116,6 +116,10 @@ google:
       url: https://www.google.com/recaptcha/api/siteverify
       secret: ${GOOGLE_RECAPTCHA_SECRET}
 
+app:
+  cookie:
+    domain: ${COOKIE_DOMAIN:itplace.click}
+
 springdoc:
   swagger-ui:
     url: /swagger.yml
