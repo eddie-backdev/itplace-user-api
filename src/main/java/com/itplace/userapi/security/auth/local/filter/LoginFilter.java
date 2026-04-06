@@ -13,7 +13,6 @@ import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.repository.MembershipRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -123,25 +122,4 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 .build();
     }
 
-    private Cookie createAccessTokenCookie(String token) {
-        Cookie cookie = new Cookie(JWTConstants.CATEGORY_ACCESS, token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);          // HTTPS 환경이면 true
-        cookie.setDomain("itplace.click");
-        cookie.setPath("/");
-        long sec = jwtUtil.getAccessTokenValidityInMS() / 1000;
-        cookie.setMaxAge((int) sec);
-        return cookie;
-    }
-
-    private Cookie createRefreshTokenCookie(String token) {
-        Cookie cookie = new Cookie(JWTConstants.CATEGORY_REFRESH, token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setDomain("itplace.click");
-        cookie.setPath("/");
-        long sec = jwtUtil.getRefreshTokenValidityInMS() / 1000;
-        cookie.setMaxAge((int) sec);
-        return cookie;
-    }
 }
