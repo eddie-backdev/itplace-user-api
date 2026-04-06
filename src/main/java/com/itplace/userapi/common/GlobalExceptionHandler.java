@@ -21,13 +21,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, body.getStatus());
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
-        log.error("Unhandled runtime exception", ex);
-        ApiResponse<Void> body = ApiResponse.of(SecurityCode.INTERNAL_SERVER_ERROR, null);
-        return new ResponseEntity<>(body, body.getStatus());
-    }
-
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<?>> handleBusinessException(BusinessException ex) {
         ApiResponse<Void> body = ApiResponse.of(ex.getCode(), null);
