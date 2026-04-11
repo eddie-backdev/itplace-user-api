@@ -28,28 +28,20 @@ public class CouponHistoryServiceImpl implements CouponHistoryService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(UserCode.USER_NOT_FOUND));
 
-        List<CouponHistory> historyList = couponHistoryRepository.findByUser(user);
-
+        List<CouponHistory> historyList;
         if (type == null || type.isEmpty()) {
-            return historyList.stream()
-                    .map(history -> new HistoryResponse(
-                            user.getId(),
-                            history.getHistoryId(),
-                            history.getGift() != null ? history.getGift().getGiftName() : null,
-                            history.getResult(),
-                            history.getUsedDate()
-                    )).toList();
-        }
-
-        ResultType filterType;
-        try {
-            filterType = ResultType.valueOf(type.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new InvalidResultTypeException(GiftCode.INVALID_RESULT_TYPE);
+            historyList = couponHistoryRepository.findByUser(user);
+        } else {
+            ResultType filterType;
+            try {
+                filterType = ResultType.valueOf(type.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new InvalidResultTypeException(GiftCode.INVALID_RESULT_TYPE);
+            }
+            historyList = couponHistoryRepository.findByUserAndResult(user, filterType);
         }
 
         return historyList.stream()
-                .filter(history -> history.getResult() == filterType)
                 .map(history -> new HistoryResponse(
                         user.getId(),
                         history.getHistoryId(),
