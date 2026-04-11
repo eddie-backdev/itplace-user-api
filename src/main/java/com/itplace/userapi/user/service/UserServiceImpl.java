@@ -4,6 +4,7 @@ import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.exception.EmailVerificationException;
+import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
 import com.itplace.userapi.security.exception.SmsVerificationException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
@@ -112,17 +113,16 @@ public class UserServiceImpl implements UserService {
         String storedEmail = redisTemplate.opsForValue().get(key);
 
         if (storedEmail == null || !storedEmail.equals(request.getEmail())) {
-            throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+            throw new InvalidCredentialsException(SecurityCode.RESET_PASSWORD_FAILURE);
         }
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new PasswordMismatchException(SecurityCode.PASSWORD_MISMATCH);
         }
 
         redisTemplate.delete(key);
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
     }
 
     @Override
