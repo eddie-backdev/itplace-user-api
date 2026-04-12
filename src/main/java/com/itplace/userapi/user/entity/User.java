@@ -28,7 +28,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @Getter
-@Setter
 @Entity
 @Builder
 @ToString(exclude = "socialAccounts")
@@ -45,22 +44,27 @@ public class User extends BaseTimeEntity {
     @Column(name = "name", length = 30)
     private String name;
 
+    @Setter
     @Column(name = "email", unique = true)
     private String email;
 
+    @Setter
     @Column(name = "password")
     private String password;
 
     @Column(name = "phoneNumber", length = 11, unique = true)
     private String phoneNumber;
 
+    @Setter
     @Column(name = "gender", length = 6)
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
+    @Setter
     @Column(name = "birthday", length = 8)
     private LocalDate birthday;
 
+    @Setter
     @Column(name = "membershipId", length = 16)
     private String membershipId;
 
@@ -68,6 +72,7 @@ public class User extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Setter
     @Column(name = "coupon")
     private int coupon;
 
