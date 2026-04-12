@@ -4,5 +4,5 @@ import com.itplace.userapi.recommend.dto.response.Recommendations;
 import java.util.List;
 
 public interface RecommendationService {
-    List<Recommendations> recommend(Long userId, int topK) throws Exception;
+    List<Recommendations> recommend(Long userId, int topK);
 }
