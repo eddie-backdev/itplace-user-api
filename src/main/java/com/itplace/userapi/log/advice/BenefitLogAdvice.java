@@ -31,7 +31,7 @@ public class BenefitLogAdvice implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-        return true;
+        return returnType.getDeclaringClass().getPackageName().contains("benefit");
     }
 
     @Override
