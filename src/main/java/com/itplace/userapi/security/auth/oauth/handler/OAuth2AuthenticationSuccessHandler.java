@@ -32,8 +32,11 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Value("${app.cookie.domain}")
     private String cookieDomain;
 
-    private static final String NEW_USER_REDIRECT_URI = "https://itplace.click/login?step=phoneAuth&verifiedType=oauth";
-    private static final String EXIST_USER_REDIRECT_URI = "https://itplace.click/login?oauth=processing";
+    @Value("${app.oauth2.new-user-redirect-uri}")
+    private String newUserRedirectUri;
+
+    @Value("${app.oauth2.exist-user-redirect-uri}")
+    private String existUserRedirectUri;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -55,7 +58,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             response.addHeader("Set-Cookie", tempTokenCookie.toString());
 
             // 프론트엔드의 휴대폰 인증 및 추가 정보 입력 페이지로 리다이렉트
-            getRedirectStrategy().sendRedirect(request, response, NEW_USER_REDIRECT_URI);
+            getRedirectStrategy().sendRedirect(request, response, newUserRedirectUri);
         } else {
             // Case 2: 기존 사용자 -> 즉시 로그인 성공 처리 (JWT 발급)
             log.info("기존 OAuth 사용자. 로그인을 완료합니다.");
@@ -71,7 +74,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             cookieUtil.setTokensToCookie(response, accessToken, refreshToken);
 
             // ApiResponse JSON 형식으로 응답
-            getRedirectStrategy().sendRedirect(request, response, EXIST_USER_REDIRECT_URI);
+            getRedirectStrategy().sendRedirect(request, response, existUserRedirectUri);
         }
     }
 }

@@ -119,6 +119,9 @@ google:
 app:
   cookie:
     domain: ${COOKIE_DOMAIN:itplace.click}
+  oauth2:
+    new-user-redirect-uri: ${OAUTH2_NEW_USER_REDIRECT_URI:https://itplace.click/login?step=phoneAuth&verifiedType=oauth}
+    exist-user-redirect-uri: ${OAUTH2_EXIST_USER_REDIRECT_URI:https://itplace.click/login?oauth=processing}
 
 springdoc:
   swagger-ui:
