@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import io.jsonwebtoken.JwtException;
 import java.io.IOException;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -71,7 +70,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
             User user = User.builder()
                     .id(userId)
-                    .password(UUID.randomUUID().toString())  // 실제 패스워드는 사용되지 않음
+                    .password("")
                     .role(role)
                     .build();
 
