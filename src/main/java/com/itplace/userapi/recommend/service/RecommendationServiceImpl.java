@@ -32,7 +32,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     private final UserRepository userRepository;
     private final BenefitRepository benefitRepository;
 
-    public List<Recommendations> recommend(Long userId, int topK) throws Exception {
+    public List<Recommendations> recommend(Long userId, int topK) {
         LocalDateTime threshold = LocalDateTime.now().minusDays(EXPIRED_DAYS); // n일 기준으로 추천 갱신
 
         // 최근 추천 기록 있으면 캐시된 추천 반환

@@ -24,7 +24,7 @@ public class RecommendationController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Recommendations>>> recommend(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @RequestParam(defaultValue = "10") int topK) throws Exception {
+            @RequestParam(defaultValue = "10") int topK) {
 
         Long userId = principalDetails.getUserId();
         List<Recommendations> result = recommendationService.recommend(userId, topK);
