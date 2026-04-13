@@ -112,7 +112,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void signUp(SignUpRequest request) {
-        log.info("회원가입 시작 email: {}", request.getEmail());
+        log.info("회원가입 시작");
 
         if (!request.getPassword().equals(request.getPasswordConfirm())) {
             log.info("비밀번호가 일치하지 않음");

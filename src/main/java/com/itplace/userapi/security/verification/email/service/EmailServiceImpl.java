@@ -29,14 +29,11 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void send(EmailVerificationRequest request) {
-        log.info("EmailVerificationRequest: {}", request);
         String email = request.getEmail();
 
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
 
         String code = otpUtil.generateEmailOtp(request.getEmail());
-
-        log.info("email code: {}", code);
 
         try {
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, false, "UTF-8");
@@ -112,10 +109,8 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void confirm(EmailConfirmRequest request) {
-        log.info("EmailConfirmRequest: {}", request);
-
         if (otpUtil.validateEmailOtp(request.getEmail(), request.getVerificationCode())) {
-            log.info("이메일 인증 성공: {}", request.getEmail());
+            log.info("이메일 인증 성공");
             if (userRepository.findByEmail(request.getEmail()).isPresent()) {
                 throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
             }

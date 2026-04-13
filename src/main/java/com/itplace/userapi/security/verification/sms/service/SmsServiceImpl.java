@@ -28,23 +28,14 @@ public class SmsServiceImpl implements SmsService {
 
     @Override
     public void send(SmsVerificationRequest request) {
-        log.info("SmsVerificationRequest: {}", request);
-
         String phoneNumber = request.getPhoneNumber();
-
-        String key = "sms:" + phoneNumber;
         String code = otpUtil.generateSmsOtp(phoneNumber);
-
-        log.info("sms key: {}", key);
-        log.info("sms code: {}", code);
-
         coolSmsService.sendMessage(code, phoneNumber);
     }
 
     @Override
     @Transactional(readOnly = true)
     public SmsConfirmResponse confirm(SmsConfirmRequest request) {
-        log.info("SmsConfirmRequest: {}", request);
         String phoneNumber = request.getPhoneNumber();
         String code = request.getVerificationCode();
 
