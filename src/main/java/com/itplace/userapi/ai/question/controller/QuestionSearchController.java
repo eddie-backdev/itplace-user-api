@@ -10,6 +10,7 @@ import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.common.ApiResponse;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -32,19 +33,24 @@ public class QuestionSearchController {
 
     @GetMapping("/search")
     public Map<String, Object> searchSimilarQuestion(
-            @RequestParam @NotBlank @Size(max = 200) String query) throws Exception {
+            @RequestParam @NotBlank @Size(max = 200) String query) {
         List<Float> embedding = embeddingService.embed(query);
 
-        SearchResponse<Map> response = elasticsearchClient.search(s -> s
-                        .index("questions")
-                        .knn(k -> k
-                                .field("embedding")
-                                .k(1)
-                                .numCandidates(10)
-                                .queryVector(embedding)
-                        ),
-                Map.class
-        );
+        SearchResponse<Map> response;
+        try {
+            response = elasticsearchClient.search(s -> s
+                            .index("questions")
+                            .knn(k -> k
+                                    .field("embedding")
+                                    .k(1)
+                                    .numCandidates(10)
+                                    .queryVector(embedding)
+                            ),
+                    Map.class
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Elasticsearch 검색 실패", e);
+        }
 
         List<Hit<Map>> hits = response.hits().hits();
         if (hits.isEmpty()) {
@@ -63,7 +69,7 @@ public class QuestionSearchController {
     public ResponseEntity<ApiResponse<RecommendationResponse>> recommend(
             @RequestParam @NotBlank @Size(max = 200) String question,
             @RequestParam double lat,
-            @RequestParam double lng) throws Exception {
+            @RequestParam double lng) {
 
         RecommendationResponse result = questionRecommendationService.recommendByQuestion(question, lat, lng);
         ApiResponse<RecommendationResponse> body = ApiResponse.of(QuestionCode.QUESTION_SUCCESS, result);

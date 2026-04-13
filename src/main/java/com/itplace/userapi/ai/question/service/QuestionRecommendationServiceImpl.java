@@ -12,6 +12,7 @@ import com.itplace.userapi.ai.question.exception.QuestionException;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.service.StoreService;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,27 +32,31 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
     private final ForbiddenWordService forbiddenWordService;
 
 
-    public RecommendationResponse recommendByQuestion(String question, double lat, double lng) throws Exception {
+    public RecommendationResponse recommendByQuestion(String question, double lat, double lng) {
         // 0. 금칙어 필터링
         String result = forbiddenWordService.censor(question);
         if (result.contains("입력할 수 없는 단어")) {
             throw new ForbiddenWordException();
-
         }
         // 1. 사용자 질문 임베딩
         List<Float> embedding = embeddingService.embed(question);
 
         // 2. ES에서 top1 검색
-        SearchResponse<Map> response = esClient.search(s -> s
-                        .index("questions")
-                        .knn(knn -> knn
-                                .field("embedding")
-                                .k(1)
-                                .numCandidates(10)
-                                .queryVector(embedding)
-                        ),
-                Map.class
-        );
+        SearchResponse<Map> response;
+        try {
+            response = esClient.search(s -> s
+                            .index("questions")
+                            .knn(knn -> knn
+                                    .field("embedding")
+                                    .k(1)
+                                    .numCandidates(10)
+                                    .queryVector(embedding)
+                            ),
+                    Map.class
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Elasticsearch 검색 실패", e);
+        }
 
         List<Hit<Map>> hits = response.hits().hits();
 
