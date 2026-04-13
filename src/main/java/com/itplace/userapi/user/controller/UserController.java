@@ -50,7 +50,6 @@ public class UserController {
 
     @PostMapping("/findEmail")
     public ResponseEntity<ApiResponse<Void>> findEmail(@RequestBody @Validated SmsVerificationRequest request) {
-        log.info("문자 request:{} ", request);
         smsService.send(request);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.SMS_SEND_SUCCESS);
         return new ResponseEntity<>(body, body.getStatus());
@@ -59,7 +58,6 @@ public class UserController {
     @PostMapping("/findEmail/confirm")
     public ResponseEntity<ApiResponse<FindEmailResponse>> findEmailConfirm(
             @RequestBody @Validated FindEmailConfirmRequest request) {
-        log.info("findEmailConfirm request: {}", request);
         FindEmailResponse response = userService.findEmailConfirm(request);
         ApiResponse<FindEmailResponse> body = ApiResponse.of(UserCode.EMAIL_FIND_SUCCESS, response);
         return new ResponseEntity<>(body, body.getStatus());
