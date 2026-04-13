@@ -11,9 +11,9 @@ import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Random;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +21,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ScratchServiceImpl implements ScratchService {
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final GiftRepository giftRepository;
-    private final Random random = new Random();
     private final UserRepository userRepository;
     private final CouponHistoryRepository couponHistoryRepository;
 
@@ -40,10 +41,9 @@ public class ScratchServiceImpl implements ScratchService {
 
         // 쿠폰 차감
         user.setCoupon(user.getCoupon() - 1);
-        userRepository.save(user);
 
         // 당첨 확률 5%
-        boolean isSuccess = random.nextInt(100) < 5;
+        boolean isSuccess = SECURE_RANDOM.nextInt(100) < 5;
 
         Gift selectedGift = null;
         if (isSuccess) {
@@ -51,7 +51,6 @@ public class ScratchServiceImpl implements ScratchService {
             if (!availableGifts.isEmpty()) {
                 selectedGift = weightedRandomGift(availableGifts);
                 selectedGift.setGiftCount(selectedGift.getGiftCount() - 1);
-                giftRepository.save(selectedGift);
             } else {
                 isSuccess = false;
             }
@@ -79,7 +78,7 @@ public class ScratchServiceImpl implements ScratchService {
                 .mapToInt(Gift::getTotal)
                 .sum();
 
-        int randomValue = random.nextInt(totalWeight);
+        int randomValue = SECURE_RANDOM.nextInt(totalWeight);
         int cumulativeWeight = 0;
 
         for (Gift gift : gifts) {
