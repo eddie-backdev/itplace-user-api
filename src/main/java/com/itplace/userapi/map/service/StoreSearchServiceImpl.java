@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,22 +22,38 @@ import org.springframework.stereotype.Service;
 public class StoreSearchServiceImpl implements StoreSearchService {
 
     private final ElasticsearchClient esClient;
+    private static final ExecutorService ES_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @Override
     public StoreSearchResult searchByKeyword(String keyword, String category) {
-        try {
-            // 1차: partnerName(브랜드명)에 매칭되는 매장 — 높은 우선순위
-            List<Long> brandMatchIds = search(buildQuery("partnerName", keyword, category), 100);
+        // 브랜드 검색과 매장명 검색을 병렬로 실행
+        CompletableFuture<List<Long>> brandFuture = CompletableFuture.supplyAsync(
+                () -> {
+                    try {
+                        return search(buildQuery("partnerName", keyword, category), 100);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }, ES_EXECUTOR);
 
-            // 2차: storeName, business에 매칭되는 매장 — 브랜드 매치 제외
+        CompletableFuture<List<Long>> nameFuture = CompletableFuture.supplyAsync(
+                () -> {
+                    try {
+                        return search(buildMultiQuery(List.of("storeName", "business"), keyword, category), 200);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }, ES_EXECUTOR);
+
+        try {
+            List<Long> brandMatchIds = brandFuture.get();
             Set<Long> brandSet = new HashSet<>(brandMatchIds);
-            List<Long> nameMatchIds = search(buildMultiQuery(List.of("storeName", "business"), keyword, category), 200)
-                    .stream()
+            List<Long> nameMatchIds = nameFuture.get().stream()
                     .filter(id -> !brandSet.contains(id))
                     .toList();
-
             return new StoreSearchResult(brandMatchIds, nameMatchIds);
-        } catch (IOException e) {
+        } catch (ExecutionException | InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException("매장 ES 검색 실패", e);
         }
     }
