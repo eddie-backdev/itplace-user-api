@@ -16,7 +16,7 @@ spring:
       username: ${PG_USERNAME}
       password: ${PG_PASSWORD}
       hikari:
-        maximum-pool-size: 30
+        maximum-pool-size: 50
         minimum-idle: 10
         idle-timeout: 30000
         max-lifetime: 600000
@@ -28,7 +28,7 @@ spring:
       username: ${PG_REPLICA_USERNAME:${PG_USERNAME}}
       password: ${PG_REPLICA_PASSWORD:${PG_PASSWORD}}
       hikari:
-        maximum-pool-size: 30
+        maximum-pool-size: 200
         minimum-idle: 10
         idle-timeout: 30000
         max-lifetime: 600000
