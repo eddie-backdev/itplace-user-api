@@ -10,6 +10,6 @@ spring:
 
 logging:
   level:
-    org.springframework.web: DEBUG
-    org.springframework.web.servlet.DispatcherServlet: DEBUG
-    com.fasterxml.jackson.databind: DEBUG
+    org.springframework.web: INFO
+    org.springframework.web.servlet.DispatcherServlet: INFO
+    com.fasterxml.jackson.databind: WARN

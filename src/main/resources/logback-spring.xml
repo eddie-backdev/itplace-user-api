@@ -8,7 +8,7 @@
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"/>
 
     <!-- 전체 로그 파일 (INFO 이상) -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender name="FILE_RAW" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/app.log</file>
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
@@ -19,6 +19,14 @@
             <maxHistory>30</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
+    </appender>
+
+    <!-- 비동기 파일 appender: 요청 스레드가 파일 I/O를 기다리지 않도록 큐에 위임 -->
+    <appender name="FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>2048</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE_RAW"/>
     </appender>
 
     <!-- 에러 전용 파일 (ERROR만) -->
