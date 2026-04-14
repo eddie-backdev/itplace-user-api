@@ -45,9 +45,9 @@ public class StoreServiceImpl implements StoreService {
     private final PartnerBenefitCacheService partnerBenefitCacheService;
     private final StoreSearchService storeSearchService;
 
-    private static final int GRID_SIZE = 10;
+    private static final int GRID_SIZE = 5;
     private static final int STORES_PER_CELL = 5;
-    private static final int FINAL_LIMIT = 300;
+    private static final int FINAL_LIMIT = 50;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
@@ -74,7 +74,7 @@ public class StoreServiceImpl implements StoreService {
 
         Collections.shuffle(allStoreIds);
         List<Long> limitedStoreIds = allStoreIds.subList(0, Math.min(allStoreIds.size(), FINAL_LIMIT));
-        List<Store> limitedStores = storeRepository.findAllById(limitedStoreIds);
+        List<Store> limitedStores = storeRepository.findAllByStoreIdInWithPartner(limitedStoreIds);
 
         List<Long> partnerIds = limitedStores.stream()
                 .map(store -> store.getPartner().getPartnerId())
@@ -85,8 +85,7 @@ public class StoreServiceImpl implements StoreService {
         //        allBenefits → partnerToBenefitsMap, allTierBenefits → benefitToTiersMap 두 개의 맵을 구성.
         // 변경 후: partnerBenefitCacheService.getBenefits(partnerId) 호출 한 번으로 혜택+등급혜택 정보를
         //         BenefitCacheDto에 묶어 가져옴. Redis에 캐싱되어 있으면 DB 조회 없이 반환.
-        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerIds.stream()
-                .collect(Collectors.toMap(id -> id, partnerBenefitCacheService::getBenefits));
+        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
 
         return limitedStores.stream()
                 .map(store -> {
@@ -109,28 +108,26 @@ public class StoreServiceImpl implements StoreService {
                 .toList();
     }
 
-    private List<Long> findNearbyWithSingleQuery(double lat, double lng, double radiusMeters) {
+    private double[] computeBoundingBox(double lat, double lng, double radiusMeters) {
         double earthRadius = 6378137.0;
         double dLat = radiusMeters / earthRadius;
         double dLng = radiusMeters / (earthRadius * Math.cos(Math.toRadians(lat)));
+        // [minLat, maxLat, minLng, maxLng]
+        return new double[]{
+            lat - Math.toDegrees(dLat),
+            lat + Math.toDegrees(dLat),
+            lng - Math.toDegrees(dLng),
+            lng + Math.toDegrees(dLng)
+        };
+    }
 
-        double minLat = lat - Math.toDegrees(dLat);
-        double maxLat = lat + Math.toDegrees(dLat);
-        double minLng = lng - Math.toDegrees(dLng);
-        double maxLng = lng + Math.toDegrees(dLng);
-
-        return storeRepository.findStoreIdsInRadius(lat, lng, radiusMeters, minLat, maxLat, minLng, maxLng);
+    private List<Long> findNearbyWithSingleQuery(double lat, double lng, double radiusMeters) {
+        return storeRepository.findStoreIdsInRadius(lat, lng, radiusMeters, FINAL_LIMIT);
     }
 
     private List<Long> findNearbyWithGridSampling(double lat, double lng, double radiusMeters) {
-        double earthRadius = 6378137.0;
-        double dLat = radiusMeters / earthRadius;
-        double dLng = radiusMeters / (earthRadius * Math.cos(Math.toRadians(lat)));
-
-        double minLat = lat - Math.toDegrees(dLat);
-        double maxLat = lat + Math.toDegrees(dLat);
-        double minLng = lng - Math.toDegrees(dLng);
-        double maxLng = lng + Math.toDegrees(dLng);
+        double[] bbox = computeBoundingBox(lat, lng, radiusMeters);
+        double minLat = bbox[0], maxLat = bbox[1], minLng = bbox[2], maxLng = bbox[3];
 
         double latStep = (maxLat - minLat) / GRID_SIZE;
         double lngStep = (maxLng - minLng) / GRID_SIZE;
@@ -179,8 +176,14 @@ public class StoreServiceImpl implements StoreService {
 
         log.info("카테고리 기반 반경 검색 실행: {}, 반경: {}m", category, radiusMeters);
 
-        List<Store> limitedStores = storeRepository.findRandomStoresByCategory(category, lat, lng, radiusMeters, FINAL_LIMIT);
+        List<Long> storeIds = new ArrayList<>(storeRepository.findRandomStoreIdsByCategory(
+                category, lat, lng, radiusMeters, FINAL_LIMIT));
+        if (storeIds.isEmpty()) {
+            return Collections.emptyList();
+        }
 
+        Collections.shuffle(storeIds);
+        List<Store> limitedStores = storeRepository.findAllByStoreIdInWithPartner(storeIds);
         if (limitedStores.isEmpty()) {
             return Collections.emptyList();
         }
@@ -190,11 +193,7 @@ public class StoreServiceImpl implements StoreService {
                 .distinct()
                 .toList();
 
-        // [변경] findNearby와 동일하게 benefitRepository/tierBenefitRepository 직접 조회 제거.
-        // 기존: allBenefits, allTierBenefits를 각각 DB에서 일괄 조회 후 두 개의 맵으로 구성.
-        // 변경 후: 캐시 서비스 호출 한 번으로 파트너별 혜택 맵 구성.
-        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerIds.stream()
-                .collect(Collectors.toMap(id -> id, partnerBenefitCacheService::getBenefits));
+        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
 
         return limitedStores.stream()
                 .map(store -> {
@@ -241,7 +240,7 @@ public class StoreServiceImpl implements StoreService {
                 searchResult.nameMatchIds().stream()
         ).toList();
 
-        List<Store> allStores = storeRepository.findAllById(allIds);
+        List<Store> allStores = storeRepository.findAllByStoreIdInWithPartner(allIds);
         if (allStores.isEmpty()) {
             return Collections.emptyList();
         }
@@ -251,8 +250,7 @@ public class StoreServiceImpl implements StoreService {
                 .distinct()
                 .toList();
 
-        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerIds.stream()
-                .collect(Collectors.toMap(id -> id, partnerBenefitCacheService::getBenefits));
+        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
 
         // storeId → DTO 맵 구성
         Map<Long, StoreDetailResponse> dtoMap = allStores.stream()

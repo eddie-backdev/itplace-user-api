@@ -12,10 +12,12 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     @Query(
             value = """
                     SELECT storeId FROM store
-                    WHERE
-                        longitude BETWEEN :minLng AND :maxLng
-                        AND latitude BETWEEN :minLat AND :maxLat
-                        AND ST_DistanceSphere(location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) <= :radiusMeters
+                    WHERE ST_DWithin(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+                        :radiusMeters
+                    )
+                    LIMIT :limit
                     """,
             nativeQuery = true
     )
@@ -23,10 +25,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("lat") double lat,
             @Param("lng") double lng,
             @Param("radiusMeters") double radiusMeters,
-            @Param("minLat") double minLat,
-            @Param("maxLat") double maxLat,
-            @Param("minLng") double minLng,
-            @Param("maxLng") double maxLng
+            @Param("limit") int limit
     );
 
     @Query(
@@ -35,9 +34,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     WHERE
                         longitude BETWEEN :minLng AND :maxLng
                         AND latitude BETWEEN :minLat AND :maxLat
-                    ORDER BY RANDOM()
                     LIMIT :limit
-                    """,
+""",
             nativeQuery = true
     )
     List<Long> findRandomStoreIdsInBounds(
@@ -50,23 +48,29 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    SELECT s.*
+                    SELECT s.storeId
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE p.category = :category
-                    AND ST_DistanceSphere(s.location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) <= :radiusMeters
-                    ORDER BY RANDOM()
+                    AND ST_DWithin(
+                        s.location::geography,
+                        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+                        :radiusMeters
+                    )
                     LIMIT :limit
                     """,
             nativeQuery = true
     )
-    List<Store> findRandomStoresByCategory(
+    List<Long> findRandomStoreIdsByCategory(
             @Param("category") String category,
             @Param("lat") double lat,
             @Param("lng") double lng,
             @Param("radiusMeters") double radiusMeters,
             @Param("limit") int limit
     );
+
+    @Query("SELECT s FROM Store s JOIN FETCH s.partner WHERE s.storeId IN :storeIds")
+    List<Store> findAllByStoreIdInWithPartner(@Param("storeIds") List<Long> storeIds);
 
     @Query(
             value = """
