@@ -92,7 +92,7 @@ public class UserFeatureServiceImpl implements UserFeatureService {
                 .map(Map.Entry::getKey)
                 .toList();
 
-        Map<Long, Benefit> benefitMap = benefitRepo.findAllById(sortedBenefitIds).stream()
+        Map<Long, Benefit> benefitMap = benefitRepo.findAllByIdWithPartner(sortedBenefitIds).stream()
                 .collect(Collectors.toMap(Benefit::getBenefitId, b -> b));
 
         List<String> topPartners = sortedBenefitIds.stream()
