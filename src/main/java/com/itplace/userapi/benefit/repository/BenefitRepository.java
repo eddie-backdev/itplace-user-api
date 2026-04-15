@@ -24,6 +24,9 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
     @Query("SELECT b FROM Benefit b JOIN FETCH b.partner WHERE b.partner.partnerId IN :partnerIds")
     List<Benefit> findAllByPartnerIdsWithPartner(@Param("partnerIds") List<Long> partnerIds);
 
+    @Query("SELECT b FROM Benefit b JOIN FETCH b.partner WHERE b.benefitId IN :benefitIds")
+    List<Benefit> findAllByIdWithPartner(@Param("benefitIds") List<Long> benefitIds);
+
     @Query(
             value = """
                 SELECT b.* FROM benefit b
