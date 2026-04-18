@@ -6,6 +6,7 @@ import com.itplace.userapi.ai.forbiddenword.repository.ExceptionWordRepository;
 import com.itplace.userapi.ai.forbiddenword.repository.ForbiddenWordRepository;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayDeque;
+import org.springframework.scheduling.annotation.Scheduled;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +58,7 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
         buildFailureLinks();
     }
 
+    @Scheduled(fixedDelay = 600_000)
     @Override
     public void reloadForbiddenWords() {
         synchronized (root) {
