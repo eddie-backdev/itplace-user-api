@@ -38,6 +38,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                        (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
                        (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                  AND (:carrier IS NULL OR b.carrier = :carrier)
                 GROUP BY b.benefitId
                 ORDER BY COUNT(f.benefitId) DESC
             """,
@@ -51,6 +52,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                        (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
                        (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                  AND (:carrier IS NULL OR b.carrier = :carrier)
             """,
             nativeQuery = true
     )
@@ -59,6 +61,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
             @Param("category") String category,
             @Param("filter") String filter,
             @Param("keyword") String keyword,
+            @Param("carrier") String carrier,
             Pageable pageable
     );
 

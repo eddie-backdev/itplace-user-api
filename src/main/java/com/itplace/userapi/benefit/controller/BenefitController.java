@@ -5,6 +5,7 @@ import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
 import com.itplace.userapi.common.PageResult;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.service.BenefitService;
@@ -34,6 +35,7 @@ public class BenefitController {
             @RequestParam(required = false) UsageType filter,
             @RequestParam(required = false, defaultValue = "POPULARITY") String sort,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Carrier carrier,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size
@@ -41,7 +43,7 @@ public class BenefitController {
         Pageable pageable = PageRequest.of(page, size);
         Long userId = (principalDetails != null) ? principalDetails.getUserId() : null;
         PageResult<BenefitListResponse> result = benefitService.getBenefitList(
-                mainCategory, category, filter, keyword, userId, pageable
+                mainCategory, category, filter, keyword, carrier, userId, pageable
         );
         ApiResponse<PageResult<BenefitListResponse>> body = ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result);
         return new ResponseEntity<>(body, body.getStatus());

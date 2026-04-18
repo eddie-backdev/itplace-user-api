@@ -4,6 +4,7 @@ import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
 import com.itplace.userapi.common.PageResult;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,7 @@ public interface BenefitService {
             String category,
             UsageType filter,
             String keyword,
+            Carrier carrier,
             Long userId,
             Pageable pageable
     );
