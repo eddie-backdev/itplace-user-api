@@ -2,6 +2,7 @@ package com.itplace.userapi.benefit.entity;
 
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
 import com.itplace.userapi.benefit.entity.enums.BenefitTypeConverter;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.MainCategoryConverter;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
@@ -11,6 +12,8 @@ import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.partner.entity.Partner;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Entity;
@@ -65,6 +68,9 @@ public class Benefit extends BaseTimeEntity {
 
     @Column(length = 512)
     private String url;
+
+    @Enumerated(EnumType.STRING)
+    private Carrier carrier;
 
     // 일단 benefit 삭제 시 외래키 제약 위반 걸어줘서 오류 처리
     // 즐겨찾기 먼저 제거 -> 혜택 삭제
