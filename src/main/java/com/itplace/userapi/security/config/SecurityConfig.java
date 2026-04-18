@@ -85,6 +85,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users").authenticated()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers(
                                 "/api/v1/questions/search",
                                 "/api/v1/questions/recommend",
