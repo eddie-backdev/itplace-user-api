@@ -2,11 +2,85 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
+  datasource:
+    source:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: "jdbc:postgresql://localhost:5432/itplace"
+      username: postgres
+      password: "!Password1127"
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+    replica:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: "jdbc:postgresql://localhost:5432/itplace"
+      username: postgres
+      password: "!Password1127"
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+    mongodb:
+      uri: "mongodb://localhost:27017/itPlace"
+
+  jwt:
+    secret: "localDevSecretKeyForJWTTokenGenerationMustBe256BitsLong1234567890AB"
+    access-token-validity-in-seconds: 3600
+    refresh-token-validity-in-seconds: 86400
+
   ai:
+    openai:
+      api-key: "sk-placeholder-local-dev"
+      organization-id: "org-placeholder"
     chat:
-      # 로컬 환경에서는 classpath에서 프롬프트 파일을 읽도록 경로를 덮어씁니다.
       categorizePrompt: classpath:prompt/categorizePrompt.txt
       reasonPrompt: classpath:prompt/reasonPrompt.txt
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: "http://localhost:8080/login/oauth2/code/kakao"
+            client-id: "placeholder-kakao-client-id"
+            client-secret: "placeholder-kakao-client-secret"
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: "placeholder@gmail.com"
+    password: "placeholder"
+
+elasticsearch:
+  host: localhost
+  port: 9200
+  username: elastic
+  password: "!Password1127"
+  scheme: http
+
+coolsms:
+  api:
+    key: "placeholder-coolsms-key"
+    secret: "placeholder-coolsms-secret"
+  fromPhone: "01000000000"
+
+google:
+  recaptcha:
+    key:
+      secret: "placeholder-recaptcha-secret"
+
+app:
+  cookie:
+    domain: localhost
+  oauth2:
+    new-user-redirect-uri: "http://localhost:5173/login?step=phoneAuth&verifiedType=oauth"
+    exist-user-redirect-uri: "http://localhost:5173/login?oauth=processing"
 
 logging:
   level:
