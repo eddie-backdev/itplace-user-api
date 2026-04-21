@@ -211,6 +211,7 @@ public class StoreServiceImpl implements StoreService {
                             store.getLocation().getY(), store.getLocation().getX());
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
+                .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
                 .toList();
     }
 
@@ -228,8 +229,15 @@ public class StoreServiceImpl implements StoreService {
             category = category.trim();
         }
 
-        // 1단계: ES nori 형태소 분석으로 브랜드 매치 / 매장명 매치 분리
-        StoreSearchResult searchResult = storeSearchService.searchByKeyword(keyword, category);
+        StoreSearchResult searchResult;
+        try {
+            // 1단계: ES nori 형태소 분석으로 브랜드 매치 / 매장명 매치 분리
+            searchResult = storeSearchService.searchByKeyword(keyword, category);
+        } catch (RuntimeException e) {
+            log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: keyword={}, category={}", keyword, category, e);
+            List<Store> fallbackStores = storeRepository.searchNearbyStores(lng, lat, category, keyword);
+            return toStoreDetailResponses(fallbackStores, userLat, userLng);
+        }
         if (searchResult.isEmpty()) {
             return Collections.emptyList();
         }
@@ -285,6 +293,36 @@ public class StoreServiceImpl implements StoreService {
                         .filter(Objects::nonNull)
                         .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
         ).toList();
+    }
+
+    private List<StoreDetailResponse> toStoreDetailResponses(List<Store> stores, double userLat, double userLng) {
+        if (stores.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> partnerIds = stores.stream()
+                .map(store -> store.getPartner().getPartnerId())
+                .distinct()
+                .toList();
+
+        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
+
+        return stores.stream()
+                .map(store -> {
+                    Partner partner = store.getPartner();
+                    double distance = userLat == 0 || userLng == 0
+                            ? 0 : calculateDistance(userLat, userLng,
+                            store.getLocation().getY(), store.getLocation().getX());
+                    List<BenefitCacheDto> finalBenefits = selectBenefits(
+                            partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
+                            store.getStoreName()
+                    );
+                    List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
+                            .flatMap(b -> b.getTierBenefits().stream())
+                            .toList();
+                    return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
+                })
+                .toList();
     }
 
     @Override

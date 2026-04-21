@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +51,8 @@ public class ScratchServiceImpl implements ScratchService {
             List<Gift> availableGifts = giftRepository.findAvailableGiftsForUpdate();
             if (!availableGifts.isEmpty()) {
                 selectedGift = weightedRandomGift(availableGifts);
+            }
+            if (selectedGift != null) {
                 selectedGift.setGiftCount(selectedGift.getGiftCount() - 1);
             } else {
                 isSuccess = false;
@@ -75,20 +78,32 @@ public class ScratchServiceImpl implements ScratchService {
     // 상품별 당첨 가중치 조절
     private Gift weightedRandomGift(List<Gift> gifts) {
         int totalWeight = gifts.stream()
-                .mapToInt(Gift::getTotal)
+                .map(Gift::getTotal)
+                .filter(Objects::nonNull)
+                .filter(weight -> weight > 0)
+                .mapToInt(Integer::intValue)
                 .sum();
+
+        if (totalWeight <= 0) {
+            return null;
+        }
 
         int randomValue = SECURE_RANDOM.nextInt(totalWeight);
         int cumulativeWeight = 0;
 
         for (Gift gift : gifts) {
-            cumulativeWeight += gift.getTotal();
+            Integer weight = gift.getTotal();
+            if (weight == null || weight <= 0) {
+                continue;
+            }
+
+            cumulativeWeight += weight;
             if (randomValue < cumulativeWeight) {
                 return gift;
             }
         }
 
-        return gifts.get(0);
+        return null;
     }
 
 

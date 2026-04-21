@@ -131,11 +131,15 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(principalDetails.getUserId())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        if (passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        } else {
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new PasswordMismatchException(SecurityCode.PASSWORD_MISMATCH);
         }
+
+        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            throw new PasswordMismatchException(SecurityCode.PASSWORD_MISMATCH);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
     }
 
     @Override
