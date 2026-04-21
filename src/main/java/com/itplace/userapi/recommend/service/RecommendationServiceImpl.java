@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -58,7 +59,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
         List<Long> allBenefitIds = recommendations.stream()
-                .flatMap(dto -> dto.getBenefitIds().stream())
+                .flatMap(dto -> benefitIdsOf(dto).stream())
                 .distinct()
                 .collect(Collectors.toList());
 
@@ -67,8 +68,9 @@ public class RecommendationServiceImpl implements RecommendationService {
 
         List<Recommendation> entities = recommendations.stream()
                 .map(dto -> {
-                    List<Benefit> benefits = dto.getBenefitIds().stream()
+                    List<Benefit> benefits = benefitIdsOf(dto).stream()
                             .map(benefitMap::get)
+                            .filter(Objects::nonNull)
                             .collect(Collectors.toList());
                     return RecommendationMapper.toEntity(dto, user, benefits);
                 })
@@ -79,5 +81,12 @@ public class RecommendationServiceImpl implements RecommendationService {
         return recommendations;
     }
 
-}
+    private List<Long> benefitIdsOf(Recommendations dto) {
+        if (dto.getBenefitIds() == null) {
+            return List.of();
+        }
 
+        return dto.getBenefitIds();
+    }
+
+}

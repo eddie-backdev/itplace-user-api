@@ -134,8 +134,8 @@ public class BenefitServiceImpl implements BenefitService {
                 .benefitName(benefit.getBenefitName())
                 .description(benefit.getDescription())
                 .benefitLimit(benefit.getBenefitPolicy().getName())
-                .manual(benefit.getManual().trim())
-                .url(benefit.getUrl().trim())
+                .manual(trimNullable(benefit.getManual()))
+                .url(trimNullable(benefit.getUrl()))
                 .partnerName(benefit.getPartner().getPartnerName())
                 .image(benefit.getPartner().getImage())
                 .build();
@@ -183,10 +183,14 @@ public class BenefitServiceImpl implements BenefitService {
                 .benefitName(selected.getBenefitName())
                 .mainCategory(selected.getMainCategory())
                 .manual(selected.getManual())
-                .url(selected.getUrl().trim())
+                .url(trimNullable(selected.getUrl()))
                 .tierBenefits(tierDtos)
                 .isFavorite(isFavorite)
                 .build();
+    }
+
+    private String trimNullable(String value) {
+        return value == null ? null : value.trim();
     }
 
 }
