@@ -11,7 +11,7 @@ fi
 REGISTRY_HOST="${REGISTRY_HOST:-ghcr.io}"
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-ghcr.io/eddie-backdev/itplace-user-api}"
 APP_NETWORK="${APP_NETWORK:-app-network}"
-ENV_FILE="${ENV_FILE:-/home/ubuntu/userapi.env}"
+ENV_FILE="${ENV_FILE:-/home/ubuntu/app/env/userapi.env}"
 UPSTREAM_FILE="${UPSTREAM_FILE:-/home/ubuntu/app/nginx/conf.d/userapi-upstream.conf}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-nginx-proxy}"
 APP_PORT="${APP_PORT:-8080}"
