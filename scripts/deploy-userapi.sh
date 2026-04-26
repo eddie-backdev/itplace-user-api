@@ -19,6 +19,8 @@ HEALTH_ENDPOINT="${HEALTH_ENDPOINT:-/actuator/health}"
 HEALTH_CHECK_IMAGE="${HEALTH_CHECK_IMAGE:-curlimages/curl:8.7.1}"
 GHCR_USERNAME="${GHCR_USERNAME:-}"
 GHCR_TOKEN="${GHCR_TOKEN:-}"
+LOGS_DIR="${LOGS_DIR:-/home/ubuntu/app/logs/userapi}"
+PROMPTS_DIR="${PROMPTS_DIR:-/home/ubuntu/prompts}"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "[userapi] env file not found: ${ENV_FILE}"
@@ -29,6 +31,8 @@ if [[ ! -f "${UPSTREAM_FILE}" ]]; then
   echo "[userapi] upstream file not found: ${UPSTREAM_FILE}"
   exit 1
 fi
+
+mkdir -p "${LOGS_DIR}"
 
 if grep -q "userapi-blue" "${UPSTREAM_FILE}"; then
   ACTIVE="blue"
@@ -58,6 +62,8 @@ docker run -d \
   --restart unless-stopped \
   --network "${APP_NETWORK}" \
   --env-file "${ENV_FILE}" \
+  -v "${LOGS_DIR}:/app/logs" \
+  -v "${PROMPTS_DIR}:/app/prompts" \
   "${IMAGE}"
 
 echo "[userapi] waiting for health check ${HEALTH_ENDPOINT}"
