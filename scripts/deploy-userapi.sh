@@ -17,6 +17,8 @@ NGINX_CONTAINER="${NGINX_CONTAINER:-nginx-proxy}"
 APP_PORT="${APP_PORT:-8080}"
 HEALTH_ENDPOINT="${HEALTH_ENDPOINT:-/actuator/health}"
 HEALTH_CHECK_IMAGE="${HEALTH_CHECK_IMAGE:-curlimages/curl:8.7.1}"
+HEALTH_CHECK_MAX_ATTEMPTS="${HEALTH_CHECK_MAX_ATTEMPTS:-30}"
+HEALTH_CHECK_INTERVAL_SECONDS="${HEALTH_CHECK_INTERVAL_SECONDS:-2}"
 GHCR_USERNAME="${GHCR_USERNAME:-}"
 GHCR_TOKEN="${GHCR_TOKEN:-}"
 LOGS_DIR="${LOGS_DIR:-/home/ubuntu/app/logs/userapi}"
@@ -82,7 +84,7 @@ docker run -d \
 
 echo "[userapi] waiting for health check ${HEALTH_ENDPOINT}"
 
-for i in {1..24}; do
+for ((i=1; i<=HEALTH_CHECK_MAX_ATTEMPTS; i++)); do
   if docker run --rm \
     --network "${APP_NETWORK}" \
     "${HEALTH_CHECK_IMAGE}" \
@@ -91,13 +93,13 @@ for i in {1..24}; do
     break
   fi
 
-  if [[ "${i}" -eq 24 ]]; then
+  if [[ "${i}" -eq "${HEALTH_CHECK_MAX_ATTEMPTS}" ]]; then
     echo "[userapi] health check failed"
     docker logs "${NEW_CONTAINER}" || true
     exit 1
   fi
 
-  sleep 5
+  sleep "${HEALTH_CHECK_INTERVAL_SECONDS}"
 done
 
 cat > "${UPSTREAM_FILE}" <<EOF
