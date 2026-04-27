@@ -21,6 +21,7 @@ HEALTH_CHECK_MAX_ATTEMPTS="${HEALTH_CHECK_MAX_ATTEMPTS:-30}"
 HEALTH_CHECK_INTERVAL_SECONDS="${HEALTH_CHECK_INTERVAL_SECONDS:-2}"
 GHCR_USERNAME="${GHCR_USERNAME:-}"
 GHCR_TOKEN="${GHCR_TOKEN:-}"
+LOCAL_IMAGE_NAME="${LOCAL_IMAGE_NAME:-itplace-user-api}"
 LOGS_DIR="${LOGS_DIR:-/home/ubuntu/app/logs/userapi}"
 PROMPTS_DIR="${PROMPTS_DIR:-/home/ubuntu/prompts}"
 
@@ -47,6 +48,7 @@ fi
 NEW_CONTAINER="userapi-${INACTIVE}"
 OLD_CONTAINER="userapi-${ACTIVE}"
 IMAGE="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+LOCAL_IMAGE="${LOCAL_IMAGE_NAME}:${IMAGE_TAG}"
 SWITCHED_TO_NEW="false"
 
 cleanup_old_container() {
@@ -64,6 +66,7 @@ trap cleanup_old_container EXIT
 
 echo "[userapi] active=${ACTIVE}, inactive=${INACTIVE}"
 echo "[userapi] deploying image=${IMAGE}"
+echo "[userapi] local image alias=${LOCAL_IMAGE}"
 
 docker rm -f "${NEW_CONTAINER}" >/dev/null 2>&1 || true
 
@@ -72,6 +75,7 @@ if [[ -n "${GHCR_USERNAME}" && -n "${GHCR_TOKEN}" ]]; then
 fi
 
 docker pull "${IMAGE}"
+docker tag "${IMAGE}" "${LOCAL_IMAGE}"
 
 docker run -d \
   --name "${NEW_CONTAINER}" \
@@ -80,7 +84,7 @@ docker run -d \
   --env-file "${ENV_FILE}" \
   -v "${LOGS_DIR}:/app/logs" \
   -v "${PROMPTS_DIR}:/app/prompts" \
-  "${IMAGE}"
+  "${LOCAL_IMAGE}"
 
 echo "[userapi] waiting for health check ${HEALTH_ENDPOINT}"
 
