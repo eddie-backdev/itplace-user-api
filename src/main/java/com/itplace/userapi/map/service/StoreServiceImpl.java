@@ -46,8 +46,8 @@ public class StoreServiceImpl implements StoreService {
     private final StoreSearchService storeSearchService;
 
     private static final int GRID_SIZE = 5;
-    private static final int STORES_PER_CELL = 5;
-    private static final int FINAL_LIMIT = 50;
+    private static final int STORES_PER_CELL = 15;
+    private static final int FINAL_LIMIT = 300;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
