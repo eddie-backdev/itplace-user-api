@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Map", description = "지도 기능 관련 API")
 @RequestMapping("/api/v1/maps")
 @RequiredArgsConstructor
 @Validated
@@ -27,7 +28,7 @@ public class StoreController {
     public ResponseEntity<ApiResponse<?>> getNearby(
             @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
             @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
-            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("50000.0") double radiusMeters,
+            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
@@ -42,7 +43,7 @@ public class StoreController {
     public ResponseEntity<ApiResponse<?>> getNearbyCategory(
             @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
             @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
-            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("50000.0") double radiusMeters,
+            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
