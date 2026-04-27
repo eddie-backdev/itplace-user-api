@@ -45,6 +45,20 @@ fi
 NEW_CONTAINER="userapi-${INACTIVE}"
 OLD_CONTAINER="userapi-${ACTIVE}"
 IMAGE="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+SWITCHED_TO_NEW="false"
+
+cleanup_old_container() {
+  if [[ "${SWITCHED_TO_NEW}" != "true" ]]; then
+    return 0
+  fi
+
+  if docker ps -a --format '{{.Names}}' | grep -qx "${OLD_CONTAINER}"; then
+    echo "[userapi] removing old container ${OLD_CONTAINER}"
+    docker rm -f "${OLD_CONTAINER}" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup_old_container EXIT
 
 echo "[userapi] active=${ACTIVE}, inactive=${INACTIVE}"
 echo "[userapi] deploying image=${IMAGE}"
@@ -97,6 +111,13 @@ docker exec "${NGINX_CONTAINER}" nginx -s reload
 
 echo "[userapi] switched traffic to ${NEW_CONTAINER}"
 
-docker rm -f "${OLD_CONTAINER}" >/dev/null 2>&1 || true
+SWITCHED_TO_NEW="true"
+cleanup_old_container
+
+if docker ps -a --format '{{.Names}}' | grep -qx "${OLD_CONTAINER}"; then
+  echo "[userapi] old container still exists after cleanup: ${OLD_CONTAINER}" >&2
+  docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep "${OLD_CONTAINER}" >&2 || true
+  exit 1
+fi
 
 echo "[userapi] deploy complete"
