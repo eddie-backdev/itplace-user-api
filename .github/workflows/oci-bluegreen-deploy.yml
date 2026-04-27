@@ -26,6 +26,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build application JAR
+        run: ./gradlew bootJar -x test --no-daemon
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
