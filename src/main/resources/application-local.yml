@@ -27,7 +27,7 @@ spring:
       port: 6379
       password: ""
     mongodb:
-      uri: "mongodb://localhost:27017/itPlace"
+      uri: ${MONGODB_URI:mongodb://root:%21Password1127@localhost:27017/itplace?authSource=admin}
 
   jwt:
     secret: "localDevSecretKeyForJWTTokenGenerationMustBe256BitsLong1234567890AB"
@@ -79,7 +79,7 @@ app:
   cookie:
     domain: localhost
   oauth2:
-    new-user-redirect-uri: "http://localhost:5173/login?step=phoneAuth&verifiedType=oauth"
+    new-user-redirect-uri: "http://localhost:5173/login?step=oauthIntegration&verifiedType=oauth"
     exist-user-redirect-uri: "http://localhost:5173/login?oauth=processing"
 
 logging:

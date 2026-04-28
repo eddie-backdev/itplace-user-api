@@ -21,23 +21,7 @@ public enum SecurityCode implements BaseCode {
     // 회원가입
     PASSWORD_MISMATCH("PASSWORD_MISMATCH", HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다."),
     SIGNUP_SUCCESS("SIGNUP_SUCCESS", HttpStatus.OK, "성공적으로 회원가입 되었습니다."),
-    LOAD_OAUTH_DATA_SUCCESS("LOAD_OAUTH_DATA_SUCCESS", HttpStatus.OK, "성공적으로 OAuth 정보를 불러왔습니다."),
-    LINK_LOCAL_SUCCESS("LINK_LOCAL_SUCCESS", HttpStatus.OK, "로컬 계정이 소셜 계정에 성공적으로 연결되었습니다."),
-    LINK_OAUTH_SUCCESS("LINK_OAUTH_SUCCESS", HttpStatus.OK, "소셜 계정이 로컬 계정에 성공적으로 연동되었습니다."),
     INVALID_INPUT_VALUE("INVALID_INPUT_VALUE", HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
-    UPLUS_DATA_FOUND("UPLUS_DATA_FOUND", HttpStatus.OK, "Uplus 데이터를 성공적으로 불러왔습니다."),
-    UPLUS_DATA_NOT_FOUND("UPLUS_DATA_NOT_FOUND", HttpStatus.BAD_REQUEST, "Uplus 데이터를 불러오지 못했습니다."),
-
-    // 휴대폰
-    PHONE_NUMBER_PATTERN_ERROR("PHONE_NUMBER_PATTERN_ERROR", HttpStatus.BAD_REQUEST, "올바른 전화번호 형식이 아닙니다."),
-    SMS_CODE_EXPIRED("SMS_CODE_EXPIRED", HttpStatus.BAD_REQUEST, "문자 인증 코드가 만료되었습니다."),
-    SMS_CODE_MISMATCH("SMS_CODE_MISMATCH", HttpStatus.BAD_REQUEST, "문자 인증 코드가 일치하지 않습니다."),
-    SMS_CODE_FAILURE("SMS_CODE__FAILURE", HttpStatus.BAD_REQUEST, "문자 인증에 실패했습니다."),
-    SMS_SEND_SUCCESS("SMS_SEND_SUCCESS", HttpStatus.OK, "문자 인증 코드가 성공적으로 발송되었습니다."),
-    SMS_SEND_FAILURE("SMS_SEND_FAILURE", HttpStatus.INTERNAL_SERVER_ERROR, "문자 인증 코드 발송에 실패했습니다."),
-    SMS_VERIFICATION_SUCCESS("SMS_VERIFICATION_SUCCESS", HttpStatus.OK, "휴대폰 번호 인증에 성공했습니다."),
-    SMS_VERIFICATION_FAILURE("SMS_VERIFICATION_FAILURE", HttpStatus.BAD_REQUEST, "휴대폰 번호 인증에 실패했습니다."),
-    DUPLICATE_PHONE_NUMBER("DUPLICATE_PHONE_NUMBER", HttpStatus.CONFLICT, "이미 사용 중인 전화번호입니다."),
 
     // 이메일
     EMAIL_CODE_EXPIRED("EMAIL_CODE_EXPIRED", HttpStatus.BAD_REQUEST, "이메일 인증 코드가 만료되었습니다."),

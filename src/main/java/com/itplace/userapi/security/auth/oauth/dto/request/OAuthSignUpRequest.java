@@ -2,10 +2,10 @@ package com.itplace.userapi.security.auth.oauth.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.itplace.userapi.user.entity.Gender;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Pattern;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,6 +17,10 @@ public class OAuthSignUpRequest {
     @NotBlank(message = "이름은 필수 항목입니다.")
     private String name;
 
+    @NotBlank(message = "이메일은 필수 항목입니다.")
+    @Email(message = "유효한 이메일 형식이 아닙니다.")
+    private String email;
+
     @NotNull(message = "성별은 필수 항목입니다.")
     private Gender gender;
 
@@ -24,10 +28,6 @@ public class OAuthSignUpRequest {
     @Past(message = "생년월일은 과거 날짜여야 합니다.")
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthday;
-
-    @NotBlank(message = "전화번호는 필수 항목입니다.")
-    @Pattern(regexp = "^010[0-9]{8}$", message = "전화번호 형식이 올바르지 않습니다.")
-    private String phoneNumber;
 
     private String membershipId;
 }

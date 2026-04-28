@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Auth", description = "사용자 인증 관련 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth/oauth")
@@ -32,7 +33,7 @@ public class OAuthController {
     private final CookieUtil cookieUtil;
 
     /**
-     * 신규 사용자가 휴대폰 인증 후, 추가 정보를 입력하여 최종 가입할 때 호출됩니다.
+     * 신규 사용자가 이메일 인증을 포함한 추가 정보를 입력하여 최종 가입할 때 호출됩니다.
      */
     @PostMapping("/signUp")
     public ResponseEntity<ApiResponse<LoginResponse>> oauthSignUpNew(
@@ -47,7 +48,7 @@ public class OAuthController {
     }
 
     /**
-     * 기존 사용자가 휴대폰 인증 후, 자신의 계정에 소셜 계정을 연동할 때 호출됩니다.
+     * 기존 사용자가 이메일 기준으로 자신의 계정에 소셜 계정을 연동할 때 호출됩니다.
      */
     @PostMapping("/link")
     public ResponseEntity<ApiResponse<LoginResponse>> oauthSignUpLink(
