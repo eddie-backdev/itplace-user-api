@@ -6,21 +6,18 @@ import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.exception.EmailVerificationException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
-import com.itplace.userapi.security.exception.SmsVerificationException;
-import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.verification.OtpUtil;
 import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
-import com.itplace.userapi.user.dto.request.FindEmailConfirmRequest;
 import com.itplace.userapi.user.dto.request.ResetPasswordRequest;
 import com.itplace.userapi.user.dto.response.CheckUplusDataResponse;
-import com.itplace.userapi.user.dto.response.FindEmailResponse;
 import com.itplace.userapi.user.dto.response.FindPasswordConfirmResponse;
 import com.itplace.userapi.user.dto.response.UserInfoResponse;
 import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.entity.UplusData;
 import com.itplace.userapi.user.entity.User;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.repository.MembershipRepository;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
 import com.itplace.userapi.user.repository.UplusDataRepository;
@@ -72,22 +69,6 @@ public class UserServiceImpl implements UserService {
                 .membershipId(membership != null ? membership.getMembershipId() : null)
                 .membershipGrade(membership != null ? membership.getGrade() : null)
                 .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public FindEmailResponse findEmailConfirm(FindEmailConfirmRequest request) {
-        if (otpUtil.validateSmsOtp(request.getPhoneNumber(), request.getVerificationCode())) {
-            log.info("SMS 인증 성공");
-            User user = userRepository.findByPhoneNumberAndName(request.getPhoneNumber(), request.getName())
-                    .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
-            return FindEmailResponse.builder()
-                    .email(user.getEmail())
-                    .build();
-        } else {
-            log.info("SMS 인증 실패");
-            throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
-        }
     }
 
     @Override
@@ -148,7 +129,6 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(UserCode.USER_NOT_FOUND));
 
-        // 비밀번호 일치 여부 확인
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new PasswordMismatchException(SecurityCode.PASSWORD_MISMATCH);
         }
@@ -164,7 +144,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(principalDetails.getUserId())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         String phoneNumber = user.getPhoneNumber();
-        boolean uplusDataExists = uplusDataRepository.findByPhoneNumber(phoneNumber).isPresent();
+        boolean uplusDataExists = phoneNumber != null && uplusDataRepository.findByPhoneNumber(phoneNumber).isPresent();
         return CheckUplusDataResponse.builder()
                 .uplusDataExists(uplusDataExists)
                 .build();
@@ -176,6 +156,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(principalDetails.getUserId())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         String phoneNumber = user.getPhoneNumber();
+        if (phoneNumber == null) {
+            throw new UserNotFoundException(UserCode.UPLUS_DATA_NOT_EXISTS);
+        }
         UplusData uplusData = uplusDataRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new UserNotFoundException(UserCode.UPLUS_DATA_NOT_EXISTS));
         user.setGender(uplusData.getGender());

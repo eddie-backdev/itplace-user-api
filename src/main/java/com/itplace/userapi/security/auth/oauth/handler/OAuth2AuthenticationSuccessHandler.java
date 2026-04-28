@@ -43,7 +43,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 
         if (oAuth2User.isNewUser()) {
-            // Case 1: 신규 사용자 -> 임시 토큰 발급 및 휴대폰 인증 페이지로 리다이렉트
+            // Case 1: 신규 사용자 -> 임시 토큰 발급 및 추가 정보 입력 페이지로 리다이렉트
             log.info("신규 OAuth 사용자. 추가 정보 입력 페이지로 리다이렉트합니다.");
             String tempToken = jwtUtil.createTempJwt(oAuth2User.getProvider(), oAuth2User.getProviderId());
 
@@ -57,7 +57,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                     .build();
             response.addHeader("Set-Cookie", tempTokenCookie.toString());
 
-            // 프론트엔드의 휴대폰 인증 및 추가 정보 입력 페이지로 리다이렉트
+            // 프론트엔드의 추가 정보 입력 페이지로 리다이렉트
             getRedirectStrategy().sendRedirect(request, response, newUserRedirectUri);
         } else {
             // Case 2: 기존 사용자 -> 즉시 로그인 성공 처리 (JWT 발급)

@@ -7,7 +7,6 @@ import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthLinkRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthSignUpRequest;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
-import com.itplace.userapi.security.exception.DuplicatePhoneNumberException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.jwt.JWTConstants;
@@ -47,30 +46,9 @@ public class OAuthServiceImpl implements OAuthService {
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        // 신규 가입이므로, 해당 휴대폰 번호로 가입된 유저가 없어야 함
-        userRepository.findByPhoneNumber(request.getPhoneNumber()).ifPresent(u -> {
-            throw new DuplicatePhoneNumberException(SecurityCode.DUPLICATE_PHONE_NUMBER);
-        });
-
-        String membershipId = request.getMembershipId();
-        if (membershipId != null && membershipId.isEmpty()) {
-            membershipId = null;
-        }
-
-        User user = User.builder()
-                .name(request.getName())
-                .phoneNumber(request.getPhoneNumber())
-                .gender(request.getGender())
-                .birthday(request.getBirthday())
-                .membershipId(membershipId)
-                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                .role(Role.USER)
-                .build();
-
-        user.getSocialAccounts().add(SocialAccount.builder()
-                .provider(provider).providerId(providerId).user(user).build());
-
-        userRepository.save(user);
+        User user = userRepository.findByEmail(request.getEmail())
+                .map(existingUser -> linkSocialAccount(existingUser, provider, providerId))
+                .orElseGet(() -> createNewSocialUser(request, provider, providerId));
 
         return createAuthResultForUser(user);
     }
@@ -82,18 +60,10 @@ public class OAuthServiceImpl implements OAuthService {
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        // 계정 연동이므로, 해당 휴대폰 번호로 가입된 유저가 반드시 있어야 함
-        User user = userRepository.findByPhoneNumber(request.getPhoneNumber())
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        boolean alreadyLinked = user.getSocialAccounts().stream()
-                .anyMatch(sa -> sa.getProvider().equals(provider) && sa.getProviderId().equals(providerId));
-
-        if (!alreadyLinked) {
-            user.getSocialAccounts().add(SocialAccount.builder()
-                    .provider(provider).providerId(providerId).user(user).build());
-        }
-
+        linkSocialAccount(user, provider, providerId);
         return createAuthResultForUser(user);
     }
 
@@ -125,6 +95,46 @@ public class OAuthServiceImpl implements OAuthService {
             throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
         }
         return jwtUtil.getClaims(tempToken);
+    }
+
+    private User createNewSocialUser(OAuthSignUpRequest request, String provider, String providerId) {
+        String membershipId = request.getMembershipId();
+        if (membershipId != null && membershipId.isEmpty()) {
+            membershipId = null;
+        }
+
+        User user = User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .gender(request.getGender())
+                .birthday(request.getBirthday())
+                .membershipId(membershipId)
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .role(Role.USER)
+                .build();
+
+        user.getSocialAccounts().add(SocialAccount.builder()
+                .provider(provider)
+                .providerId(providerId)
+                .user(user)
+                .build());
+
+        return userRepository.save(user);
+    }
+
+    private User linkSocialAccount(User user, String provider, String providerId) {
+        boolean alreadyLinked = user.getSocialAccounts().stream()
+                .anyMatch(sa -> sa.getProvider().equals(provider) && sa.getProviderId().equals(providerId));
+
+        if (!alreadyLinked) {
+            user.getSocialAccounts().add(SocialAccount.builder()
+                    .provider(provider)
+                    .providerId(providerId)
+                    .user(user)
+                    .build());
+        }
+
+        return user;
     }
 
     private OAuthResult createAuthResultForUser(User user) {

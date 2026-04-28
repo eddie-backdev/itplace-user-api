@@ -52,7 +52,7 @@ class StoreServiceImplTest {
         Store farStore = store(1L, "먼 매장", partner, point(127.10, 37.50));
         Store nearStore = store(2L, "가까운 매장", partner, point(127.01, 37.50));
 
-        when(storeRepository.findRandomStoreIdsByCategory("카페", 37.50, 127.00, 10_000, 50))
+        when(storeRepository.findRandomStoreIdsByCategory("카페", 37.50, 127.00, 10_000, 300))
                 .thenReturn(List.of(1L, 2L));
         when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
                 .thenReturn(List.of(farStore, nearStore));

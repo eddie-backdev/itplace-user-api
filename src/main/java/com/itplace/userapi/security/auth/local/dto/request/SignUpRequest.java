@@ -26,10 +26,6 @@ public class SignUpRequest {
     @Email(message = "유효한 이메일 형식이 아닙니다.")
     private String email;
 
-    @NotBlank(message = "전화번호는 필수 항목입니다.")
-    @Pattern(regexp = "^010[0-9]{8}$", message = "전화번호 형식이 올바르지 않습니다.")
-    private String phoneNumber;
-
     @NotBlank(message = "비밀번호는 필수 항목입니다.")
     @Size(min = 6, max = 30, message = "비밀번호는 6자 이상 30자 이하로 입력해주세요.")
     @Pattern(
@@ -53,6 +49,6 @@ public class SignUpRequest {
 
     @NotNull(message = "생년월일은 필수 입력입니다.")
     @Past(message = "생년월일은 과거 날짜여야 합니다.")
-    @JsonFormat(pattern = "yyyy-MM-dd")  // Jackson이 "2025-07-12" 형식의 문자열을 LocalDate로 변환
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthday;
 }
