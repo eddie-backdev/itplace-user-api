@@ -1,177 +1,49 @@
-# 📌 itPlace – 통신사 멤버십 제휴처 안내 지도 서비스 플랫폼
+# ITPLACE User API
 
-<p align="center">
-  <em>통신사 멤버십 혜택을 한눈에!</em><br>
-  제휴처 위치 안내부터 AI 추천, 통계 관리까지 한 번에 제공하는 플랫폼
-</p>
+ITPLACE 사용자 서비스 백엔드입니다.
+사용자 인증, 혜택 탐색, 지도 기반 제휴처 검색, 관심 혜택, 사용 이력, 이벤트, AI 추천·질문 기능을 제공합니다.
 
----
+## 주요 기능
 
-## 🚀 주요 기능
+- 일반 회원가입 / 로그인 / 로그아웃
+- Kakao OAuth 로그인
+- JWT 기반 인증과 refresh token 처리
+- 이메일 인증과 reCAPTCHA 검증
+- 사용자 정보 조회 / 수정 / 탈퇴
+- LG U+ 멤버십 정보 연동 흐름
+- Kakao 좌표 기반 주변 제휴처 검색
+- 제휴처 카테고리 / 키워드 검색
+- 혜택 목록, 상세, 등급별 혜택 조회
+- 관심 혜택 등록 / 삭제 / 조회
+- 멤버십 혜택 사용 이력과 누적 혜택 금액 조회
+- 스크래치 쿠폰 이벤트와 쿠폰 사용 처리
+- 사용자 행동 로그 저장
+- 개인 맞춤 추천과 AI 질문 응답
+- 사용자 채팅 상담 WebSocket API
+- Swagger / OpenAPI 문서 제공
 
-#### 👤 회원가입/로그인
+## 기술 스택
 
-- 일반 회원가입 및 소셜 로그인 지원
-- LG U+ 멤버십 연동 시 기본 정보 자동 불러오기
-- 번호 인증, 이메일 인증, reCAPTCHA를 통한 보안 강화
-- 개인정보 수정 및 회원 탈퇴 기능 제공
-
----
-
-#### 🗺️ 지도 및 위치 기반 시스템
-
-- Kakao Map API를 활용한 제휴처 마커 표시
-- 로드뷰 지원으로 실제 위치 확인 가능
-- GPS 기반 현재 위치 탐색 및 반경 내 검색
-- 거리순 정렬, 카테고리별 필터링 기능
-- 사용자 데이터를 활용한 AI 기반 혜택 추천
-- 사용자 지정 위치로 재검색 가능
-- 혜택 사용 버튼 및 거리 제한 조건으로 무분별한 사용 방지
-- 제휴처 홈페이지 외부 링크 이동 기능 지원
-
----
-
-#### 🏪 혜택 및 제휴처 정보 제공
-
-- 제휴처 위치 및 혜택에 대한 상세 정보 제공
-- 멤버십 등급별 혜택 정보 표시
-- 즐겨찾기 기능으로 원하는 혜택 저장
-- 사용자 검색 로그 기록 저장
-- 혜택 사용 이력 및 누적 혜택 금액 조회 가능
-- 제휴처 홈페이지 리다이렉트 기능 제공
-
----
-
-#### 🤖 AI 추천 & 질문 서비스
-
-- 멤버십 혜택 이력 & 사용자 행동 로그를 반영한 개인 맞춤 추천
-- 사용자 질문 의도에 맞는 AI 제휴처 정보 제공
-- 금칙어 필터링
-- 로그를 활용한 추천 콜드 스타트 완화
-
----
-
-#### 📊 이벤트 페이지 & 프로모션 기능
-
-- 지도 내 이벤트 지점을 통한 혜택 사용 유도
-- 스크래치 카드 기반 이벤트 기능 제공
-- 로그인 여부 및 보유 쿠폰 수에 따라 긁기 제한 제어
-
----
-
-## 👥 개발팀 소개
-
-<p align="center">
-<table>
-  <tr>
-    <td align="center" valign="top">
-      <img src="https://avatars.githubusercontent.com/u/173465217?v=4" width="100" alt="허승현"/><br>
-      <strong>허승현</strong>
-      <hr style="width:80%; border-color:gray;">
-      <sub>팀장<br>AI 추천<br></sub><br>
-      <a href="https://github.com/HSH-11"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=GitHub&logoColor=white"></a>
-    </td>
-    <td align="center" valign="top">
-      <img src="https://avatars.githubusercontent.com/u/50799519?v=4" width="100" alt="이희용"/><br>
-      <strong>이희용</strong>
-      <hr style="width:80%; border-color:gray;">
-      <sub>인증·인가<br>인프라<br>지도 서비스</sub><br>
-      <a href="https://github.com/eddie-backdev"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=GitHub&logoColor=white"></a>
-    </td>
-    <td align="center" valign="top">
-      <img src="https://avatars.githubusercontent.com/u/135448774?v=4" width="100" alt="정현경"/><br>
-      <strong>정현경</strong>
-      <hr style="width:80%; border-color:gray;">
-      <sub>제휴처 시스템<br>이벤트 서비스<br>관리자 페이지</sub><br>
-      <a href="https://github.com/hyunnk"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=GitHub&logoColor=white"></a>
-    </td>
-    <td align="center" valign="top">
-      <img src="https://avatars.githubusercontent.com/u/130213698?v=4" width="100" alt="하령경"/><br>
-      <strong>하령경</strong>
-      <hr style="width:80%; border-color:gray;">
-      <sub>로그 저장<br>관리자 대시보드<br>지도 서비스</sub><br>
-      <a href="https://github.com/rxgx424"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=GitHub&logoColor=white"></a>
-    </td>
-  </tr>
-</table>
-</p>
-
-
----
-
-## 🛠기술 스택
-
-#### 🔧 백엔드
-
-<p align="left">
-<img src="https://img.shields.io/badge/Java-007396?style=flat&logo=openjdk&logoColor=white" /> 
-<img src="https://img.shields.io/badge/Spring-6DB33F?style=flat&logo=spring&logoColor=white" />
-<img src="https://img.shields.io/badge/Spring%20Data-6DB33F?style=flat&logo=spring&logoColor=white" />
-<img src="https://img.shields.io/badge/Spring%20Security-6DB33F?style=flat&logo=springsecurity&logoColor=white" />
-<img src="https://img.shields.io/badge/Spring%20AI-66CC66?style=flat&logo=spring&logoColor=white" />
-<img src="https://img.shields.io/badge/OpenAI-412991?style=flat&logo=openai&logoColor=white" />
-<img src="https://img.shields.io/badge/OAuth-000000?style=flat&logo=oauth&logoColor=white" />
-<img src="https://img.shields.io/badge/MySQL-4479A1?style=flat&logo=mysql&logoColor=white" />
-<img src="https://img.shields.io/badge/MongoDB-47A248?style=flat&logo=mongodb&logoColor=white" />
-<img src="https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white" />
-<img src="https://img.shields.io/badge/Elasticsearch-005571?style=flat&logo=elasticsearch&logoColor=white" />
-<img src="https://img.shields.io/badge/Kibana-E8478B?style=flat&logo=kibana&logoColor=white" />
-</p>
-
-#### ⚙️ 인프라
-
-<p align="left">
-<img src="https://img.shields.io/badge/Route53-FF9900?style=flat&logo=amazon-aws&logoColor=white" />
-<img src="https://img.shields.io/badge/CloudFront-232F3E?style=flat&logo=amazon-aws&logoColor=white" />
-<img src="https://img.shields.io/badge/Elastic%20Load%20Balancing-FF9900?style=flat&logo=amazon-aws&logoColor=white" />
-<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white" />
-<img src="https://img.shields.io/badge/CodeDeploy-6DB33F?style=flat&logo=aws-code-deploy&logoColor=white" />
-<img src="https://img.shields.io/badge/Elastic%20Container%20Registry-FF9900?style=flat&logo=amazon-ecs&logoColor=white" />
-<img src="https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white" />
-<img src="https://img.shields.io/badge/EC2-FF9900?style=flat&logo=amazon-ec2&logoColor=white" />
-<img src="https://img.shields.io/badge/App%20Auto%20Scaling-FF9900?style=flat&logo=amazon-aws&logoColor=white" />
-<img src="https://img.shields.io/badge/RDS-527FFF?style=flat&logo=amazonrds&logoColor=white" />
-<img src="https://img.shields.io/badge/S3-569A31?style=flat&logo=amazon-s3&logoColor=white" />
-</p>
-
----
-
-## 🖥️ 인프라 구조
-
-![아키텍처 다이어그램](docs/architecture.png)
-
-## 🕸️ ERD
-
-![ERD](docs/erd.png)
-
-## 📁 프로젝트 구조
-
-```text
-📦 itplace-user-api
-├─ src/main/java/com/itplace/userapi
-│  ├─ common        # 공통 유틸/DTO
-│  ├─ ai            # AI 서비스
-│  ├─ event         # 이벤트 기능
-│  ├─ history       # 멤버십 혜택 이력
-│  ├─ log           # 사용자 행동 로그
-│  ├─ recommend     # 제휴처 추천
-│  ├─ benefit       # 혜택 관리
-│  ├─ partner       # 제휴처 정보
-│  ├─ security      # 인증·권한
-│  ├─ map           # 지도
-│  ├─ user          # 사용자 관리
-│  └─ favorite      # 즐겨찾기
-├─ src/main/resources
-├─ docs            # 프로젝트 문서
-└─ README.md
-```
+- Java 17
+- Spring Boot 3.4.7
+- Spring Web / WebFlux / WebSocket
+- Spring Security / OAuth2 Client
+- Spring Data JPA
+- PostgreSQL
+- MongoDB
+- Redis
+- Elasticsearch Java Client
+- Spring AI / OpenAI
+- JWT
+- Spring Mail
+- Springdoc OpenAPI
+- Gradle
 
 ## 시작하기
 
-### 사전 준비
+### 1. 사전 준비
 
 - Java 17
-- Gradle Wrapper (`./gradlew`)
 - PostgreSQL
 - Redis
 - MongoDB
@@ -180,9 +52,9 @@
 - Kakao OAuth app
 - Google reCAPTCHA secret
 
-### 환경 변수 설정
+### 2. 환경 변수 설정
 
-`.env.example`을 참고해 로컬 `.env` 또는 실행 환경 변수를 구성합니다. 주요 키는 `src/main/resources/application.yml`에서 사용됩니다.
+`.env.example`을 참고해 로컬 `.env` 또는 실행 환경 변수를 구성합니다.
 
 ```env
 SPRING_PROFILES_ACTIVE=local
@@ -197,9 +69,9 @@ KAKAO_CLIENT_ID=
 KAKAO_CLIENT_SECRET=
 ```
 
-로컬 프로필은 `application-local.yml`의 placeholder 값을 사용하므로, 실제 외부 연동이 필요한 기능은 별도 값으로 교체해야 합니다.
+로컬 프로필은 `src/main/resources/application-local.yml`의 placeholder 값을 포함합니다. 실제 외부 연동이 필요한 기능은 개인 환경 값으로 교체해야 합니다.
 
-### 로컬 실행
+### 3. 로컬 실행
 
 ```bash
 ./gradlew bootRun
@@ -220,11 +92,29 @@ KAKAO_CLIENT_SECRET=
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 - 정적 Swagger 스펙: `src/main/resources/static/swagger.yml`
 
-## 배포 메모
+## 프로젝트 구조
 
-- 현재 지원되는 배포 경로는 `.github/workflows/oci-bluegreen-deploy.yml`과 `scripts/deploy-userapi.sh`입니다.
-- `.disabled` 워크플로우는 과거 CI/CD 경로 보존용이므로, 재활성화 전 현재 배포 스크립트와 차이를 검토해야 합니다.
-- 헬스체크는 `/actuator/health`를 기준으로 확인합니다.
+```text
+src/main/java/com/itplace/userapi/
+  ai/          AI 질문/추천
+  benefit/     혜택 조회
+  chat/        사용자 채팅 상담
+  common/      공통 설정/응답/유틸
+  event/       이벤트와 쿠폰
+  favorite/    관심 혜택
+  history/     멤버십 사용 이력
+  log/         사용자 행동 로그
+  map/         지도 기반 제휴처 검색
+  partner/     제휴처 정보
+  recommend/   추천
+  security/    인증/인가
+  user/        사용자 정보
+```
+
+## 배포
+
+현재 지원되는 배포 경로는 `.github/workflows/oci-bluegreen-deploy.yml`과 `scripts/deploy-userapi.sh`입니다.
+과거 `.disabled` 워크플로우는 보존용이므로 재활성화 전 현재 OCI 배포 경로와 차이를 확인해야 합니다.
 
 ## 연관 레포지토리
 
