@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 public enum BenefitCode implements BaseCode {
     BENEFIT_LIST_SUCCESS("BENEFIT_LIST_SUCCESS", HttpStatus.OK, "혜택 목록 조회에 성공했습니다."),
     BENEFIT_DETAIL_SUCCESS("BENEFIT_DETAIL_SUCCESS", HttpStatus.OK, "혜택 상세 조회에 성공했습니다."),
+    BENEFIT_IMPORT_SUCCESS("BENEFIT_IMPORT_SUCCESS", HttpStatus.OK, "혜택 스냅샷 가져오기에 성공했습니다."),
+    BENEFIT_IMPORT_UNAUTHORIZED("BENEFIT_IMPORT_UNAUTHORIZED", HttpStatus.UNAUTHORIZED, "혜택 스냅샷 가져오기 권한이 없습니다."),
     BENEFIT_NOT_FOUND("BENEFIT_NOT_FOUND", HttpStatus.NOT_FOUND, "존재하지 않는 혜택입니다."),
 
     BENEFIT_TYPE_NOT_FOUND("BENEFIT_TYPE_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 benefit type입니다."),

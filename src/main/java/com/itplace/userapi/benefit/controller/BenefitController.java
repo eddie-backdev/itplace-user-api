@@ -22,7 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@RequestMapping("/api/v1/benefits")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Benefit", description = "제휴사 혜택 정보 조회 관련 API")
+@RequestMapping({"/api/v1/benefits", "/api/v1/benefit"})
 @RestController
 @RequiredArgsConstructor
 public class BenefitController {

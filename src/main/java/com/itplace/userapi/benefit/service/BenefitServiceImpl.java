@@ -104,6 +104,8 @@ public class BenefitServiceImpl implements BenefitService {
                             .benefitName(b.getBenefitName())
                             .mainCategory(b.getMainCategory())
                             .usageType(b.getUsageType())
+                            .carrier(b.getCarrier())
+                            .active(Boolean.TRUE.equals(b.getActive()))
                             .partnerId(b.getPartner().getPartnerId())
                             .category(Optional.ofNullable(b.getPartner().getCategory()).map(String::trim).orElse(null))
                             .image(b.getPartner().getImage())
@@ -136,6 +138,8 @@ public class BenefitServiceImpl implements BenefitService {
                 .benefitLimit(benefit.getBenefitPolicy().getName())
                 .manual(trimNullable(benefit.getManual()))
                 .url(trimNullable(benefit.getUrl()))
+                .carrier(benefit.getCarrier())
+                .active(Boolean.TRUE.equals(benefit.getActive()))
                 .partnerName(benefit.getPartner().getPartnerName())
                 .image(benefit.getPartner().getImage())
                 .build();

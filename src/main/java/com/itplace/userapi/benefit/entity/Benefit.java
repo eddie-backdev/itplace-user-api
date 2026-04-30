@@ -25,6 +25,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -71,6 +72,19 @@ public class Benefit extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     private Carrier carrier;
+
+    @Builder.Default
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
+
+    @Column(name = "sourceKey", length = 255)
+    private String sourceKey;
+
+    @Column(name = "sourceCategory", length = 100)
+    private String sourceCategory;
+
+    @Column(name = "lastCrawledAt")
+    private LocalDateTime lastCrawledAt;
 
     // 일단 benefit 삭제 시 외래키 제약 위반 걸어줘서 오류 처리
     // 즐겨찾기 먼저 제거 -> 혜택 삭제
