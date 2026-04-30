@@ -94,8 +94,8 @@ public class LogServiceImpl implements LogService {
         Instant prevFrom = from.minus(Duration.ofDays(prevDay));
         Instant prevTo = from;
 
-        List<RankResult> recentRanks = logRepository.findTopSearchRank(from, now);
-        List<RankResult> prevRanks = logRepository.findTopSearchRank(prevFrom, prevTo);
+        List<RankResult> recentRanks = safeFindTopSearchRank(from, now);
+        List<RankResult> prevRanks = safeFindTopSearchRank(prevFrom, prevTo);
 
         Map<Long, Long> prevRankMap = new HashMap<>();
         long rnk = 1;
@@ -137,5 +137,14 @@ public class LogServiceImpl implements LogService {
                     rankChange,
                     changeDirection);
         }).toList();
+    }
+
+    private List<RankResult> safeFindTopSearchRank(Instant from, Instant to) {
+        try {
+            return logRepository.findTopSearchRank(from, to);
+        } catch (RuntimeException e) {
+            log.warn("검색 랭킹 집계에 실패해 빈 목록으로 대체합니다. from={}, to={}", from, to, e);
+            return List.of();
+        }
     }
 }

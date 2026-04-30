@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Recommend", description = "멤버십 추천 기능 관련 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/recommendations")

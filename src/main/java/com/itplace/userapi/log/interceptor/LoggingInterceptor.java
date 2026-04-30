@@ -43,7 +43,7 @@ public class LoggingInterceptor implements HandlerInterceptor {
         String path = parts[parts.length - 2];
         String benefitId = parts[parts.length - 1];
 
-        if (path != null && path.equals("benefit")) {
+        if ("benefit".equals(path) || "benefits".equals(path)) {
             try {
                 return Long.parseLong(benefitId);
             } catch (NumberFormatException e) {

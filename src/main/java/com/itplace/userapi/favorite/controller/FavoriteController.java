@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Favorites", description = "즐겨찾기 관련 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/favorites")

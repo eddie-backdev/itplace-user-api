@@ -11,9 +11,7 @@ import com.itplace.userapi.recommend.projection.BenefitCount;
 import com.itplace.userapi.recommend.projection.CategoryCount;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.user.exception.UserNotFoundException;
-import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.MembershipRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,7 +27,6 @@ public class UserFeatureServiceImpl implements UserFeatureService {
     private final UserRepository userRepo;
     private final EmbeddingService embeddingService;
     private final BenefitRepository benefitRepo;
-    private final MembershipRepository membershipRepo;
     private final LogRepository logRepository;
 
     public UserFeature loadUserFeature(Long userId) {
@@ -38,6 +35,7 @@ public class UserFeatureServiceImpl implements UserFeatureService {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         String membershipId = user.getMembershipId();
+        Grade profileGrade = user.getMembershipGradeCode();
 
         // 로그 기반 정보 수집 (클릭,상세,검색)
         List<String> clickPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "click", 3);
@@ -48,7 +46,7 @@ public class UserFeatureServiceImpl implements UserFeatureService {
         if (membershipId == null || membershipId.isBlank()) {
             return UserFeature.builder()
                     .userId(userId)
-                    .grade(null)
+                    .grade(profileGrade)
                     .recentCategoryScores(Map.of())
                     .topCategories(List.of())
                     .benefitUsageCounts(Map.of())
@@ -59,10 +57,8 @@ public class UserFeatureServiceImpl implements UserFeatureService {
                     .build();
         }
 
-        // 멤버십 사용자 처리
-        Grade grade = membershipRepo.findByMembershipId(membershipId)
-                .map(Membership::getGrade)
-                .orElse(null);
+        // Legacy usage history is still keyed by membershipId; new self-declared profiles use membershipGradeCode.
+        Grade grade = profileGrade;
 
         // 카테고리별 이용 횟수
         Map<String, Integer> catScores = historyRepo

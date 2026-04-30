@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@io.swagger.v3.oas.annotations.tags.Tag(name = "User", description = "사용자 마이페이지 관련 API")
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor

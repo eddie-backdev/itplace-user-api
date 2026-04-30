@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Question", description = "사용자 질문 기반 제휴처 제공 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/questions")
