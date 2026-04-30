@@ -1,5 +1,6 @@
 package com.itplace.userapi.user.dto.response;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.user.entity.Gender;
 import java.time.LocalDate;
@@ -17,6 +18,13 @@ public class UserInfoResponse {
     private String phoneNumber;
     private Gender gender;
     private LocalDate birthday;
-    private String membershipId;
+    private Carrier carrier;
+    private Grade membershipGradeCode;
+    private Boolean membershipVerified;
+
+    /**
+     * @deprecated use membershipGradeCode. Kept temporarily for response compatibility.
+     */
+    @Deprecated
     private Grade membershipGrade;
 }

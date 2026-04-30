@@ -1,6 +1,5 @@
 package com.itplace.userapi.security.auth.oauth.service;
 
-import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
@@ -8,17 +7,17 @@ import com.itplace.userapi.security.auth.oauth.dto.request.OAuthLinkRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthSignUpRequest;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
+import com.itplace.userapi.user.UserCode;
+import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
-import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.SocialAccount;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.MembershipRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class OAuthServiceImpl implements OAuthService {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final MembershipRepository membershipRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JWTUtil jwtUtil;
@@ -73,21 +71,7 @@ public class OAuthServiceImpl implements OAuthService {
         User user = userRepository.findById(principalDetails.getUserId())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        String name = user.getName();
-        String membershipId = user.getMembershipId();
-        Grade membershipGrade = null;
-
-        if (membershipId != null) {
-            Optional<Membership> membershipOpt = membershipRepository.findById(membershipId);
-            if (membershipOpt.isPresent()) {
-                membershipGrade = membershipOpt.get().getGrade();
-            }
-        }
-
-        return LoginResponse.builder()
-                .name(name)
-                .membershipGrade(membershipGrade)
-                .build();
+        return buildLoginResponse(user);
     }
 
     private Claims getVerifiedClaims(String tempToken) {
@@ -98,9 +82,8 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private User createNewSocialUser(OAuthSignUpRequest request, String provider, String providerId) {
-        String membershipId = request.getMembershipId();
-        if (membershipId != null && membershipId.isEmpty()) {
-            membershipId = null;
+        if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
+            throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
 
         User user = User.builder()
@@ -108,7 +91,9 @@ public class OAuthServiceImpl implements OAuthService {
                 .email(request.getEmail())
                 .gender(request.getGender())
                 .birthday(request.getBirthday())
-                .membershipId(membershipId)
+                .carrier(request.getCarrier())
+                .membershipGradeCode(request.getMembershipGradeCode())
+                .membershipVerified(false)
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .role(Role.USER)
                 .build();
@@ -143,10 +128,7 @@ public class OAuthServiceImpl implements OAuthService {
         String refreshToken = jwtUtil.createJwt(user.getId(), role, JWTConstants.CATEGORY_REFRESH);
         redisTemplate.opsForValue().set("RT:" + user.getId(), refreshToken, jwtUtil.getRefreshTokenValidityInMS(), TimeUnit.MILLISECONDS);
 
-        LoginResponse loginResponse = LoginResponse.builder()
-                .name(user.getName())
-                .membershipGrade(getMembershipGrade(user.getMembershipId()))
-                .build();
+        LoginResponse loginResponse = buildLoginResponse(user);
 
         return OAuthResult.builder()
                 .loginResponse(loginResponse)
@@ -155,12 +137,13 @@ public class OAuthServiceImpl implements OAuthService {
                 .build();
     }
 
-    private Grade getMembershipGrade(String membershipId) {
-        if (membershipId == null) {
-            return null;
-        }
-        return membershipRepository.findByMembershipId(membershipId)
-                .map(Membership::getGrade)
-                .orElse(null);
+    private LoginResponse buildLoginResponse(User user) {
+        return LoginResponse.builder()
+                .name(user.getName())
+                .carrier(user.getCarrier())
+                .membershipGradeCode(user.getMembershipGradeCode())
+                .membershipGrade(user.getMembershipGradeCode())
+                .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
+                .build();
     }
 }

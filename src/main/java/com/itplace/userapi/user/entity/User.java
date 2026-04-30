@@ -1,5 +1,7 @@
 package com.itplace.userapi.user.entity;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.common.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -67,6 +69,21 @@ public class User extends BaseTimeEntity {
     @Setter
     @Column(name = "membershipId", length = 16)
     private String membershipId;
+
+    @Setter
+    @Column(name = "carrier", length = 10)
+    @Enumerated(EnumType.STRING)
+    private Carrier carrier;
+
+    @Setter
+    @Column(name = "membershipGradeCode", length = 30)
+    @Enumerated(EnumType.STRING)
+    private Grade membershipGradeCode;
+
+    @Setter
+    @Builder.Default
+    @Column(name = "membershipVerified", nullable = false)
+    private Boolean membershipVerified = false;
 
     @Column(name = "role", nullable = false, length = 5)
     @Enumerated(EnumType.STRING)

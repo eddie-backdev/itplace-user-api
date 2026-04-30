@@ -8,6 +8,9 @@ import com.itplace.userapi.security.auth.local.dto.request.SignUpRequest;
 import com.itplace.userapi.security.exception.DuplicateEmailException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
+import com.itplace.userapi.user.UserCode;
+import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.entity.Role;
@@ -100,9 +103,8 @@ public class AuthServiceImpl implements AuthService {
             throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
         }
 
-        String membershipId = request.getMembershipId();
-        if (membershipId != null && membershipId.isEmpty()) {
-            membershipId = null;
+        if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
+            throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
 
         User user = User.builder()
@@ -110,7 +112,9 @@ public class AuthServiceImpl implements AuthService {
                 .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .gender(request.getGender())
-                .membershipId(membershipId)
+                .carrier(request.getCarrier())
+                .membershipGradeCode(request.getMembershipGradeCode())
+                .membershipVerified(false)
                 .birthday(request.getBirthday())
                 .role(Role.USER)
                 .build();
