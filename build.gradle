@@ -23,6 +23,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
@@ -35,7 +36,9 @@ dependencies {
     implementation 'org.springframework.retry:spring-retry'
 
     // AI 관련
-    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation('org.springframework.ai:spring-ai-starter-model-openai') {
+        exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
+    }
 //    implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc'
 
     // 인증 관련
