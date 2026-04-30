@@ -8,7 +8,6 @@ import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationSucce
 import com.itplace.userapi.security.auth.oauth.service.CustomOAuth2UserService;
 import com.itplace.userapi.security.jwt.JWTFilter;
 import com.itplace.userapi.security.jwt.JWTUtil;
-import com.itplace.userapi.user.repository.MembershipRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,7 +38,6 @@ public class SecurityConfig {
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
-    private final MembershipRepository membershipRepository;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final CookieUtil cookieUtil;
@@ -83,6 +81,7 @@ public class SecurityConfig {
         // 경로별 인가 작업
         http
                 .authorizeHttpRequests((auth) -> auth
+                        .requestMatchers("/api/v1/chat/**", "/ws-chat/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
@@ -111,7 +110,6 @@ public class SecurityConfig {
                 jwtUtil,
                 redisTemplate,
                 objectMapper,
-                membershipRepository,
                 cookieUtil);
         loginFilter.setFilterProcessesUrl("/api/v1/auth/login");
 
