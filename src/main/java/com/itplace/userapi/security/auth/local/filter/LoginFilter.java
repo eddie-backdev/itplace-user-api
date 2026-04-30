@@ -1,7 +1,6 @@
 package com.itplace.userapi.security.auth.local.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
@@ -9,8 +8,6 @@ import com.itplace.userapi.security.auth.local.dto.CustomUserDetails;
 import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
-import com.itplace.userapi.user.entity.Membership;
-import com.itplace.userapi.user.repository.MembershipRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +16,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +36,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final JWTUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
-    private final MembershipRepository membershipRepository;
     private final CookieUtil cookieUtil;
 
     public static final String REFRESH_TOKEN_PREFIX = "RT:";
@@ -103,20 +98,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private LoginResponse getLoginResponse(CustomUserDetails customUserDetails) {
-        String name = customUserDetails.getUser().getName();
-        String membershipId = customUserDetails.getUser().getMembershipId();
-        Grade membershipGrade = null;
-
-        if (membershipId != null) {
-            Optional<Membership> membershipOpt = membershipRepository.findById(membershipId);
-            if (membershipOpt.isPresent()) {
-                membershipGrade = membershipOpt.get().getGrade();
-            }
-        }
-
+        var user = customUserDetails.getUser();
         return LoginResponse.builder()
-                .name(name)
-                .membershipGrade(membershipGrade)
+                .name(user.getName())
+                .carrier(user.getCarrier())
+                .membershipGradeCode(user.getMembershipGradeCode())
+                .membershipGrade(user.getMembershipGradeCode())
+                .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
                 .build();
     }
 

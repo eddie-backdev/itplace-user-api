@@ -1,6 +1,8 @@
 package com.itplace.userapi.security.auth.oauth.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.user.entity.Gender;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -29,5 +31,9 @@ public class OAuthSignUpRequest {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthday;
 
-    private String membershipId;
+    @NotNull(message = "통신사는 필수 항목입니다.")
+    private Carrier carrier;
+
+    @NotNull(message = "멤버십 등급은 필수 항목입니다.")
+    private Grade membershipGradeCode;
 }

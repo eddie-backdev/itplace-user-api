@@ -1,15 +1,20 @@
 package com.itplace.userapi.user.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
 import com.itplace.userapi.security.verification.OtpUtil;
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
+import com.itplace.userapi.user.dto.request.MembershipProfileUpdateRequest;
+import com.itplace.userapi.user.dto.response.UserInfoResponse;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.MembershipRepository;
@@ -77,5 +82,40 @@ class UserServiceImplTest {
         assertThatThrownBy(() -> userService.changePassword(principalDetails, request))
                 .isInstanceOf(PasswordMismatchException.class);
         verify(passwordEncoder, never()).encode("new-password");
+    }
+    @Test
+    void updateMembershipProfileUpdatesCarrierGradeAndResetsVerification() {
+        User user = User.builder()
+                .id(7L)
+                .carrier(Carrier.LGU)
+                .membershipGradeCode(Grade.VIP)
+                .membershipVerified(true)
+                .role(Role.USER)
+                .build();
+        MembershipProfileUpdateRequest request = new MembershipProfileUpdateRequest();
+        request.setCarrier(Carrier.KT);
+        request.setMembershipGradeCode(Grade.KT_GOLD);
+
+        when(principalDetails.getUserId()).thenReturn(7L);
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+
+        UserInfoResponse response = userService.updateMembershipProfile(principalDetails, request);
+
+        assertThat(user.getCarrier()).isEqualTo(Carrier.KT);
+        assertThat(user.getMembershipGradeCode()).isEqualTo(Grade.KT_GOLD);
+        assertThat(user.getMembershipVerified()).isFalse();
+        assertThat(response.getCarrier()).isEqualTo(Carrier.KT);
+        assertThat(response.getMembershipGradeCode()).isEqualTo(Grade.KT_GOLD);
+        assertThat(response.getMembershipVerified()).isFalse();
+    }
+
+    @Test
+    void updateMembershipProfileRejectsInvalidCarrierGradePair() {
+        MembershipProfileUpdateRequest request = new MembershipProfileUpdateRequest();
+        request.setCarrier(Carrier.SKT);
+        request.setMembershipGradeCode(Grade.VIP);
+
+        assertThatThrownBy(() -> userService.updateMembershipProfile(principalDetails, request))
+                .isInstanceOf(com.itplace.userapi.user.exception.InvalidMembershipProfileException.class);
     }
 }

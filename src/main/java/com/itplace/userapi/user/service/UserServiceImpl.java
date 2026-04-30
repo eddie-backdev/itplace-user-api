@@ -10,15 +10,16 @@ import com.itplace.userapi.security.verification.OtpUtil;
 import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
+import com.itplace.userapi.user.dto.request.MembershipProfileUpdateRequest;
 import com.itplace.userapi.user.dto.request.ResetPasswordRequest;
 import com.itplace.userapi.user.dto.response.CheckUplusDataResponse;
 import com.itplace.userapi.user.dto.response.FindPasswordConfirmResponse;
 import com.itplace.userapi.user.dto.response.UserInfoResponse;
-import com.itplace.userapi.user.entity.Membership;
 import com.itplace.userapi.user.entity.UplusData;
 import com.itplace.userapi.user.entity.User;
+import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
-import com.itplace.userapi.user.repository.MembershipRepository;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
 import com.itplace.userapi.user.repository.UplusDataRepository;
 import com.itplace.userapi.user.repository.UserRepository;
@@ -38,7 +39,6 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UplusDataRepository uplusDataRepository;
-    private final MembershipRepository membershipRepository;
     private final StringRedisTemplate redisTemplate;
     private final OtpUtil otpUtil;
     private final PasswordEncoder passwordEncoder;
@@ -53,12 +53,6 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        Membership membership = null;
-        if (user.getMembershipId() != null) {
-            membership = membershipRepository.findById(user.getMembershipId())
-                    .orElse(null);
-        }
-
         return UserInfoResponse.builder()
                 .id(user.getId())
                 .name(user.getName())
@@ -66,9 +60,26 @@ public class UserServiceImpl implements UserService {
                 .phoneNumber(user.getPhoneNumber())
                 .gender(user.getGender())
                 .birthday(user.getBirthday())
-                .membershipId(membership != null ? membership.getMembershipId() : null)
-                .membershipGrade(membership != null ? membership.getGrade() : null)
+                .carrier(user.getCarrier())
+                .membershipGradeCode(user.getMembershipGradeCode())
+                .membershipGrade(user.getMembershipGradeCode())
+                .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
                 .build();
+    }
+
+
+    @Override
+    @Transactional
+    public UserInfoResponse updateMembershipProfile(PrincipalDetails principalDetails, MembershipProfileUpdateRequest request) {
+        if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
+            throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
+        }
+        User user = userRepository.findById(principalDetails.getUserId())
+                .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
+        user.setCarrier(request.getCarrier());
+        user.setMembershipGradeCode(request.getMembershipGradeCode());
+        user.setMembershipVerified(false);
+        return getUserInfo(user.getId());
     }
 
     @Override
