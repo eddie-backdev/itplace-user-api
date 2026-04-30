@@ -1,5 +1,6 @@
 package com.itplace.userapi.benefit.dto.response;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,8 @@ public class BenefitDetailResponse {
     private String benefitLimit;
     private String manual;
     private String url;
+    private Carrier carrier;
+    private Boolean active;
 
     // Partner Info
     private String partnerName;

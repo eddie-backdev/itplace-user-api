@@ -1,5 +1,6 @@
 package com.itplace.userapi.benefit.dto.response;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import java.util.List;
@@ -18,6 +19,8 @@ public class BenefitListResponse {
     private String benefitName;
     private MainCategory mainCategory;
     private UsageType usageType;
+    private Carrier carrier;
+    private Boolean active;
 
     // Partner
     private Long partnerId;

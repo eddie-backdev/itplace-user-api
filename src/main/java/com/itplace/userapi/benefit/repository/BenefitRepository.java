@@ -1,6 +1,7 @@
 package com.itplace.userapi.benefit.repository;
 
 import com.itplace.userapi.benefit.entity.Benefit;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import java.util.List;
 import java.util.Optional;
@@ -16,10 +17,13 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 JOIN FETCH b.partner p
                 LEFT JOIN FETCH b.tierBenefits tb
                 WHERE b.benefitId = :benefitId
+                  AND COALESCE(b.active, true) = true
             """)
     Optional<Benefit> findDetailById(@Param("benefitId") Long benefitId);
 
     List<Benefit> findAllByPartner_PartnerId(Long PartnerId);
+
+    Optional<Benefit> findByCarrierAndSourceKey(Carrier carrier, String sourceKey);
 
     @Query("SELECT b FROM Benefit b JOIN FETCH b.partner WHERE b.partner.partnerId IN :partnerIds")
     List<Benefit> findAllByPartnerIdsWithPartner(@Param("partnerIds") List<Long> partnerIds);
@@ -39,6 +43,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                        (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
                   AND (:carrier IS NULL OR b.carrier = :carrier)
+                  AND COALESCE(b.active, true) = true
                 GROUP BY b.benefitId
                 ORDER BY COUNT(f.benefitId) DESC
             """,
@@ -53,6 +58,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                        (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
                   AND (:carrier IS NULL OR b.carrier = :carrier)
+                  AND COALESCE(b.active, true) = true
             """,
             nativeQuery = true
     )
@@ -70,6 +76,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 FROM Benefit b
                 JOIN FETCH b.partner p
                 WHERE b.benefitId = :benefitId
+                  AND COALESCE(b.active, true) = true
             """)
     Optional<Benefit> findBenefitWithPartnerById(@Param("benefitId") Long benefitId);
 
@@ -93,6 +100,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 LEFT JOIN FETCH b.tierBenefits tb
                 WHERE b.partner.partnerId = :partnerId 
                   AND b.mainCategory = :mainCategory
+                  AND COALESCE(b.active, true) = true
             """)
     List<Benefit> findBenefitsWithPartnerAndTierBenefits(
             @Param("partnerId") Long partnerId,
