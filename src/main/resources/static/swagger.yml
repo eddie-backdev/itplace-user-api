@@ -34,6 +34,8 @@ tags:
     description: 사용자 질문 기반 제휴처 제공 API
   - name: Event
     description: 이벤트 기능 제공 API
+  - name: Chat
+    description: 실시간 채팅 상담 관련 API (REST + WebSocket/STOMP)
 
 paths:
   # =====================================================
@@ -164,8 +166,9 @@ paths:
               password: "!Password123"
               passwordConfirm: "!Password123"
               gender: "MALE"
-              birthday: "20000101"
-              membershipId: "1234567812345678"
+              birthday: "2000-01-01"
+              carrier: "LGU"
+              membershipGradeCode: "VIP"
       responses:
         '201':
           description: 회원가입 성공.
@@ -253,7 +256,8 @@ paths:
                   phoneNumber: "01012345678"
                   gender: "MALE"
                   birthday: "20000101"
-                  membershipId: "1234567812345678"
+                  carrier: "LGU"
+                  membershipGradeCode: "VIP"
                 timestamp: "2025-07-04T11:27:06.789Z"
         '400':
           description: 비정상 처리
@@ -1106,8 +1110,9 @@ paths:
                       phoneNumber: "01012345678"
                       gender: "MALE"
                       birthday: "1990-01-01"
-                      membershipId: "M001"
-                      membershipGrade: "BASIC"
+                      carrier: "LGU"
+                      membershipGradeCode: "BASIC"
+                      membershipVerified: false
                     timestamp: '2025-07-16T10:00:00.000Z'
     delete:
       tags:
@@ -2810,6 +2815,177 @@ paths:
                 message: "사용자를 찾을 수 없습니다."
                 timestamp: "2025-08-01T13:40:07.235427"
 
+  # =====================================================
+  # 채팅 상담 관련 API
+  # =====================================================
+  /chat/rooms/guest:
+    post:
+      tags:
+        - Chat
+      summary: 게스트 채팅방 생성
+      description: >
+        비로그인 사용자가 채팅 상담을 시작합니다.
+        응답으로 받은 `guestId`를 WebSocket 연결 및 STOMP 구독에 사용합니다.
+      operationId: createGuestChatRoom
+      responses:
+        '201':
+          description: 채팅방 생성 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChatRoomResponse'
+              example:
+                code: "CHAT_001"
+                status: "CREATED"
+                message: "채팅 세션이 생성되었습니다."
+                data:
+                  guestId: "guest-550e8400-e29b-41d4-a716-446655440000"
+                  sessionUuid: "550e8400-e29b-41d4-a716-446655440000"
+                  status: "ACTIVE"
+                  createdAt: "2026-04-23T10:00:00"
+                timestamp: "2026-04-23T10:00:00"
+
+  /chat/rooms/guest/{guestId}:
+    get:
+      tags:
+        - Chat
+      summary: 게스트 채팅방 조회
+      description: guestId로 기존 채팅방 정보를 조회합니다.
+      operationId: getGuestChatRoom
+      parameters:
+        - name: guestId
+          in: path
+          required: true
+          description: "채팅방 생성 시 발급된 게스트 ID (예: guest-{uuid})"
+          schema:
+            type: string
+            example: "guest-550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: 채팅방 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChatRoomResponse'
+              example:
+                code: "CHAT_002"
+                status: "OK"
+                message: "메시지 목록을 조회했습니다."
+                data:
+                  guestId: "guest-550e8400-e29b-41d4-a716-446655440000"
+                  sessionUuid: "550e8400-e29b-41d4-a716-446655440000"
+                  status: "ACTIVE"
+                  createdAt: "2026-04-23T10:00:00"
+                timestamp: "2026-04-23T10:00:00"
+        '404':
+          description: 채팅방을 찾을 수 없음
+          content:
+            application/json:
+              example:
+                code: "CHAT_003"
+                status: "NOT_FOUND"
+                message: "채팅 세션을 찾을 수 없습니다."
+                data: null
+                timestamp: "2026-04-23T10:00:00"
+
+  /chat/sessions/{sessionUuid}/messages:
+    get:
+      tags:
+        - Chat
+      summary: 채팅 메시지 이력 조회
+      description: 특정 세션의 전체 메시지 이력을 시간 순으로 조회합니다.
+      operationId: getChatMessages
+      parameters:
+        - name: sessionUuid
+          in: path
+          required: true
+          description: 채팅 세션 UUID
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: 메시지 이력 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ChatMessageResponse'
+              example:
+                code: "CHAT_002"
+                status: "OK"
+                message: "메시지 목록을 조회했습니다."
+                data:
+                  - id: 1
+                    senderType: "USER"
+                    content: "안녕하세요, 문의드립니다."
+                    createdAt: "2026-04-23T10:00:10"
+                  - id: 2
+                    senderType: "ADMIN"
+                    content: "안녕하세요! 무엇을 도와드릴까요?"
+                    createdAt: "2026-04-23T10:00:30"
+                timestamp: "2026-04-23T10:01:00"
+
+  /chat/websocket:
+    get:
+      tags:
+        - Chat
+      summary: "[WebSocket] STOMP 연결 및 채팅"
+      description: >
+        **WebSocket 엔드포인트** - HTTP로 호출하지 않습니다.
+
+
+        ### 연결
+        - SockJS endpoint: `ws://localhost:8080/ws-chat`
+
+
+        ### 사용 흐름
+        1. `POST /api/v1/chat/rooms/guest` 로 `sessionUuid` 획득
+        2. SockJS로 `/ws-chat` 연결
+        3. `/topic/chat/{sessionUuid}` 구독 (메시지 수신)
+        4. `/app/chat/{sessionUuid}/send` 로 메시지 전송
+
+
+        ### 메시지 전송 payload
+        ```json
+        { "content": "메시지 내용" }
+        ```
+
+
+        ### 수신 메시지 형식
+        ```json
+        {
+          "id": 1,
+          "senderType": "USER",
+          "content": "메시지 내용",
+          "createdAt": "2026-04-23T10:00:10"
+        }
+        ```
+
+
+        ### 연결 종료
+        WebSocket 연결이 끊기면 서버가 자동으로 세션을 CLOSED 처리하고 관리자에게 알림을 전송합니다.
+      operationId: chatWebSocket
+      responses:
+        '101':
+          description: WebSocket Upgrade 성공
+
 
 components:
   schemas:
@@ -2895,10 +3071,16 @@ components:
           type: string
           description: "생년월일"
           example: "20000101"
-        membershipId:
+        carrier:
           type: string
-          description: "멤버십 번호 16자리"
-          example: "1234567812345678"
+          description: "자가 선택 통신사"
+          enum: [ LGU, SKT, KT ]
+          example: "LGU"
+        membershipGradeCode:
+          type: string
+          description: "통신사별 자가 선택 멤버십 등급 코드"
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          example: "VIP"
 
     UplusDataRequest:
       type: object
@@ -3040,11 +3222,16 @@ components:
           type: string
           description: "휴대폰 번호 ('-' 제외)"
           example: "01012345678"
-        membershipId:
+        carrier:
           type: string
-          description: "멤버십 ID (선택 사항)"
-          example: "1234567812345678"
-          nullable: true
+          description: "자가 선택 통신사"
+          enum: [ LGU, SKT, KT ]
+          example: "LGU"
+        membershipGradeCode:
+          type: string
+          description: "통신사별 자가 선택 멤버십 등급 코드"
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          example: "VIP"
 
     ChangePasswordRequest:
       type: object
@@ -3093,10 +3280,26 @@ components:
           type: string
           format: name
           example: "홍길동"
+        carrier:
+          type: string
+          nullable: true
+          example: "LGU"
+          enum: [ LGU, SKT, KT ]
+        membershipGradeCode:
+          type: string
+          nullable: true
+          example: "VVIP"
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+        membershipVerified:
+          type: boolean
+          example: false
         membershipGrade:
           type: string
+          deprecated: true
+          nullable: true
+          description: "Deprecated. Use membershipGradeCode."
           example: "VVIP"
-          enum: [ VVIP, VIP, BASIC ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
         accessToken:
           type: string
           format: string
@@ -3201,9 +3404,12 @@ components:
         birthday:
           type: string
           example: "20000101"
-        membershipId:
-          type: integer
-          example: "1234567812345678"
+        legacyMembershipId:
+          type: string
+          deprecated: true
+          description: "Legacy U+ internal identifier; not collected in the new self-declared carrier profile flow."
+          example: null
+          nullable: true
 
     FavoriteRequest:
       type: object
@@ -3322,15 +3528,27 @@ components:
           format: date
           description: 사용자 생년월일
           example: "1990-01-01"
-        membershipId:
+        carrier:
           type: string
-          description: 멤버십 ID (없는 경우 null)
-          example: "M001"
+          description: 자가 선택 통신사 (없는 경우 null)
+          enum: [ LGU, SKT, KT ]
+          example: "LGU"
           nullable: true
+        membershipGradeCode:
+          type: string
+          description: 통신사별 자가 선택 멤버십 등급 코드 (없는 경우 null)
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          example: "BASIC"
+          nullable: true
+        membershipVerified:
+          type: boolean
+          description: 1차 버전은 공식 인증이 아닌 자가 선택이므로 false
+          example: false
         membershipGrade:
           type: string
-          description: 멤버십 등급 (없는 경우 null)
-          enum: [ VVIP, VIP, BASIC ]
+          deprecated: true
+          description: Deprecated. Use membershipGradeCode.
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "BASIC"
           nullable: true
 
@@ -3628,3 +3846,53 @@ components:
           format: date
           description: 사용 날짜
           example: "2025-07-31"
+    # ----------------------------------------------------
+    # Chat DTOs
+    # ----------------------------------------------------
+    ChatRoomResponse:
+      type: object
+      description: "게스트 채팅방 정보"
+      properties:
+        guestId:
+          type: string
+          description: "게스트 식별자 (guest-{uuid})"
+          example: "guest-550e8400-e29b-41d4-a716-446655440000"
+        sessionUuid:
+          type: string
+          description: "채팅 세션 UUID"
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          description: "채팅 세션 상태"
+          enum: [ACTIVE, CLOSED]
+          example: "ACTIVE"
+        createdAt:
+          type: string
+          format: date-time
+          description: "세션 생성 시각"
+          example: "2026-04-23T10:00:00"
+
+    ChatMessageResponse:
+      type: object
+      description: "채팅 메시지"
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: "메시지 ID (WebSocket 수신 시 null 가능)"
+          nullable: true
+          example: 1
+        senderType:
+          type: string
+          description: "발신자 유형"
+          enum: [USER, ADMIN]
+          example: "USER"
+        content:
+          type: string
+          description: "메시지 내용"
+          example: "안녕하세요, 문의드립니다."
+        createdAt:
+          type: string
+          format: date-time
+          description: "메시지 전송 시각"
+          example: "2026-04-23T10:00:10"

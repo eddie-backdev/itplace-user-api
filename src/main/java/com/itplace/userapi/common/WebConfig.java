@@ -35,7 +35,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(loggingInterceptor)
-                .addPathPatterns("/api/v1/benefits/{benefitId}");
+                .addPathPatterns("/api/v1/benefits/{benefitId}", "/api/v1/benefit/{benefitId}");
     }
 
     @Bean

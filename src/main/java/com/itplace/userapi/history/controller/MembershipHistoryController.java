@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@io.swagger.v3.oas.annotations.tags.Tag(name = "History", description = "멤버십 혜택 사용 내역 관련 API")
 @RequestMapping("/api/v1/membership-history")
 @RestController
 @RequiredArgsConstructor
