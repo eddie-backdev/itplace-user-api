@@ -96,7 +96,7 @@ public class BenefitServiceImpl implements BenefitService {
                     List<TierBenefitInfo> tierBenefits = benefitToTierMap
                             .getOrDefault(benefitId, Collections.emptyList())
                             .stream()
-                            .map(tb -> new TierBenefitInfo(tb.getGrade(), tb.getContext(), tb.getIsAll()))
+                            .map(tb -> new TierBenefitInfo(b.getCarrier(), tb.getGrade(), tb.getContext(), tb.getIsAll()))
                             .toList();
 
                     return BenefitListResponse.builder()
@@ -179,7 +179,7 @@ public class BenefitServiceImpl implements BenefitService {
 
         // TierBenefit 변환
         List<TierBenefitInfo> tierDtos = selected.getTierBenefits().stream()
-                .map(tb -> new TierBenefitInfo(tb.getGrade(), tb.getContext(), tb.getIsAll()))
+                .map(tb -> new TierBenefitInfo(selected.getCarrier(), tb.getGrade(), tb.getContext(), tb.getIsAll()))
                 .toList();
 
         return MapBenefitDetailResponse.builder()
@@ -188,6 +188,7 @@ public class BenefitServiceImpl implements BenefitService {
                 .mainCategory(selected.getMainCategory())
                 .manual(selected.getManual())
                 .url(trimNullable(selected.getUrl()))
+                .carrier(selected.getCarrier())
                 .tierBenefits(tierDtos)
                 .isFavorite(isFavorite)
                 .build();

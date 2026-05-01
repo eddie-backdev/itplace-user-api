@@ -68,6 +68,7 @@ public class PartnerBenefitCacheService {
                             b.getBenefitName(),
                             tierMap.getOrDefault(b.getBenefitId(), new ArrayList<>()).stream()
                                     .map(t -> TierBenefitDto.builder()
+                                            .carrier(b.getCarrier())
                                             .grade(t.getGrade())
                                             .context(t.getContext())
                                             .build())
@@ -110,6 +111,7 @@ public class PartnerBenefitCacheService {
                         b.getBenefitName(),
                         tierMap.getOrDefault(b.getBenefitId(), new ArrayList<>()).stream()
                                 .map(t -> TierBenefitDto.builder()
+                                        .carrier(b.getCarrier())
                                         .grade(t.getGrade())
                                         .context(t.getContext())
                                         .build())

@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -97,9 +98,7 @@ public class StoreServiceImpl implements StoreService {
                     // [변경] 기존: benefitToTiersMap에서 benefitId로 TierBenefit을 조회 후 TierBenefitDto로 변환.
                     // 변경 후: BenefitCacheDto 안에 TierBenefitDto 리스트가 이미 포함되어 있으므로
                     //         getTierBenefits()로 바로 꺼내서 flatMap.
-                    List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
-                            .flatMap(b -> b.getTierBenefits().stream())
-                            .toList();
+                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
                     double distance = calculateDistance(userLat, userLng,
                             store.getLocation().getY(), store.getLocation().getX());
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
@@ -204,9 +203,7 @@ public class StoreServiceImpl implements StoreService {
                     );
                     // [변경] 기존: benefitToTiersMap에서 조회 후 TierBenefitDto로 변환.
                     // 변경 후: BenefitCacheDto.getTierBenefits()로 이미 변환된 DTO 리스트를 바로 사용.
-                    List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
-                            .flatMap(b -> b.getTierBenefits().stream())
-                            .toList();
+                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
                     double distance = calculateDistance(userLat, userLng,
                             store.getLocation().getY(), store.getLocation().getX());
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
@@ -223,6 +220,8 @@ public class StoreServiceImpl implements StoreService {
             throw new StoreKeywordException(StoreCode.KEYWORD_REQUEST);
         }
 
+        String normalizedKeyword = keyword.trim();
+
         if (category != null && (category.isBlank() || category.equalsIgnoreCase("전체"))) {
             category = null;
         } else if (category != null) {
@@ -232,25 +231,26 @@ public class StoreServiceImpl implements StoreService {
         StoreSearchResult searchResult;
         try {
             // 1단계: ES nori 형태소 분석으로 브랜드 매치 / 매장명 매치 분리
-            searchResult = storeSearchService.searchByKeyword(keyword, category);
+            searchResult = storeSearchService.searchByKeyword(normalizedKeyword, category);
         } catch (RuntimeException e) {
-            log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: keyword={}, category={}", keyword, category, e);
-            List<Store> fallbackStores = storeRepository.searchNearbyStores(lng, lat, category, keyword);
-            return toStoreDetailResponses(fallbackStores, userLat, userLng);
+            log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category, e);
+            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
         }
         if (searchResult.isEmpty()) {
-            return Collections.emptyList();
+            log.info("ES 매장 검색 결과 없음, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
+            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
         }
 
         // 2단계: DB에서 매장 데이터 일괄 로드
         List<Long> allIds = Stream.concat(
                 searchResult.brandMatchIds().stream(),
                 searchResult.nameMatchIds().stream()
-        ).toList();
+        ).distinct().toList();
 
         List<Store> allStores = storeRepository.findAllByStoreIdInWithPartner(allIds);
         if (allStores.isEmpty()) {
-            return Collections.emptyList();
+            log.info("ES 매장 검색 ID가 DB에서 조회되지 않아 DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
+            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
         }
 
         List<Long> partnerIds = allStores.stream()
@@ -274,9 +274,7 @@ public class StoreServiceImpl implements StoreService {
                                     partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
                                     store.getStoreName()
                             );
-                            List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
-                                    .flatMap(b -> b.getTierBenefits().stream())
-                                    .toList();
+                            List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
                             return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                         }
                 ));
@@ -293,6 +291,13 @@ public class StoreServiceImpl implements StoreService {
                         .filter(Objects::nonNull)
                         .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
         ).toList();
+    }
+
+
+    private List<StoreDetailResponse> searchNearbyStoresInDatabase(double lat, double lng, String category,
+                                                                   String keyword, double userLat, double userLng) {
+        List<Store> fallbackStores = storeRepository.searchNearbyStores(lng, lat, category, keyword);
+        return toStoreDetailResponses(fallbackStores, userLat, userLng);
     }
 
     private List<StoreDetailResponse> toStoreDetailResponses(List<Store> stores, double userLat, double userLng) {
@@ -317,9 +322,7 @@ public class StoreServiceImpl implements StoreService {
                             partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
                             store.getStoreName()
                     );
-                    List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
-                            .flatMap(b -> b.getTierBenefits().stream())
-                            .toList();
+                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
                 .toList();
@@ -351,12 +354,28 @@ public class StoreServiceImpl implements StoreService {
                     List<BenefitCacheDto> finalBenefits = selectBenefits(partnerBenefits, store.getStoreName());
                     // [변경] 기존: tierBenefitRepository를 루프 내에서 직접 호출하여 TierBenefitDto 생성.
                     // 변경 후: BenefitCacheDto.getTierBenefits()에서 바로 꺼냄.
-                    List<TierBenefitDto> tierBenefitDtos = finalBenefits.stream()
-                            .flatMap(b -> b.getTierBenefits().stream())
-                            .toList();
+                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
                 .toList();
+    }
+
+
+    private List<TierBenefitDto> toDistinctTierBenefits(List<BenefitCacheDto> benefits) {
+        Map<String, TierBenefitDto> distinct = benefits.stream()
+                .flatMap(b -> b.getTierBenefits().stream())
+                .collect(Collectors.toMap(
+                        tier -> String.join("|",
+                                String.valueOf(tier.getCarrier()),
+                                String.valueOf(tier.getGrade()),
+                                String.valueOf(tier.getContext())
+                        ),
+                        tier -> tier,
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+
+        return new ArrayList<>(distinct.values());
     }
 
     private double calculateDistance(double userLat, double userLng, double storeLat, double storeLng) {
