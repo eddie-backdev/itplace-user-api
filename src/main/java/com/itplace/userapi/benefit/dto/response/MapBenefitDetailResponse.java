@@ -1,5 +1,6 @@
 package com.itplace.userapi.benefit.dto.response;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,7 @@ public class MapBenefitDetailResponse {
     private MainCategory mainCategory;
     private String manual;
     private String url;
+    private Carrier carrier;
     private List<TierBenefitInfo> tierBenefits;
     private Boolean isFavorite; // 사용자 관심 혜택 여부 추가
 }

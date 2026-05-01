@@ -74,26 +74,29 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    SELECT s.*, CASE WHEN s.storeName = :keyword THEN 1 ELSE 0 END AS is_exact,
-                    (ts_rank(to_tsvector('simple', COALESCE(s.storeName,'') || ' ' || COALESCE(s.business,'')),
-                             plainto_tsquery('simple', :keyword))
-                    + ts_rank(to_tsvector('simple', COALESCE(p.partnerName,'') || ' ' || COALESCE(p.category,'')),
-                              plainto_tsquery('simple', :keyword))) AS relevance,
-                    ST_DistanceSphere(s.location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) AS distance
+                    SELECT s.*,
+                           CASE
+                               WHEN LOWER(COALESCE(s.storeName, '')) = LOWER(:keyword)
+                                    OR LOWER(COALESCE(p.partnerName, '')) = LOWER(:keyword)
+                               THEN 1 ELSE 0
+                           END AS is_exact,
+                           ST_DistanceSphere(
+                               s.location::geometry,
+                               ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
+                           ) AS distance
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE s.location IS NOT NULL
                     AND (:category IS NULL OR p.category = :category)
                     AND (
-                        to_tsvector('simple', COALESCE(s.storeName,'') || ' ' || COALESCE(s.business,''))
-                            @@ to_tsquery('simple', :keyword || ':*')
-                        OR to_tsvector('simple', COALESCE(p.partnerName,'') || ' ' || COALESCE(p.category,''))
-                            @@ to_tsquery('simple', :keyword || ':*')
+                        LOWER(COALESCE(s.storeName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                        OR LOWER(COALESCE(s.business, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                        OR LOWER(COALESCE(p.partnerName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                        OR LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
                     )
                     ORDER BY
                         is_exact DESC,
-                        distance ASC,
-                        relevance DESC
+                        distance ASC
                     LIMIT 30
                     """,
             nativeQuery = true

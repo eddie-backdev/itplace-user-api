@@ -1,5 +1,6 @@
 package com.itplace.userapi.map.dto.response;
 
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TierBenefitDto {
+    private Carrier carrier;
     private Grade grade;
     private String context;
 }
