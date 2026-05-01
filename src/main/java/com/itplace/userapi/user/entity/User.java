@@ -82,7 +82,7 @@ public class User extends BaseTimeEntity {
 
     @Setter
     @Builder.Default
-    @Column(name = "membershipVerified", nullable = false)
+    @Column(name = "\"membershipVerified\"", nullable = false)
     private Boolean membershipVerified = false;
 
     @Column(name = "role", nullable = false, length = 5)

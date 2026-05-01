@@ -1420,37 +1420,23 @@ paths:
     get:
       tags:
         - User
-      summary: 사용자 쿠폰 개수 조회
-      description: 현재 로그인된 사용자의 보유 쿠폰 개수를 조회합니다.
+      summary: 이벤트 쿠폰 기능 비활성화 상태 조회
+      description: 이벤트 종료로 쿠폰 기능은 비활성화되었습니다. 호환성을 위해 0을 반환하며 사용자 쿠폰 상태를 변경하지 않습니다.
       operationId: getMyCouponCount
-      security:
-        - bearerAuth: [ ]
       responses:
         '200':
-          description: 쿠폰 개수 조회 성공
+          description: 이벤트 쿠폰 기능 비활성화
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                code: "COUPON_COUNT_SUCCESS"
+                code: "COUPON_EVENT_DISABLED"
                 status: "OK"
-                message: "사용자의 쿠폰 개수 조회에 성공했습니다."
-                data: 3
-                timestamp: "2025-07-24T09:30:00.123Z"
+                message: "이벤트 종료로 쿠폰 기능이 비활성화되었습니다."
+                data: 0
+                timestamp: "2026-05-01T00:00:00.000Z"
 
-        '404':
-          description: 사용자 정보를 찾을 수 없음
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "USER_NOT_FOUND"
-                status: "NOT_FOUND"
-                message: "사용자 정보를 찾을 수 없습니다."
-                data: null
-                timestamp: "2025-07-24T09:30:01.123Z"
 
   # =====================================================
   # 지도 관련 기능 API
@@ -2670,79 +2656,37 @@ paths:
 
 
   # =====================================================
-  # 이벤트 기능 제공 API
+  # 이벤트 기능 제공 API (종료)
   # =====================================================
   /gifts:
     get:
       tags:
         - Event
-      summary: 상품 리스트
-      description: |
-        상품 리스트를 반환합니다.
+      summary: 이벤트 종료 안내
+      description: 이벤트가 종료되어 경품 목록을 제공하지 않습니다. 호환성을 위해 410 Gone을 반환합니다.
       responses:
-        '200':
-          description: 경품 목록을 불러왔습니다
+        '410':
+          description: 이벤트 종료
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                data:
-                  - giftName: "[브람스] 루카S 안마의자"
-                  - giftName: "[모즈스웨덴] 와인셀러 와인냉장고 71L (22병)"
-                  - giftName: "[로보락] 2025년 NEW F25 RT 아쿠아청소기"
-                  - giftName: "[쿠쿠전자] W8200 타워형 공기청정기"
-                  - giftName: "[소니] WH-CH520"
-                code: "GIFT_LIST"
-                status: "OK"
-                message: "경품 목록를 불러왔습니다."
-                timestamp: "2025-07-30T13:08:37.4218203"
+                data: [ ]
+                code: "EVENT_DISABLED"
+                status: "GONE"
+                message: "이벤트가 종료되었습니다."
+                timestamp: "2026-05-01T00:00:00.000Z"
 
   /gifts/scratch:
     post:
       tags:
         - Event
-      summary: "쿠폰 긁기 - 당첨 예시, 꽝 예시 다 적어놓았습니다."
-      description: "당첨 결과를 반환합니다. total은 총 50명에게 증정 giftCount는 잔여수량"
+      summary: 이벤트 종료 안내
+      description: 이벤트가 종료되어 스크래치 실행 및 쿠폰/경품 상태 변경을 수행하지 않습니다.
       responses:
-        '200':
-          description: "복권을 성공적으로 긁었습니다."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                success:
-                  summary: 당첨 예시
-                  value:
-                    data:
-                      success: true
-                      message: "🎉 [소니] WH-CH520 당첨!"
-                      gift:
-                        giftId: 5
-                        giftName: "[소니] WH-CH520"
-                        giftCount: 47
-                        total: 50
-                        imgUrl: "https://itplacegift.s3.ap-northeast-2.amazonaws.com/sony.jpg"
-                    code: "SCRATCH_SUCCESS"
-                    status: "OK"
-                    message: "복권을 성공적으로 긁었습니다."
-                    timestamp: "2025-08-01T10:44:13.6421078"
-
-                fail:
-                  summary: 꽝 예시
-                  value:
-                    data:
-                      success: false
-                      message: "꽝입니다. 다음 기회를 노려보세요!"
-                      gift: null
-                    code: "SCRATCH_SUCCESS"
-                    status: "OK"
-                    message: "복권을 성공적으로 긁었습니다."
-                    timestamp: "2025-08-01T10:44:13.642"
-
-        '400':
-          description: "쿠폰이 부족하여 복권을 긁을 수 없습니다."
+        '410':
+          description: 이벤트 종료
           content:
             application/json:
               schema:
@@ -2750,70 +2694,40 @@ paths:
               example:
                 data:
                   success: false
-                  message: "별이 부족합니다. 별을 다시 모은 후 시도해주세요."
+                  message: "이벤트가 종료되었습니다."
                   gift: null
-                code: "COUPON_LACK"
-                status: "BAD_REQUEST"
-                message: "별이 부족합니다."
-                timestamp: "2025-08-01T10:51:08.4131952"
+                code: "EVENT_DISABLED"
+                status: "GONE"
+                message: "이벤트가 종료되었습니다."
+                timestamp: "2026-05-01T00:00:00.000Z"
 
   /gifts/history:
     get:
       tags:
         - Event
-      summary: 쿠폰 사용 이력 조회
-      description: 사용자의 쿠폰 사용 이력을 조회합니다. 타입 필터를 통해 성공/실패 결과만 조회할 수 있습니다.
+      summary: 이벤트 종료 안내
+      description: 이벤트가 종료되어 쿠폰 사용 이력을 제공하지 않습니다. 호환성을 위해 410 Gone을 반환합니다.
       parameters:
         - name: type
           in: query
-          description: 결과 타입 필터
+          description: 과거 이벤트 결과 타입 필터. 현재는 이벤트 종료로 사용되지 않습니다.
           required: false
           schema:
             type: string
-          example: SUCCESS
-      security:
-        - bearerAuth: [ ]
       responses:
-        '200':
-          description: 쿠폰 사용 이력 조회 성공
+        '410':
+          description: 이벤트 종료
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                data:
-                  - userId: 1633
-                    historyId: 1
-                    giftName: "[브람스] 루카S 안마의자"
-                    result: "FAIL"
-                    usedDate: "2025-07-31"
-                  - userId: 1633
-                    historyId: 2
-                    giftName: "[로보락] 2025년 NEW F25 RT 아쿠아청소기"
-                    result: "SUCCESS"
-                    usedDate: "2025-08-01"
-                code: "COUPON_HISTORY_SUCCESS"
-                status: "OK"
-                message: "쿠폰 사용이력을 성공적으로 조회했습니다."
-                timestamp: "2025-08-01T13:40:07.235427"
-        '400':
-          description: 잘못된 결과 타입
-          content:
-            application/json:
-              example:
-                code: "INVALID_RESULT_TYPE"
-                status: "BAD_REQUEST"
-                message: "유효하지 않은 결과 타입입니다."
-                timestamp: "2025-08-01T13:40:07.235427"
-        '404':
-          description: 사용자를 찾을 수 없음
-          content:
-            application/json:
-              example:
-                code: "USER_NOT_FOUND"
-                status: "NOT_FOUND"
-                message: "사용자를 찾을 수 없습니다."
-                timestamp: "2025-08-01T13:40:07.235427"
+                data: [ ]
+                code: "EVENT_DISABLED"
+                status: "GONE"
+                message: "이벤트가 종료되었습니다."
+                timestamp: "2026-05-01T00:00:00.000Z"
+
 
   # =====================================================
   # 채팅 상담 관련 API
