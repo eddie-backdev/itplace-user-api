@@ -190,10 +190,7 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
 
         historyRepository.save(history);
 
-        // 쿠폰 지급
-        if (store.isHasCoupon()) {
-            user.setCoupon(user.getCoupon() + 1);
-        }
+        // 이벤트 종료 정책에 따라 혜택 사용 시 별/쿠폰 지급 side effect는 중단한다.
     }
 
     private void validateBenefitLimit(Membership membership, Benefit benefit) {
@@ -246,4 +243,3 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
         throw new InvalidBenefitUsageException(BenefitCode.INVALID_BENEFIT_TYPE);
     }
 }
-

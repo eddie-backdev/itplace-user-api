@@ -13,6 +13,7 @@ public enum GiftCode implements BaseCode {
     COUPON_LACK("COUPON_LACK", HttpStatus.BAD_REQUEST, "별이 부족합니다."),
     GIFT_EMPTY("GIFT_EMPTY", HttpStatus.OK, "모든 경품이 소진되었습니다."),
     GIFT_LIST("GIFT_LIST", HttpStatus.OK, "경품 목록를 불러왔습니다."),
+    EVENT_DISABLED("EVENT_DISABLED", HttpStatus.GONE, "이벤트가 종료되었습니다."),
 
     COUPON_HISTORY_SUCCESS("COUPON_HISTORY_SUCCESS", HttpStatus.OK, "쿠폰 사용이력을 성공적으로 조회했습니다."),
     INVALID_RESULT_TYPE("INVALID_RESULT_TYPE", HttpStatus.BAD_REQUEST, "잘못된 ResultType 입니다.");

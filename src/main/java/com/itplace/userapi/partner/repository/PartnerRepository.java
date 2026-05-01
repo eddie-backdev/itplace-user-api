@@ -10,4 +10,3 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
     Optional<Partner> findByPartnerName(String partnerName);
 }
-

@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -28,9 +27,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
     private final RedisTemplate<String, String> redisTemplate;
-
-    @Value("${app.cookie.domain}")
-    private String cookieDomain;
 
     @Value("${app.oauth2.new-user-redirect-uri}")
     private String newUserRedirectUri;
@@ -47,15 +43,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             log.info("신규 OAuth 사용자. 추가 정보 입력 페이지로 리다이렉트합니다.");
             String tempToken = jwtUtil.createTempJwt(oAuth2User.getProvider(), oAuth2User.getProviderId());
 
-            ResponseCookie tempTokenCookie = ResponseCookie.from("tempToken", tempToken)
-                    .path("/")
-                    .secure(true)
-                    .sameSite("None")
-                    .httpOnly(true)
-                    .domain(cookieDomain)
-                    .maxAge(TimeUnit.MINUTES.toSeconds(10))
-                    .build();
-            response.addHeader("Set-Cookie", tempTokenCookie.toString());
+            cookieUtil.setTempTokenCookie(response, tempToken, TimeUnit.MINUTES.toSeconds(10));
 
             // 프론트엔드의 추가 정보 입력 페이지로 리다이렉트
             getRedirectStrategy().sendRedirect(request, response, newUserRedirectUri);

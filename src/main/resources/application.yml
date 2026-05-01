@@ -119,6 +119,8 @@ google:
 app:
   cookie:
     domain: ${COOKIE_DOMAIN:itplace.click}
+    secure: ${COOKIE_SECURE:true}
+    same-site: ${COOKIE_SAME_SITE:None}
   oauth2:
     new-user-redirect-uri: ${OAUTH2_NEW_USER_REDIRECT_URI:https://itplace.click/login?step=oauthIntegration&verifiedType=oauth}
     exist-user-redirect-uri: ${OAUTH2_EXIST_USER_REDIRECT_URI:https://itplace.click/login?oauth=processing}

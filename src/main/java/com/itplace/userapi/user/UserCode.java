@@ -22,7 +22,8 @@ public enum UserCode implements BaseCode {
     USER_WITHDRAWAL_SUCCESS("USER_WITHDRAWAL_SUCCESS", HttpStatus.OK, "회원 탈퇴가 완료되었습니다."),
     MEMBERSHIP_NOT_FOUND("MEMBERSHIP_NOT_FOUND", HttpStatus.NOT_FOUND, "해당 멤버십 정보를 찾을 수 없습니다."),
 
-    COUPON_COUNT_SUCCESS("COUPON_COUNT_SUCCESS", HttpStatus.OK, "사용자의 쿠폰 개수 조회에 성공했습니다.");
+    COUPON_COUNT_SUCCESS("COUPON_COUNT_SUCCESS", HttpStatus.OK, "사용자의 쿠폰 개수 조회에 성공했습니다."),
+    COUPON_EVENT_DISABLED("COUPON_EVENT_DISABLED", HttpStatus.OK, "이벤트 종료로 쿠폰 기능이 비활성화되었습니다.");
 
     private final String code;
     private final HttpStatus status;

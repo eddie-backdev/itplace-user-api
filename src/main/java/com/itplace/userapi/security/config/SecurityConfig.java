@@ -2,6 +2,7 @@ package com.itplace.userapi.security.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.security.CookieUtil;
+import com.itplace.userapi.security.LegacyAwarePasswordEncoder;
 import com.itplace.userapi.security.auth.local.filter.LoginFilter;
 import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationFailureHandler;
 import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationSuccessHandler;
@@ -22,7 +23,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -92,8 +92,7 @@ public class SecurityConfig {
                                 "/api/v1/users/changePassword",
                                 "/api/v1/users/checkUplusData",
                                 "/api/v1/users/linkUplusData",
-                                "/api/v1/favorites/**",
-                                "/api/v1/gifts/**"
+                                "/api/v1/favorites/**"
                         ).authenticated()
 
                         .anyRequest().permitAll());
@@ -127,7 +126,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new LegacyAwarePasswordEncoder();
     }
 
     @Bean
