@@ -65,10 +65,10 @@ public class Store {
     @Column(name = "postCode", length = 50)
     private String postCode;
 
-    @Column(name = "longitude", precision = 9, scale = 6)
+    @Column(name = "longitude", precision = 15, scale = 12)
     private BigDecimal longitude;
 
-    @Column(name = "latitude", precision = 9, scale = 6)
+    @Column(name = "latitude", precision = 15, scale = 12)
     private BigDecimal latitude;
 
     @Column(name = "location", columnDefinition = "geometry(Point, 4326)", nullable = false)
