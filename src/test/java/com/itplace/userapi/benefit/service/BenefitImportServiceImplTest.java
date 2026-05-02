@@ -3,6 +3,7 @@ package com.itplace.userapi.benefit.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,14 +13,17 @@ import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.request.BenefitSnapshotImportRequest;
 import com.itplace.userapi.benefit.dto.response.BenefitSnapshotImportResponse;
 import com.itplace.userapi.benefit.entity.Benefit;
+import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
+import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
+import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
-import com.itplace.userapi.benefit.repository.TierBenefitRepository;
+import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import java.util.List;
@@ -42,14 +46,35 @@ class BenefitImportServiceImplTest {
     private PartnerRepository partnerRepository;
 
     @Mock
-    private TierBenefitRepository tierBenefitRepository;
+    private BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
+
+    @Mock
+    private CarrierTierBenefitRepository carrierTierBenefitRepository;
 
     private BenefitImportServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new BenefitImportServiceImpl(benefitRepository, partnerRepository, tierBenefitRepository);
+        service = new BenefitImportServiceImpl(
+                benefitRepository,
+                partnerRepository,
+                benefitCarrierPolicyRepository,
+                carrierTierBenefitRepository
+        );
         ReflectionTestUtils.setField(service, "expectedApiKey", "internal-key");
+        lenient().when(benefitRepository.findByPartner_PartnerIdAndCanonicalKey(any(Long.class), any(String.class)))
+                .thenReturn(Optional.empty());
+        lenient().when(benefitCarrierPolicyRepository.findByCarrierAndSourceKey(any(Carrier.class), any(String.class)))
+                .thenReturn(Optional.empty());
+        lenient().when(benefitCarrierPolicyRepository.save(any(BenefitCarrierPolicy.class))).thenAnswer(invocation -> {
+            BenefitCarrierPolicy policy = invocation.getArgument(0);
+            if (policy.getBenefitCarrierPolicyId() == null) {
+                policy.setBenefitCarrierPolicyId(31L);
+            }
+            return policy;
+        });
+        lenient().when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicy(any(BenefitCarrierPolicy.class)))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -60,9 +85,7 @@ class BenefitImportServiceImplTest {
 
         when(partnerRepository.findByPartnerName("제휴사")).thenReturn(Optional.empty());
         when(partnerRepository.save(any(Partner.class))).thenReturn(savedPartner);
-        when(benefitRepository.findByCarrierAndSourceKey(Carrier.SKT, "skt-benefit-1")).thenReturn(Optional.empty());
         when(benefitRepository.save(any(Benefit.class))).thenReturn(savedBenefit);
-        when(tierBenefitRepository.findAllByBenefit_BenefitId(11L)).thenReturn(List.of());
 
         BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
 
@@ -73,9 +96,26 @@ class BenefitImportServiceImplTest {
         ArgumentCaptor<Benefit> benefitCaptor = ArgumentCaptor.forClass(Benefit.class);
         verify(benefitRepository).save(benefitCaptor.capture());
         Benefit imported = benefitCaptor.getValue();
-        assertThat(imported.getCarrier()).isEqualTo(Carrier.SKT);
-        assertThat(imported.getSourceKey()).isEqualTo("skt-benefit-1");
+        assertThat(imported.getCanonicalKey()).isEqualTo("7:할인혜택");
         assertThat(imported.getActive()).isTrue();
+
+        ArgumentCaptor<BenefitCarrierPolicy> policyCaptor = ArgumentCaptor.forClass(BenefitCarrierPolicy.class);
+        verify(benefitCarrierPolicyRepository).save(policyCaptor.capture());
+        BenefitCarrierPolicy policy = policyCaptor.getValue();
+        assertThat(policy.getBenefit()).isSameAs(savedBenefit);
+        assertThat(policy.getCarrier()).isEqualTo(Carrier.SKT);
+        assertThat(policy.getSourceKey()).isEqualTo("skt-benefit-1");
+        assertThat(policy.getSourceUrl()).isEqualTo("https://source.example/skt-benefit-1");
+        assertThat(policy.getUrl()).isEqualTo("https://benefit.example/skt-benefit-1");
+        assertThat(policy.getCarrierBenefitName()).isEqualTo("할인 혜택");
+        assertThat(policy.getActive()).isTrue();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<CarrierTierBenefit>> carrierTierCaptor = ArgumentCaptor.forClass(List.class);
+        verify(carrierTierBenefitRepository).saveAll(carrierTierCaptor.capture());
+        assertThat(carrierTierCaptor.getValue()).hasSize(1);
+        assertThat(carrierTierCaptor.getValue().get(0).getBenefitCarrierPolicy()).isSameAs(policy);
+        assertThat(carrierTierCaptor.getValue().get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
     }
 
     @Test
@@ -103,6 +143,7 @@ class BenefitImportServiceImplTest {
                     "benefitName":"할인 혜택",
                     "type":"DISCOUNT",
                     "usageType":"ONLINE",
+                    "url":"https://benefit.example",
                     "tiers":[{"grade":"SKT_VIP","context":"VIP 20% 할인","isAll":false}]
                   }]
                 }
@@ -113,6 +154,8 @@ class BenefitImportServiceImplTest {
         BenefitSnapshotImportRequest parsed = objectMapper.readValue(json, BenefitSnapshotImportRequest.class);
 
         assertThat(parsed.getCrawledAt()).isNotNull();
+        assertThat(parsed.getBenefits().get(0).getSourceUrl()).isEqualTo("https://source.example");
+        assertThat(parsed.getBenefits().get(0).getUrl()).isEqualTo("https://benefit.example");
         assertThat(parsed.getBenefits().get(0).getPartnerImage()).isEqualTo("https://image.example/logo.png");
         assertThat(parsed.getBenefits().get(0).getTierBenefits()).hasSize(1);
         assertThat(parsed.getBenefits().get(0).getTierBenefits().get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
@@ -130,6 +173,8 @@ class BenefitImportServiceImplTest {
         item.setBenefitName("할인 혜택");
         item.setType(BenefitType.DISCOUNT);
         item.setUsageType(UsageType.ONLINE);
+        item.setSourceUrl("https://source.example/skt-benefit-1");
+        item.setUrl("https://benefit.example/skt-benefit-1");
         item.setActive(true);
 
         BenefitSnapshotImportRequest.TierBenefitSnapshot tier = new BenefitSnapshotImportRequest.TierBenefitSnapshot();

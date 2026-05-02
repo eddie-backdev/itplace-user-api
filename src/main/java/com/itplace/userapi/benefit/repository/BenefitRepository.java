@@ -1,7 +1,6 @@
 package com.itplace.userapi.benefit.repository;
 
 import com.itplace.userapi.benefit.entity.Benefit;
-import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +14,6 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
     @Query("""
                 SELECT b FROM Benefit b
                 JOIN FETCH b.partner p
-                LEFT JOIN FETCH b.tierBenefits tb
                 WHERE b.benefitId = :benefitId
                   AND COALESCE(b.active, true) = true
             """)
@@ -23,7 +21,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
 
     List<Benefit> findAllByPartner_PartnerId(Long PartnerId);
 
-    Optional<Benefit> findByCarrierAndSourceKey(Carrier carrier, String sourceKey);
+    Optional<Benefit> findByPartner_PartnerIdAndCanonicalKey(Long partnerId, String canonicalKey);
 
     @Query("SELECT b FROM Benefit b JOIN FETCH b.partner WHERE b.partner.partnerId IN :partnerIds")
     List<Benefit> findAllByPartnerIdsWithPartner(@Param("partnerIds") List<Long> partnerIds);
@@ -35,30 +33,34 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
             value = """
                 SELECT b.* FROM benefit b
                 LEFT JOIN partner p ON p.partnerId = b.partnerId
+                LEFT JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                 LEFT JOIN favorite f ON f.benefitId = b.benefitId
-                WHERE b.mainCategory = :mainCategory
+                WHERE (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
                   AND (:filter IS NULL OR
-                       (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
-                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
+                       (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
+                       (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                  AND (:carrier IS NULL OR b.carrier = :carrier)
+                  AND (:carrier IS NULL OR bcp.carrier = :carrier)
                   AND COALESCE(b.active, true) = true
+                  AND COALESCE(bcp.active, true) = true
                 GROUP BY b.benefitId
                 ORDER BY COUNT(f.benefitId) DESC
             """,
             countQuery = """
                 SELECT COUNT(DISTINCT b.benefitId) FROM benefit b
                 LEFT JOIN partner p ON p.partnerId = b.partnerId
+                LEFT JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                 LEFT JOIN favorite f ON f.benefitId = b.benefitId
-                WHERE b.mainCategory = :mainCategory
+                WHERE (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
                   AND (:filter IS NULL OR
-                       (:filter = 'ONLINE' AND b.usageType IN ('ONLINE', 'BOTH')) OR
-                       (:filter = 'OFFLINE' AND b.usageType IN ('OFFLINE', 'BOTH')))
+                       (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
+                       (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                  AND (:carrier IS NULL OR b.carrier = :carrier)
+                  AND (:carrier IS NULL OR bcp.carrier = :carrier)
                   AND COALESCE(b.active, true) = true
+                  AND COALESCE(bcp.active, true) = true
             """,
             nativeQuery = true
     )
@@ -84,25 +86,20 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
     @Query("""
                 SELECT b FROM Benefit b
                 JOIN FETCH b.partner
-                JOIN FETCH b.tierBenefits
             """)
     List<Benefit> findAllWithPartnerAndTierBenefits();
 
     List<Benefit> findByPartner_PartnerId(Long partnerId);
 
-    @Query("SELECT b FROM Benefit b JOIN FETCH b.benefitPolicy WHERE b.benefitId = :benefitId")
-    Optional<Benefit> findByIdWithPolicy(@Param("benefitId") Long benefitId);
-
     @Query("""
-                SELECT DISTINCT b 
+                SELECT DISTINCT b
                 FROM Benefit b
                 JOIN FETCH b.partner p
-                LEFT JOIN FETCH b.tierBenefits tb
-                WHERE b.partner.partnerId = :partnerId 
-                  AND b.mainCategory = :mainCategory
+                WHERE b.partner.partnerId = :partnerId
+                  AND (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND COALESCE(b.active, true) = true
             """)
-    List<Benefit> findBenefitsWithPartnerAndTierBenefits(
+    List<Benefit> findMapBenefitsWithPartnerAndTierBenefits(
             @Param("partnerId") Long partnerId,
             @Param("mainCategory") MainCategory mainCategory
     );

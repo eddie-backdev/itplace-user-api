@@ -22,5 +22,11 @@ public interface BenefitService {
 
     BenefitDetailResponse getBenefitDetail(Long benefitId);
 
-    MapBenefitDetailResponse getMapBenefitDetail(Long storeId, Long partnerId, MainCategory mainCategory, Long userId);
+    MapBenefitDetailResponse getMapBenefitDetail(
+            Long storeId,
+            Long partnerId,
+            MainCategory mainCategory,
+            Carrier carrier,
+            Long userId
+    );
 }

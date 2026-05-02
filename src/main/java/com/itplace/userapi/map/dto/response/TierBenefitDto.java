@@ -14,6 +14,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TierBenefitDto {
+    private Long benefitId;
     private Carrier carrier;
     private Grade grade;
     private String context;
