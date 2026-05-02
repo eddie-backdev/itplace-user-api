@@ -58,7 +58,10 @@ public class BenefitSnapshotImportRequest {
         @NotNull(message = "사용 타입은 필수 항목입니다.")
         private UsageType usageType;
 
-        @JsonAlias("sourceUrl")
+        /** 크롤러가 수집한 원본 상세 페이지 URL. */
+        private String sourceUrl;
+
+        /** 사용자에게 열어줄 혜택 URL. 값이 없으면 sourceUrl을 폴백으로 사용한다. */
         private String url;
         private Boolean active;
 

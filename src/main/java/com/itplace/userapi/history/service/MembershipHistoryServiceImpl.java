@@ -3,15 +3,16 @@ package com.itplace.userapi.history.service;
 import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.benefit.entity.Benefit;
+import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.BenefitPolicy;
-import com.itplace.userapi.benefit.entity.TierBenefit;
-import com.itplace.userapi.benefit.entity.TierBenefitId;
+import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.exception.BenefitNotFoundException;
+import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
-import com.itplace.userapi.benefit.repository.TierBenefitRepository;
+import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.history.MembershipHistoryCode;
 import com.itplace.userapi.history.dto.response.MembershipHistoryResponse;
 import com.itplace.userapi.history.dto.response.MonthlyDiscountResponse;
@@ -52,7 +53,8 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
     private final MembershipHistoryRepository historyRepository;
     private final MembershipRepository membershipRepository;
     private final BenefitRepository benefitRepository;
-    private final TierBenefitRepository tierBenefitRepository;
+    private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
+    private final CarrierTierBenefitRepository carrierTierBenefitRepository;
     private final StoreRepository storeRepository;
 
     @Override
@@ -145,8 +147,12 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
         Grade membershipGrade = membership.getGrade();
 
         // 혜택 조회
-        Benefit benefit = benefitRepository.findByIdWithPolicy(benefitId)
+        Benefit benefit = benefitRepository.findById(benefitId)
                 .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
+        BenefitCarrierPolicy policy = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit)).stream()
+                .filter(candidate -> candidate.getCarrier() == user.getCarrier())
+                .findFirst()
+                .orElseThrow(() -> new InvalidBenefitUsageException(BenefitCode.TIER_BENEFIT_NOT_FOUND));
 
         // 등급별 사용 가능 여부 (BASIC은 VIP_COCK 사용 불가)
         if (membershipGrade == Grade.BASIC && benefit.getMainCategory() == MainCategory.VIP_COCK) {
@@ -154,12 +160,16 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
         }
 
         // tierBenefit 존재 여부 체크
-        TierBenefit tierBenefit = tierBenefitRepository.findById(new TierBenefitId(membershipGrade, benefitId))
+        CarrierTierBenefit tierBenefit = carrierTierBenefitRepository.findAllByBenefitCarrierPolicy(policy).stream()
+                .filter(tier -> tier.getGrade() == membershipGrade)
+                .findFirst()
                 .orElseGet(() -> {
                     // VIP/VVIP인데 tierBenefit.grade가 VIP콕일 때 조회
                     if ((membershipGrade == Grade.VIP || membershipGrade == Grade.VVIP)
                             && benefit.getMainCategory() == MainCategory.VIP_COCK) {
-                        return tierBenefitRepository.findById(new TierBenefitId(Grade.VIP콕, benefitId))
+                        return carrierTierBenefitRepository.findAllByBenefitCarrierPolicy(policy).stream()
+                                .filter(tier -> tier.getGrade() == Grade.VIP콕)
+                                .findFirst()
                                 .orElseThrow(
                                         () -> new InvalidBenefitUsageException(BenefitCode.TIER_BENEFIT_NOT_FOUND));
                     }
@@ -167,10 +177,10 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
                 });
 
         // 사용 제한 체크 (BenefitPolicy)
-        validateBenefitLimit(membership, benefit);
+        validateBenefitLimit(membership, benefit, policy);
 
         // 할인 금액 계산
-        Long discountAmount = calculateDiscountAmount(tierBenefit, benefit, amount);
+        Long discountAmount = calculateDiscountAmount(tierBenefit, policy, amount);
 
         // partnerId 검증
         Store store = storeRepository.findById(storeId)
@@ -193,8 +203,11 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
         // 이벤트 종료 정책에 따라 혜택 사용 시 별/쿠폰 지급 side effect는 중단한다.
     }
 
-    private void validateBenefitLimit(Membership membership, Benefit benefit) {
-        BenefitPolicy policy = benefit.getBenefitPolicy();
+    private void validateBenefitLimit(Membership membership, Benefit benefit, BenefitCarrierPolicy carrierPolicy) {
+        BenefitPolicy policy = carrierPolicy.getBenefitPolicy();
+        if (policy == null) {
+            return;
+        }
         LocalDateTime now = LocalDateTime.now();
 
         switch (policy.getCode()) {
@@ -230,10 +243,10 @@ public class MembershipHistoryServiceImpl implements MembershipHistoryService {
         }
     }
 
-    private long calculateDiscountAmount(TierBenefit tierBenefit, Benefit benefit, Integer amount) {
-        if (benefit.getType() == BenefitType.FREE) {
+    private long calculateDiscountAmount(CarrierTierBenefit tierBenefit, BenefitCarrierPolicy policy, Integer amount) {
+        if (policy.getType() == BenefitType.FREE) {
             return tierBenefit.getDiscountValue();
-        } else if (benefit.getType() == BenefitType.DISCOUNT) {
+        } else if (policy.getType() == BenefitType.DISCOUNT) {
             if (amount == null || amount <= 0) {
                 throw new InvalidBenefitUsageException(MembershipHistoryCode.AMOUNT_REQUIRED);
             }

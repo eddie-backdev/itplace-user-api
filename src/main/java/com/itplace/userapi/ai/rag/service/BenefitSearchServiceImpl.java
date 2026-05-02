@@ -7,8 +7,11 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.itplace.userapi.benefit.entity.Benefit;
+import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.enums.Grade;
+import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
+import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.recommend.dto.Candidate;
 import java.io.IOException;
 import java.util.List;
@@ -21,6 +24,8 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
 
     private final ElasticsearchClient esClient;
     private final BenefitRepository benefitRepository;
+    private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
+    private final CarrierTierBenefitRepository carrierTierBenefitRepository;
 
     public List<Candidate> queryVector(Grade grade, List<Float> userEmbedding, int CandidateSize) {
         try {
@@ -47,8 +52,10 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                         Benefit benefit = benefitRepository.findById(benefitId)
                                 .orElseThrow(() -> new RuntimeException("혜택 정보가 존재하지 않습니다: " + benefitId));
 
+                        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit));
+
                         // context 추출
-                        String context = benefit.getTierBenefits().stream()
+                        String context = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies).stream()
                                 .filter(tb -> tb.getGrade() == grade)
                                 .map(tb -> tb.getContext() != null ? tb.getContext() : "")
                                 .findFirst()
@@ -72,4 +79,3 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
 
 
 }
-

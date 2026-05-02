@@ -1,9 +1,11 @@
 package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.benefit.entity.Benefit;
-import com.itplace.userapi.benefit.entity.TierBenefit;
+import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
+import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
+import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
-import com.itplace.userapi.benefit.repository.TierBenefitRepository;
+import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import java.util.ArrayList;
@@ -23,7 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartnerBenefitCacheService {
 
     private final BenefitRepository benefitRepository;
-    private final TierBenefitRepository tierBenefitRepository;
+    private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
+    private final CarrierTierBenefitRepository carrierTierBenefitRepository;
     private final CacheManager cacheManager;
 
     /**
@@ -52,27 +55,27 @@ public class PartnerBenefitCacheService {
         }
 
         List<Benefit> benefits = benefitRepository.findAllByPartnerIdsWithPartner(uncachedIds);
-        List<TierBenefit> tierBenefits = benefits.isEmpty()
-                ? List.of() : tierBenefitRepository.findAllByBenefitIn(benefits);
+        List<BenefitCarrierPolicy> policies = benefits.isEmpty()
+                ? List.of() : benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
+                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
+                .toList();
+        List<CarrierTierBenefit> carrierTierBenefits = policies.isEmpty()
+                ? List.of() : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
 
-        Map<Long, List<TierBenefit>> tierMap = tierBenefits.stream()
-                .collect(Collectors.groupingBy(tb -> tb.getBenefit().getBenefitId()));
+        Map<Long, List<BenefitCarrierPolicy>> policiesByBenefit = policies.stream()
+                .collect(Collectors.groupingBy(policy -> policy.getBenefit().getBenefitId()));
+        Map<Long, List<CarrierTierBenefit>> carrierTierMap = carrierTierBenefits.stream()
+                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
         Map<Long, List<Benefit>> benefitsByPartner = benefits.stream()
                 .collect(Collectors.groupingBy(b -> b.getPartner().getPartnerId()));
 
         for (Long partnerId : uncachedIds) {
             List<Benefit> partnerBenefits = benefitsByPartner.getOrDefault(partnerId, List.of());
             List<BenefitCacheDto> dtos = partnerBenefits.stream()
-                    .map(b -> new BenefitCacheDto(
-                            b.getBenefitId(),
-                            b.getBenefitName(),
-                            tierMap.getOrDefault(b.getBenefitId(), new ArrayList<>()).stream()
-                                    .map(t -> TierBenefitDto.builder()
-                                            .carrier(b.getCarrier())
-                                            .grade(t.getGrade())
-                                            .context(t.getContext())
-                                            .build())
-                                    .collect(Collectors.toList())
+                    .map(b -> toBenefitCacheDto(
+                            b,
+                            policiesByBenefit.getOrDefault(b.getBenefitId(), List.of()),
+                            carrierTierMap
                     ))
                     .collect(Collectors.toList());
 
@@ -96,9 +99,15 @@ public class PartnerBenefitCacheService {
             return new ArrayList<>();
         }
 
-        List<TierBenefit> tierBenefits = tierBenefitRepository.findAllByBenefitIn(benefits);
-        Map<Long, List<TierBenefit>> tierMap = tierBenefits.stream()
-                .collect(Collectors.groupingBy(tb -> tb.getBenefit().getBenefitId()));
+        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
+                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
+                .toList();
+        List<CarrierTierBenefit> carrierTierBenefits = policies.isEmpty()
+                ? List.of() : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
+        Map<Long, List<BenefitCarrierPolicy>> policiesByBenefit = policies.stream()
+                .collect(Collectors.groupingBy(policy -> policy.getBenefit().getBenefitId()));
+        Map<Long, List<CarrierTierBenefit>> carrierTierMap = carrierTierBenefits.stream()
+                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
 
         // .toList() 대신 .collect(Collectors.toList()) 사용 (외부/내부 리스트 모두 동일).
         // 이유: Java 16+ Stream.toList()는 final 클래스를 반환하여 Jackson이 타입 래퍼를 붙이지 않음.
@@ -106,17 +115,46 @@ public class PartnerBenefitCacheService {
         // 역직렬화 시 타입 id 자리에 START_ARRAY 토큰이 오면서 MismatchedInputException 발생.
         // Collectors.toList()는 ArrayList(non-final)를 반환하므로 타입 래퍼가 정상적으로 생성됨.
         return benefits.stream()
-                .map(b -> new BenefitCacheDto(
-                        b.getBenefitId(),
-                        b.getBenefitName(),
-                        tierMap.getOrDefault(b.getBenefitId(), new ArrayList<>()).stream()
-                                .map(t -> TierBenefitDto.builder()
-                                        .carrier(b.getCarrier())
-                                        .grade(t.getGrade())
-                                        .context(t.getContext())
-                                        .build())
-                                .collect(Collectors.toList())
+                .map(b -> toBenefitCacheDto(
+                        b,
+                        policiesByBenefit.getOrDefault(b.getBenefitId(), List.of()),
+                        carrierTierMap
                 ))
                 .collect(Collectors.toList());
+    }
+
+    private BenefitCacheDto toBenefitCacheDto(
+            Benefit benefit,
+            List<BenefitCarrierPolicy> policies,
+            Map<Long, List<CarrierTierBenefit>> carrierTierMap
+    ) {
+        List<TierBenefitDto> normalizedTiers = policies.stream()
+                .flatMap(policy -> carrierTierMap
+                        .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
+                        .map(tier -> TierBenefitDto.builder()
+                                .benefitId(benefit.getBenefitId())
+                                .carrier(policy.getCarrier())
+                                .grade(tier.getGrade())
+                                .context(tier.getContext())
+                                .build()))
+                .collect(Collectors.toList());
+        return new BenefitCacheDto(
+                benefit.getBenefitId(),
+                benefit.getBenefitName(),
+                representativeUsageType(policies),
+                benefit.getMainCategory(),
+                normalizedTiers
+        );
+    }
+
+    private com.itplace.userapi.benefit.entity.enums.UsageType representativeUsageType(
+            List<BenefitCarrierPolicy> policies
+    ) {
+        return policies.stream()
+                .map(BenefitCarrierPolicy::getUsageType)
+                .filter(type -> type == com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE
+                        || type == com.itplace.userapi.benefit.entity.enums.UsageType.BOTH)
+                .findFirst()
+                .orElse(policies.isEmpty() ? null : policies.get(0).getUsageType());
     }
 }

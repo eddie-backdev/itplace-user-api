@@ -17,6 +17,7 @@ import lombok.Setter;
 public class MapBenefitDetailResponse {
     private Long benefitId;
     private String benefitName;
+    private String image;
     private MainCategory mainCategory;
     private String manual;
     private String url;

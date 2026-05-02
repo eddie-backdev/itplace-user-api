@@ -75,7 +75,7 @@ public class StoreServiceImpl implements StoreService {
 
         Collections.shuffle(allStoreIds);
         List<Long> limitedStoreIds = allStoreIds.subList(0, Math.min(allStoreIds.size(), FINAL_LIMIT));
-        List<Store> limitedStores = storeRepository.findAllByStoreIdInWithPartner(limitedStoreIds);
+        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(limitedStoreIds));
 
         List<Long> partnerIds = limitedStores.stream()
                 .map(store -> store.getPartner().getPartnerId())
@@ -182,7 +182,7 @@ public class StoreServiceImpl implements StoreService {
         }
 
         Collections.shuffle(storeIds);
-        List<Store> limitedStores = storeRepository.findAllByStoreIdInWithPartner(storeIds);
+        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(storeIds));
         if (limitedStores.isEmpty()) {
             return Collections.emptyList();
         }
@@ -247,7 +247,7 @@ public class StoreServiceImpl implements StoreService {
                 searchResult.nameMatchIds().stream()
         ).distinct().toList();
 
-        List<Store> allStores = storeRepository.findAllByStoreIdInWithPartner(allIds);
+        List<Store> allStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(allIds));
         if (allStores.isEmpty()) {
             log.info("ES 매장 검색 ID가 DB에서 조회되지 않아 DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
             return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
@@ -279,10 +279,20 @@ public class StoreServiceImpl implements StoreService {
                         }
                 ));
 
-        // 브랜드 매치(partnerName) 그룹을 거리순 정렬 후 우선 노출
-        // 매장명 매치(storeName/business) 그룹은 거리순 정렬 후 후순위 노출
+        List<Long> strictBrandMatchIds = searchResult.brandMatchIds().stream()
+                .filter(id -> isStrictPartnerKeywordMatch(dtoMap.get(id), normalizedKeyword))
+                .toList();
+        if (strictBrandMatchIds.isEmpty() && searchResult.nameMatchIds().isEmpty()) {
+            log.info("ES 브랜드 검색 결과가 키워드와 정확히 맞지 않아 DB 키워드 검색으로 대체: keyword={}, category={}",
+                    normalizedKeyword, category);
+            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
+        }
+
+        // 브랜드 매치(partnerName) 그룹은 실제 파트너명이 키워드와 포함 관계일 때만 우선 노출한다.
+        // ES/Nori match는 "팬시랜드"와 "서울랜드"처럼 공통 토큰(랜드)만으로도 매칭될 수 있으므로,
+        // 검증되지 않은 브랜드 매치를 먼저 보여주면 무관한 혜택이 적용된 것처럼 보인다.
         return Stream.concat(
-                searchResult.brandMatchIds().stream()
+                strictBrandMatchIds.stream()
                         .map(dtoMap::get)
                         .filter(Objects::nonNull)
                         .sorted(Comparator.comparing(StoreDetailResponse::getDistance)),
@@ -294,6 +304,60 @@ public class StoreServiceImpl implements StoreService {
     }
 
 
+    private List<Store> filterStoresMatchedToPartner(List<Store> stores) {
+        if (stores == null || stores.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return stores.stream()
+                .filter(this::isStoreMatchedToPartner)
+                .toList();
+    }
+
+    private boolean isStoreMatchedToPartner(Store store) {
+        if (store == null || store.getPartner() == null) {
+            return false;
+        }
+        String storeName = normalizeSearchText(store.getStoreName());
+        return aliasesForPartner(store.getPartner().getPartnerName()).stream()
+                .map(this::normalizeSearchText)
+                .filter(alias -> !alias.isBlank())
+                .anyMatch(storeName::contains);
+    }
+
+    private List<String> aliasesForPartner(String partnerName) {
+        String normalized = normalizeSearchText(partnerName);
+        if ("gs25".equals(normalized) || "지에스25".equals(normalized)) {
+            return List.of("GS25", "지에스25");
+        }
+        if ("cu".equals(normalized) || "씨유".equals(normalized)) {
+            return List.of("CU", "씨유");
+        }
+        if ("세븐일레븐".equals(normalized) || "7eleven".equals(normalized)) {
+            return List.of("세븐일레븐", "7-ELEVEN", "7ELEVEN");
+        }
+        return List.of(partnerName);
+    }
+
+    private boolean isStrictPartnerKeywordMatch(StoreDetailResponse response, String keyword) {
+        if (response == null || response.getPartner() == null) {
+            return false;
+        }
+        String normalizedPartnerName = normalizeSearchText(response.getPartner().getPartnerName());
+        String normalizedKeyword = normalizeSearchText(keyword);
+        return !normalizedPartnerName.isBlank()
+                && !normalizedKeyword.isBlank()
+                && (normalizedPartnerName.contains(normalizedKeyword)
+                || normalizedKeyword.contains(normalizedPartnerName));
+    }
+
+    private String normalizeSearchText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.toLowerCase(java.util.Locale.ROOT).replaceAll("[^가-힣a-z0-9]+", "");
+    }
+
+
     private List<StoreDetailResponse> searchNearbyStoresInDatabase(double lat, double lng, String category,
                                                                    String keyword, double userLat, double userLng) {
         List<Store> fallbackStores = storeRepository.searchNearbyStores(lng, lat, category, keyword);
@@ -301,18 +365,19 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private List<StoreDetailResponse> toStoreDetailResponses(List<Store> stores, double userLat, double userLng) {
-        if (stores.isEmpty()) {
+        List<Store> matchedStores = filterStoresMatchedToPartner(stores);
+        if (matchedStores.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<Long> partnerIds = stores.stream()
+        List<Long> partnerIds = matchedStores.stream()
                 .map(store -> store.getPartner().getPartnerId())
                 .distinct()
                 .toList();
 
         Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
 
-        return stores.stream()
+        return matchedStores.stream()
                 .map(store -> {
                     Partner partner = store.getPartner();
                     double distance = userLat == 0 || userLng == 0
@@ -347,7 +412,7 @@ public class StoreServiceImpl implements StoreService {
         //         이후 루프에서는 DB 호출 없이 캐시 결과를 재사용.
         List<BenefitCacheDto> partnerBenefits = partnerBenefitCacheService.getBenefits(partner.getPartnerId());
 
-        return stores.stream()
+        return filterStoresMatchedToPartner(stores).stream()
                 .map(store -> {
                     double distance = calculateDistance(userLat, userLng,
                             store.getLocation().getY(), store.getLocation().getX());
@@ -363,7 +428,8 @@ public class StoreServiceImpl implements StoreService {
 
     private List<TierBenefitDto> toDistinctTierBenefits(List<BenefitCacheDto> benefits) {
         Map<String, TierBenefitDto> distinct = benefits.stream()
-                .flatMap(b -> b.getTierBenefits().stream())
+                .flatMap(benefit -> benefit.getTierBenefits().stream()
+                        .map(tier -> withBenefitId(tier, benefit.getBenefitId())))
                 .collect(Collectors.toMap(
                         tier -> String.join("|",
                                 String.valueOf(tier.getCarrier()),
@@ -376,6 +442,19 @@ public class StoreServiceImpl implements StoreService {
                 ));
 
         return new ArrayList<>(distinct.values());
+    }
+
+    private TierBenefitDto withBenefitId(TierBenefitDto tier, Long benefitId) {
+        if (tier.getBenefitId() != null || benefitId == null) {
+            return tier;
+        }
+
+        return TierBenefitDto.builder()
+                .benefitId(benefitId)
+                .carrier(tier.getCarrier())
+                .grade(tier.getGrade())
+                .context(tier.getContext())
+                .build();
     }
 
     private double calculateDistance(double userLat, double userLng, double storeLat, double storeLng) {
@@ -402,20 +481,28 @@ public class StoreServiceImpl implements StoreService {
             return Collections.emptyList();
         }
 
-        return benefits.stream()
-                .filter(b -> b.getBenefitName().contains("오프라인"))
-                .findFirst()
-                .map(List::of)
-                .orElseGet(() -> {
-                    if (benefits.size() >= 3) {
-                        List<BenefitCacheDto> matched = benefits.stream()
-                                .filter(b -> b.getBenefitName().equals(storeName))
-                                .toList();
-                        if (!matched.isEmpty()) {
-                            return matched;
-                        }
-                    }
-                    return benefits;
-                });
+        List<BenefitCacheDto> offlineBenefits = benefits.stream()
+                .filter(BenefitCacheDto::isOfflineAvailable)
+                .toList();
+        if (!offlineBenefits.isEmpty()) {
+            return offlineBenefits;
+        }
+
+        List<BenefitCacheDto> legacyOfflineBenefits = benefits.stream()
+                .filter(b -> b.getBenefitName() != null && b.getBenefitName().contains("오프라인"))
+                .toList();
+        if (!legacyOfflineBenefits.isEmpty()) {
+            return legacyOfflineBenefits;
+        }
+
+        if (benefits.size() >= 3) {
+            List<BenefitCacheDto> matched = benefits.stream()
+                    .filter(b -> b.getBenefitName().equals(storeName))
+                    .toList();
+            if (!matched.isEmpty()) {
+                return matched;
+            }
+        }
+        return benefits;
     }
 }

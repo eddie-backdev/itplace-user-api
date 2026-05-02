@@ -56,5 +56,6 @@ public class Recommendation extends BaseTimeEntity {
             joinColumns = @JoinColumn(name = "recommendationId"),
             inverseJoinColumns = @JoinColumn(name = "benefitId")
     )
+    @Builder.Default
     private List<Benefit> benefits = new ArrayList<>();
 }

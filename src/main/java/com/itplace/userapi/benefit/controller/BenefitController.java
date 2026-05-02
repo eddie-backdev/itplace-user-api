@@ -31,7 +31,7 @@ public class BenefitController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResult<BenefitListResponse>>> getBenefits(
-            @RequestParam MainCategory mainCategory,
+            @RequestParam(required = false) MainCategory mainCategory,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) UsageType filter,
             @RequestParam(required = false, defaultValue = "POPULARITY") String sort,
@@ -61,11 +61,13 @@ public class BenefitController {
     public ResponseEntity<ApiResponse<MapBenefitDetailResponse>> getMapBenefitDetail(
             @RequestParam Long storeId,
             @RequestParam Long partnerId,
-            @RequestParam MainCategory mainCategory,
+            @RequestParam(required = false) MainCategory mainCategory,
+            @RequestParam(required = false) Carrier carrier,
             @AuthenticationPrincipal PrincipalDetails principalDetails
     ) {
         Long userId = (principalDetails != null) ? principalDetails.getUserId() : null;
-        MapBenefitDetailResponse detail = benefitService.getMapBenefitDetail(storeId, partnerId, mainCategory, userId);
+        MapBenefitDetailResponse detail = benefitService.getMapBenefitDetail(
+                storeId, partnerId, mainCategory, carrier, userId);
         ApiResponse<MapBenefitDetailResponse> body = ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, detail);
         return new ResponseEntity<>(body, body.getStatus());
     }

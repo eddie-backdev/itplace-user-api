@@ -1,21 +1,12 @@
 package com.itplace.userapi.benefit.entity;
 
-import com.itplace.userapi.benefit.entity.enums.BenefitType;
-import com.itplace.userapi.benefit.entity.enums.BenefitTypeConverter;
-import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.MainCategoryConverter;
-import com.itplace.userapi.benefit.entity.enums.UsageType;
-import com.itplace.userapi.benefit.entity.enums.UsageTypeConverter;
 import com.itplace.userapi.common.BaseTimeEntity;
 import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.partner.entity.Partner;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -25,16 +16,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Data
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -54,50 +46,22 @@ public class Benefit extends BaseTimeEntity {
 
     private String benefitName;
 
-    @Convert(converter = BenefitTypeConverter.class)
-    private BenefitType type;
-
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
-    private String description;
-
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
-    private String manual;
-
-    @Column(name = "usageType")
-    @Convert(converter = UsageTypeConverter.class)
-    private UsageType usageType;
-
+    /** 통신사별 정책 row를 하나의 공통 혜택으로 묶기 위한 정규화 키. */
     @Column(length = 512)
-    private String url;
-
-    @Enumerated(EnumType.STRING)
-    private Carrier carrier;
+    private String canonicalKey;
 
     @Builder.Default
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
-    @Column(name = "sourceKey", length = 255)
-    private String sourceKey;
-
-    @Column(name = "sourceCategory", length = 100)
-    private String sourceCategory;
-
-    @Column(name = "lastCrawledAt")
-    private LocalDateTime lastCrawledAt;
-
     // 일단 benefit 삭제 시 외래키 제약 위반 걸어줘서 오류 처리
     // 즐겨찾기 먼저 제거 -> 혜택 삭제
+    @Builder.Default
     @OneToMany(mappedBy = "benefit")
     private List<Favorite> favorites = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "benefit")
-    private List<TierBenefit> tierBenefits = new ArrayList<>();
-
-    // 정책 추가
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "benefitLimit")
-    private BenefitPolicy benefitPolicy;
+    private List<BenefitCarrierPolicy> carrierPolicies = new ArrayList<>();
 
 }
-
