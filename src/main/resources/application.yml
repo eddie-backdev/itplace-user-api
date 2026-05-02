@@ -57,7 +57,7 @@ spring:
       organization-id: ${OPENAI_ORGANIZATION_ID}
       base-url: https://api.openai.com/
       chat:
-        model: gpt-4.1-nano
+        model: ${OPENAI_CHAT_MODEL:gpt-5-nano}
       embedding:
         model: text-embedding-3-small
       audio:

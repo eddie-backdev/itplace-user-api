@@ -1,6 +1,7 @@
 package com.itplace.userapi.ai.question.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.CountResponse;
 import java.io.IOException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,16 @@ public class ElasticQuestionServiceImpl implements ElasticQuestionService {
             return esClient.exists(e -> e.index(indexName).id(id)).value();
         } catch (IOException e) {
             throw new IllegalStateException("Could not check if document exists", e);
+        }
+    }
+
+
+    public long countDocuments(String indexName) {
+        try {
+            CountResponse response = esClient.count(c -> c.index(indexName));
+            return response.count();
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not count question documents", e);
         }
     }
 

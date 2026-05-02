@@ -5,5 +5,7 @@ public interface ElasticQuestionService {
 
     boolean existsById(String indexName, String id);
 
+    long countDocuments(String indexName);
+
     void saveQuestion(String indexName, String id, String question, String category, java.util.List<Float> embedding);
 }

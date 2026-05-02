@@ -31,8 +31,9 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
     private final ElasticQuestionService elasticQuestionService;
     private final ForbiddenWordService forbiddenWordService;
 
-
     public RecommendationResponse recommendByQuestion(String question, double lat, double lng) {
+        elasticQuestionService.createQuestionIndexIfNotExists("questions");
+
         // 0. 금칙어 필터링
         String result = forbiddenWordService.censor(question);
         if (result.contains("입력할 수 없는 단어")) {
