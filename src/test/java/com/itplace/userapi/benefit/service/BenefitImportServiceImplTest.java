@@ -84,7 +84,11 @@ class BenefitImportServiceImplTest {
         Benefit savedBenefit = Benefit.builder().benefitId(11L).build();
 
         when(partnerRepository.findByPartnerName("제휴사")).thenReturn(Optional.empty());
-        when(partnerRepository.save(any(Partner.class))).thenReturn(savedPartner);
+        when(partnerRepository.save(any(Partner.class))).thenAnswer(invocation -> {
+            Partner partner = invocation.getArgument(0);
+            partner.setPartnerId(7L);
+            return partner;
+        });
         when(benefitRepository.save(any(Benefit.class))).thenReturn(savedBenefit);
 
         BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
@@ -98,6 +102,12 @@ class BenefitImportServiceImplTest {
         Benefit imported = benefitCaptor.getValue();
         assertThat(imported.getCanonicalKey()).isEqualTo("7:할인혜택");
         assertThat(imported.getActive()).isTrue();
+
+        ArgumentCaptor<Partner> partnerCaptor = ArgumentCaptor.forClass(Partner.class);
+        verify(partnerRepository).save(partnerCaptor.capture());
+        Partner importedPartner = partnerCaptor.getValue();
+        assertThat(importedPartner.getCategory()).isEqualTo("푸드");
+        assertThat(importedPartner.getImage()).isEqualTo("https://images.itplace.click/img/spicus/logo.png");
 
         ArgumentCaptor<BenefitCarrierPolicy> policyCaptor = ArgumentCaptor.forClass(BenefitCarrierPolicy.class);
         verify(benefitCarrierPolicyRepository).save(policyCaptor.capture());
@@ -168,6 +178,7 @@ class BenefitImportServiceImplTest {
         BenefitSnapshotImportRequest.BenefitSnapshotItem item = new BenefitSnapshotImportRequest.BenefitSnapshotItem();
         item.setSourceKey("skt-benefit-1");
         item.setPartnerName("제휴사");
+        item.setPartnerImage("https://images.itplace.click/img/spicus/logo.png");
         item.setPartnerCategory("푸드");
         item.setMainCategory(MainCategory.BASIC_BENEFIT);
         item.setBenefitName("할인 혜택");
