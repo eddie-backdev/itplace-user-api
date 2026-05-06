@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RecommendationServiceImpl implements RecommendationService {
     private static final int EXPIRED_DAYS = 1;
+    private static final int MIN_CANDIDATE_SIZE = 10;
+    private static final int MAX_CANDIDATE_SIZE = 20;
 
     private final UserFeatureService userFeatureService;
     private final OpenAIService aiService;
@@ -50,7 +52,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         UserFeature uf = userFeatureService.loadUserFeature(userId);
 
         // 벡터 검색 기반 추천 후보
-        List<Candidate> candidates = aiService.vectorSearch(uf, 50);
+        List<Candidate> candidates = aiService.vectorSearch(uf, candidateSize(topK));
         // 재랭킹 및 이유 생성
         List<Recommendations> recommendations = aiService.rerankAndExplain(uf, candidates, topK);
 
@@ -87,6 +89,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
 
         return dto.getBenefitIds();
+    }
+
+    private int candidateSize(int topK) {
+        return Math.min(Math.max(topK * 3, MIN_CANDIDATE_SIZE), MAX_CANDIDATE_SIZE);
     }
 
 }

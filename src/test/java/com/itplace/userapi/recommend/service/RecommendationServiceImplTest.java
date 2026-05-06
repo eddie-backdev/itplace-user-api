@@ -79,7 +79,7 @@ class RecommendationServiceImplTest {
         when(recommendationRepository.findLatestRecommendationDate(eq(7L), any(LocalDateTime.class)))
                 .thenReturn(null);
         when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
-        when(aiService.vectorSearch(userFeature, 50)).thenReturn(List.<Candidate>of());
+        when(aiService.vectorSearch(userFeature, 10)).thenReturn(List.<Candidate>of());
         when(aiService.rerankAndExplain(userFeature, List.of(), 3)).thenReturn(List.of(generated));
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
         when(benefitRepository.findAllById(List.of(1L, 999L))).thenReturn(List.of(existingBenefit));

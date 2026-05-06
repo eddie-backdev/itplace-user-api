@@ -13,6 +13,8 @@ import com.itplace.userapi.recommend.domain.UserFeature;
 import com.itplace.userapi.recommend.dto.Candidate;
 import com.itplace.userapi.recommend.dto.ChatCompletionResponse;
 import com.itplace.userapi.recommend.dto.response.Recommendations;
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +30,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 @RequiredArgsConstructor
 @Slf4j
 public class OpenAIServiceImpl implements OpenAIService {
+    private static final int MAX_PROMPT_CANDIDATES = 15;
+    private static final int MAX_RECOMMENDATION_COUNT = 5;
+    private static final int MAX_DESCRIPTION_CHARS = 160;
+    private static final int MAX_CONTEXT_CHARS = 180;
+    private static final int MAX_COMPLETION_TOKENS = 700;
+    private static final Duration LLM_TIMEOUT = Duration.ofSeconds(18);
+
     private final ObjectMapper mapper;
     @Qualifier("openAiWebClient")
     private final WebClient webClient;
@@ -57,19 +66,25 @@ public class OpenAIServiceImpl implements OpenAIService {
     @Override
     public List<Recommendations> rerankAndExplain(UserFeature uf, List<Candidate> cands, int topK) {
         String url = baseUrl + "/v1/chat/completions";
+        int recommendationCount = Math.min(Math.max(topK, 1), MAX_RECOMMENDATION_COUNT);
+        List<Candidate> promptCandidates = cands.stream()
+                .limit(MAX_PROMPT_CANDIDATES)
+                .toList();
 
-        log.debug("후보 사이즈: {}", cands.size());
+        log.info("LLM 추천 요청 후보 수: original={}, prompt={}, requestedTopK={}, actualTopK={}",
+                cands.size(), promptCandidates.size(), topK, recommendationCount);
+
         StringBuilder items = new StringBuilder();
-        for (int i = 0; i < cands.size(); i++) {
-            Candidate c = cands.get(i);
-            String description = c.getDescription() != null ? c.getDescription().replaceAll("[\\r\\n]+", " ") : "설명 없음";
-            String context = c.getContext() != null ? c.getContext().replaceAll("[\\r\\n]+", " ") : "추가 정보 없음";
+        for (int i = 0; i < promptCandidates.size(); i++) {
+            Candidate c = promptCandidates.get(i);
+            String description = truncateForPrompt(c.getDescription(), MAX_DESCRIPTION_CHARS, "설명 없음");
+            String context = truncateForPrompt(c.getContext(), MAX_CONTEXT_CHARS, "추가 정보 없음");
 
             items.append(String.format(
-                    "%d. [%s] 제휴처: %s / 설명: %s / 등급 혜택: %s\n",
+                    "%d. [%s] 제휴처: %s / 설명: %s / 등급 혜택: %s%n",
                     i + 1,
-                    c.getCategory(),
-                    c.getPartnerName(),
+                    nullToBlank(c.getCategory()),
+                    nullToBlank(c.getPartnerName()),
                     description,
                     context
             ));
@@ -90,30 +105,18 @@ public class OpenAIServiceImpl implements OpenAIService {
                         【후보 혜택 목록】
                         %s
                         
-                        ※ 아래 후보 혜택들 중 사용자에게 적절한 혜택 %d개 이상을 골라주세요.
+                        ※ 아래 후보 혜택들 중 사용자에게 적절한 혜택 %d개를 골라주세요.
+                        ※ 추천 이유에는 가능한 경우 등급 혜택과 최근 행동 로그 연관성을 짧게 포함해주세요.
+                        ※ 추천 제휴처는 절대 중복되지 않도록 해주세요.
+                        ※ 카테고리를 알 수 없는 경우, 카테고리에 관한 내용은 포함하지 마세요.
                         
-                        ※ 반드시 다음 조건을 지켜주세요:
-                        - 추천 이유에는 **반드시 등급 혜택**을 포함해주세요.
-                          - 단, '설명 없음' 또는 '추가 정보 없음'인 경우 제외해도 됩니다.
-                        - 그리고 아래 중 하나 이상을 추가로 포함해야 합니다:
-                          - 사용자가 최근 행동 로그(click/search/detail)에서 본 제휴사와의 연관성
-                        - 예: "최근 CGV를 자주 클릭하셨더라구요!", "실제로 VIPS 혜택을 많이 사용하셨네요!"
-                        - 추천 제휴처는 절대 중복되지 않도록 해주세요.
-                        - 카테고리를 알 수 없는 경우, 카테고리에 관한 내용은 포함하지 마세요.
-                        
-                        
-                        "Don't include markdown formatting. Just return valid JSON only."
+                        Don't include markdown formatting. Just return valid JSON only.
                         {
                           "recommendations": [
                             {
                               "rank": 1,
                               "partnerName": "롯데시네마",
-                              "reason": "최근 롯데시네마를 자주 클릭하셨더라구요! 문화/여가 혜택 중 이 혜택이 특히 잘 맞을 것 같아요."
-                            },
-                            {
-                              "rank": 2,
-                              "partnerName": "GS25",
-                              "reason": "GS25에 특히 관심이 많으시니, 일상에서 유용하게 쓰실 수 있겠어요! 1천원 당 100원 할인받으실 수 있다구요!"
+                              "reason": "최근 롯데시네마를 자주 클릭하셨더라구요! VIP 등급 혜택이 잘 맞는 걸요."
                             }
                           ]
                         }
@@ -123,7 +126,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                 String.join(", ", uf.getDetailPartners()),
                 String.join(", ", uf.getRecentPartnerNames()),
                 items,
-                topK);
+                recommendationCount);
 
         List<Map<String, String>> messages = List.of(
                 Map.of(
@@ -140,59 +143,101 @@ public class OpenAIServiceImpl implements OpenAIService {
 
         log.debug("추천 후보 리스트: {}", prompt);
 
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", messages
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("messages", messages);
+        body.put("max_completion_tokens", MAX_COMPLETION_TOKENS);
+        body.put("response_format", Map.of("type", "json_object"));
+        body.put("reasoning_effort", "low");
 
         long start = System.nanoTime();
 
-        ChatCompletionResponse cr = webClient.post()
-                .uri(url)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(ChatCompletionResponse.class)
-                .block();
+        try {
+            ChatCompletionResponse cr = webClient.post()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(ChatCompletionResponse.class)
+                    .block(LLM_TIMEOUT);
 
-        long end = System.nanoTime();
-        log.info("LLM 응답 생성 시간 (ms): {}", (end - start) / 1_000_000);
+            long end = System.nanoTime();
+            log.info("LLM 응답 생성 시간 (ms): {}", (end - start) / 1_000_000);
 
-        if (cr != null && !cr.getChoices().isEmpty()) {
-            String jsonString = cr.getChoices().get(0).getMessage().getContent();
-            try {
+            if (cr != null && cr.getChoices() != null && !cr.getChoices().isEmpty()) {
+                String jsonString = cr.getChoices().get(0).getMessage().getContent();
                 JsonNode root = mapper.readTree(jsonString);
                 JsonNode recList = root.get("recommendations");
 
-                List<Recommendations> recommendations = mapper.readerForListOf(Recommendations.class)
-                        .readValue(recList);
-
-                for (Recommendations rec : recommendations) {
-                    Optional<Partner> partnerOpt = partnerRepository.findByPartnerName(rec.getPartnerName());
-                    if (partnerOpt.isPresent()) {
-                        Partner partner = partnerOpt.get();
-
-                        rec.setImgUrl(partner.getImage());
-
-                        List<Long> benefitIds = benefitRepository.findByPartner_PartnerId(partner.getPartnerId())
-                                .stream()
-                                .map(Benefit::getBenefitId)
-                                .toList();
-
-                        rec.setBenefitIds(benefitIds);
-                    } else {
-                        rec.setImgUrl("<UNKNOWN>");
-                        rec.setBenefitIds(List.of());
-                    }
-
+                if (recList != null && recList.isArray()) {
+                    List<Recommendations> recommendations = mapper.readerForListOf(Recommendations.class)
+                            .readValue(recList);
+                    return enrichRecommendations(recommendations);
                 }
-
-                return recommendations;
-            } catch (Exception e) {
-                throw new RuntimeException("LLM 추천 결과 파싱 실패", e);
             }
+        } catch (Exception e) {
+            long end = System.nanoTime();
+            log.warn("LLM 추천 생성 실패 또는 지연으로 기본 추천으로 대체합니다. elapsedMs={}, reason={}",
+                    (end - start) / 1_000_000, e.getMessage());
         }
-        return List.of();
+
+        return fallbackRecommendations(promptCandidates, recommendationCount);
 
     }
+
+    private List<Recommendations> enrichRecommendations(List<Recommendations> recommendations) {
+        for (Recommendations rec : recommendations) {
+            Optional<Partner> partnerOpt = partnerRepository.findByPartnerName(rec.getPartnerName());
+            if (partnerOpt.isPresent()) {
+                Partner partner = partnerOpt.get();
+
+                rec.setImgUrl(partner.getImage());
+
+                List<Long> benefitIds = benefitRepository.findByPartner_PartnerId(partner.getPartnerId())
+                        .stream()
+                        .map(Benefit::getBenefitId)
+                        .toList();
+
+                rec.setBenefitIds(benefitIds);
+            } else {
+                rec.setImgUrl("<UNKNOWN>");
+                rec.setBenefitIds(List.of());
+            }
+        }
+
+        return recommendations;
+    }
+
+    private List<Recommendations> fallbackRecommendations(List<Candidate> candidates, int topK) {
+        List<Recommendations> recommendations = candidates.stream()
+                .filter(candidate -> candidate.getPartnerName() != null && !candidate.getPartnerName().isBlank())
+                .limit(topK)
+                .map(candidate -> Recommendations.builder()
+                        .rank(candidates.indexOf(candidate) + 1)
+                        .partnerName(candidate.getPartnerName())
+                        .reason(String.format("%s 혜택이 지금 조건과 잘 맞는 걸요! %s",
+                                candidate.getPartnerName(),
+                                truncateForPrompt(candidate.getContext(), MAX_CONTEXT_CHARS, "등급별 혜택도 함께 확인해보세요.")))
+                        .benefitIds(candidate.getBenefitId() == null ? List.of() : List.of(candidate.getBenefitId()))
+                        .build())
+                .toList();
+
+        return enrichRecommendations(recommendations);
+    }
+
+    static String truncateForPrompt(String value, int maxChars, String defaultValue) {
+        String normalized = value == null ? defaultValue : value.replaceAll("[\r\n]+", " ").trim();
+        if (normalized.isBlank()) {
+            normalized = defaultValue;
+        }
+        if (normalized.length() <= maxChars) {
+            return normalized;
+        }
+        return normalized.substring(0, maxChars) + "…";
+    }
+
+    private String nullToBlank(String value) {
+        return value == null ? "" : value;
+    }
+
 }
