@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.json.JsonData;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
@@ -28,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BenefitSearchServiceImplTest {
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
     private ElasticsearchClient esClient;
@@ -85,5 +88,22 @@ class BenefitSearchServiceImplTest {
                     assertThat(candidate.getDescription()).isEqualTo("커피 할인");
                     assertThat(candidate.getContext()).isEqualTo("VIP 20% 할인");
                 });
+    }
+
+    @Test
+    void textOrDefault_returnsDefaultWhenElasticsearchFieldIsMissingOrNull() throws IOException {
+        JsonNode node = objectMapper.readTree("""
+                {
+                  "benefitName": "혜택명",
+                  "category": null
+                }
+                """);
+
+        assertThat(BenefitSearchServiceImpl.textOrDefault(node, "benefitName", "기본 혜택명"))
+                .isEqualTo("혜택명");
+        assertThat(BenefitSearchServiceImpl.textOrDefault(node, "category", ""))
+                .isEmpty();
+        assertThat(BenefitSearchServiceImpl.textOrDefault(node, "description", "설명 없음"))
+                .isEqualTo("설명 없음");
     }
 }
