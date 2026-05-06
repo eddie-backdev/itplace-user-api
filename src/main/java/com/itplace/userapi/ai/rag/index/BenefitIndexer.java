@@ -123,10 +123,10 @@ public class BenefitIndexer implements ApplicationRunner {
                 .id(String.valueOf(benefit.getBenefitId()))
                 .embedding(embeddingService.embed(searchableText))
                 .partnerId(String.valueOf(benefit.getPartner().getPartnerId()))
-                .partnerName(benefit.getPartner().getPartnerName())
+                .partnerName(nullToBlank(benefit.getPartner().getPartnerName()))
                 .benefitId(String.valueOf(benefit.getBenefitId()))
-                .benefitName(benefit.getBenefitName())
-                .category(benefit.getPartner().getCategory())
+                .benefitName(nullToBlank(benefit.getBenefitName()))
+                .category(nullToBlank(benefit.getPartner().getCategory()))
                 .description(description)
                 .build();
     }

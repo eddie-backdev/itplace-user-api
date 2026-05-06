@@ -1,7 +1,6 @@
 package com.itplace.userapi.ai.rag.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -67,11 +66,11 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
 
                         return Candidate.builder()
                                 .benefitId(benefitId)
-                                .partnerId(node.get("partnerId").asLong())
-                                .benefitName(node.get("benefitName").asText())
-                                .partnerName(node.get("partnerName").asText())
-                                .category(node.get("category").asText())
-                                .description(node.get("description").asText())
+                                .partnerId(benefit.getPartner().getPartnerId())
+                                .benefitName(textOrDefault(node, "benefitName", benefit.getBenefitName()))
+                                .partnerName(textOrDefault(node, "partnerName", benefit.getPartner().getPartnerName()))
+                                .category(textOrDefault(node, "category", benefit.getPartner().getCategory()))
+                                .description(textOrDefault(node, "description", "설명 없음"))
                                 .context(context)
                                 .build();
                     })
@@ -82,7 +81,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
             }
 
             log.warn("혜택 ES 검색 결과가 비어 DB 후보로 대체합니다.");
-        } catch (ElasticsearchException | IOException e) {
+        } catch (IOException | RuntimeException e) {
             log.warn("혜택 ES 유사도 검색 실패로 DB 후보로 대체합니다: {}", e.getMessage());
         }
 
@@ -126,5 +125,13 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                             .build();
                 })
                 .toList();
+    }
+
+    static String textOrDefault(JsonNode node, String fieldName, String defaultValue) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || value.isNull() || value.asText().isBlank()) {
+            return defaultValue == null ? "" : defaultValue;
+        }
+        return value.asText();
     }
 }
