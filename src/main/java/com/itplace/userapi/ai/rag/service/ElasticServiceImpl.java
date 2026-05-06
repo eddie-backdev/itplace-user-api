@@ -21,7 +21,11 @@ public class ElasticServiceImpl implements ElasticService {
                 esClient.indices().create(c -> c
                         .index(indexName)
                         .mappings(m -> m
-                                .properties("embedding", p -> p.denseVector(dv -> dv.dims(1536)))
+                                .properties("embedding", p -> p.denseVector(dv -> dv
+                                        .dims(1536)
+                                        .index(true)
+                                        .similarity("cosine")
+                                ))
                                 .properties("benefitId", p -> p.keyword(k -> k))
                                 .properties("partnerId", p -> p.keyword(k -> k))
                                 .properties("benefitName", p -> p.text(t -> t))
