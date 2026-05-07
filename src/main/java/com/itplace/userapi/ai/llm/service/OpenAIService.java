@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 public class OpenAIService {
 
     private static final double GPT_5_DEFAULT_TEMPERATURE = 1.0;
+    private static final int CATEGORY_MAX_COMPLETION_TOKENS = 120;
+    private static final int REASON_MAX_COMPLETION_TOKENS = 700;
+    private static final String LOW_REASONING_EFFORT = "low";
 
     private final OpenAiChatModel openAiChatModel;
 
@@ -57,7 +60,7 @@ public class OpenAIService {
 
         return chatClient.prompt()
                 .system(formattedPrompt)
-                .options(chatOptions())
+                .options(chatOptions(REASON_MAX_COMPLETION_TOKENS))
                 .user(userInput)
                 .call()
                 .entity(RecommendReason.class)
@@ -69,7 +72,7 @@ public class OpenAIService {
 
         CategoryResponse response = chatClient.prompt()
                 .system(categorizePrompt)
-                .options(chatOptions())
+                .options(chatOptions(CATEGORY_MAX_COMPLETION_TOKENS))
                 .user(userInput)
                 .call()
                 .entity(CategoryResponse.class);
@@ -77,11 +80,21 @@ public class OpenAIService {
         return response.getCategory();
     }
 
-    OpenAiChatOptions chatOptions() {
-        return OpenAiChatOptions.builder()
+    OpenAiChatOptions chatOptions(int maxCompletionTokens) {
+        OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder()
                 .model(chatModel)
                 .temperature(GPT_5_DEFAULT_TEMPERATURE)
-                .build();
+                .maxCompletionTokens(maxCompletionTokens);
+
+        if (isGpt5Model(chatModel)) {
+            builder.reasoningEffort(LOW_REASONING_EFFORT);
+        }
+
+        return builder.build();
+    }
+
+    private boolean isGpt5Model(String model) {
+        return model != null && model.toLowerCase().startsWith("gpt-5");
     }
 
 }
