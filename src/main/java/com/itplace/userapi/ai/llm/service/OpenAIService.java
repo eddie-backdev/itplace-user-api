@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class OpenAIService {
+
+    private static final double GPT_5_DEFAULT_TEMPERATURE = 1.0;
 
     private final OpenAiChatModel openAiChatModel;
 
@@ -55,9 +57,7 @@ public class OpenAIService {
 
         return chatClient.prompt()
                 .system(formattedPrompt)
-                .options(ChatOptions.builder()
-                        .model(chatModel)
-                        .build())
+                .options(chatOptions())
                 .user(userInput)
                 .call()
                 .entity(RecommendReason.class)
@@ -69,14 +69,19 @@ public class OpenAIService {
 
         CategoryResponse response = chatClient.prompt()
                 .system(categorizePrompt)
-                .options(ChatOptions.builder()
-                        .model(chatModel)
-                        .build())
+                .options(chatOptions())
                 .user(userInput)
                 .call()
                 .entity(CategoryResponse.class);
 
         return response.getCategory();
+    }
+
+    OpenAiChatOptions chatOptions() {
+        return OpenAiChatOptions.builder()
+                .model(chatModel)
+                .temperature(GPT_5_DEFAULT_TEMPERATURE)
+                .build();
     }
 
 }

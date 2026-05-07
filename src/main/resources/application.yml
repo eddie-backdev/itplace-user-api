@@ -58,6 +58,9 @@ spring:
       base-url: https://api.openai.com/
       chat:
         model: ${OPENAI_CHAT_MODEL:gpt-5-nano}
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-5-nano}
+          temperature: ${OPENAI_CHAT_TEMPERATURE:1.0}
       embedding:
         model: text-embedding-3-small
       audio:
