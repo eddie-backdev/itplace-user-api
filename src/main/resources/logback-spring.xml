@@ -62,6 +62,8 @@
     <springProfile name="prod">
         <logger name="com.itplace.userapi" level="INFO"/>
         <root level="INFO">
+            <!-- 컨테이너 운영에서는 docker logs로 즉시 확인할 수 있도록 stdout에도 출력한다. -->
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
             <appender-ref ref="ERROR_FILE"/>
         </root>
