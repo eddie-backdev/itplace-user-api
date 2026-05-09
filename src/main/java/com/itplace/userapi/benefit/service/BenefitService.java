@@ -7,6 +7,7 @@ import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
+import java.util.List;
 import org.springframework.data.domain.Pageable;
 
 public interface BenefitService {
@@ -15,7 +16,7 @@ public interface BenefitService {
             String category,
             UsageType filter,
             String keyword,
-            Carrier carrier,
+            List<Carrier> carriers,
             Long userId,
             Pageable pageable
     );

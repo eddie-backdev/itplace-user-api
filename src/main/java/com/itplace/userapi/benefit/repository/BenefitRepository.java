@@ -41,7 +41,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                        (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
                        (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                  AND (:carrier IS NULL OR bcp.carrier = :carrier)
+                  AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
                 GROUP BY b.benefitId
@@ -58,7 +58,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                        (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
                        (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
                   AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                  AND (:carrier IS NULL OR bcp.carrier = :carrier)
+                  AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
             """,
@@ -69,7 +69,8 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
             @Param("category") String category,
             @Param("filter") String filter,
             @Param("keyword") String keyword,
-            @Param("carrier") String carrier,
+            @Param("carrierFilterEnabled") boolean carrierFilterEnabled,
+            @Param("carriers") List<String> carriers,
             Pageable pageable
     );
 
