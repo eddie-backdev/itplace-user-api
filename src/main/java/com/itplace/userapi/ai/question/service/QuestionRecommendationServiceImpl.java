@@ -19,6 +19,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +41,16 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
             throw new ForbiddenWordException();
         }
         // 1. 사용자 질문 임베딩
-        List<Float> embedding = embeddingService.embed(question);
+        List<Float> embedding;
+        try {
+            embedding = embeddingService.embed(question);
+        } catch (WebClientResponseException.Unauthorized e) {
+            log.warn("OpenAI 임베딩 인증 실패: status={}", e.getStatusCode());
+            throw new QuestionException(QuestionCode.AI_SERVICE_UNAVAILABLE);
+        } catch (WebClientResponseException e) {
+            log.warn("OpenAI 임베딩 호출 실패: status={}", e.getStatusCode());
+            throw new QuestionException(QuestionCode.AI_SERVICE_UNAVAILABLE);
+        }
 
         // 2. ES에서 top1 검색
         SearchResponse<Map> response;
