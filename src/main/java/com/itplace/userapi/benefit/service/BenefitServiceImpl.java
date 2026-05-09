@@ -24,6 +24,7 @@ import com.itplace.userapi.map.exception.StorePartnerMismatchException;
 import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -60,16 +61,23 @@ public class BenefitServiceImpl implements BenefitService {
             String category,
             UsageType filter,
             String keyword,
-            Carrier carrier,
+            List<Carrier> carriers,
             Long userId,
             Pageable pageable
     ) {
+        List<Carrier> carrierFilters = carriers == null ? List.of() : carriers;
+        boolean carrierFilterEnabled = !carrierFilters.isEmpty();
+        List<String> carrierNames = carrierFilterEnabled
+                ? carrierFilters.stream().map(Carrier::name).toList()
+                : Arrays.stream(Carrier.values()).map(Carrier::name).toList();
+
         Page<Benefit> benefitPage = benefitRepository.findFilteredBenefits(
                 mainCategory != null ? mainCategory.getLabel() : null,
                 category,
                 filter != null ? filter.name() : null,
                 keyword,
-                carrier != null ? carrier.name() : null,
+                carrierFilterEnabled,
+                carrierNames,
                 pageable
         );
 
@@ -102,7 +110,7 @@ public class BenefitServiceImpl implements BenefitService {
         // DTO 변환
         List<BenefitListResponse> result = benefitList.stream()
                 .map(b -> {
-                    BenefitCarrierPolicy policy = selectListPolicy(policyMap.getOrDefault(b.getBenefitId(), List.of()), carrier);
+                    BenefitCarrierPolicy policy = selectListPolicy(policyMap.getOrDefault(b.getBenefitId(), List.of()), carrierFilters);
                     if (policy == null) {
                         return null;
                     }
@@ -317,13 +325,22 @@ public class BenefitServiceImpl implements BenefitService {
         return value == null ? null : value.trim();
     }
 
-    private BenefitCarrierPolicy selectListPolicy(List<BenefitCarrierPolicy> policies, Carrier requestedCarrier) {
+    private BenefitCarrierPolicy selectListPolicy(List<BenefitCarrierPolicy> policies, List<Carrier> requestedCarriers) {
         if (policies == null || policies.isEmpty()) {
             return null;
         }
+        if (requestedCarriers != null && !requestedCarriers.isEmpty()) {
+            for (Carrier requestedCarrier : requestedCarriers) {
+                Optional<BenefitCarrierPolicy> matchingPolicy = policies.stream()
+                        .filter(policy -> policy.getCarrier() == requestedCarrier)
+                        .findFirst();
+                if (matchingPolicy.isPresent()) {
+                    return matchingPolicy.get();
+                }
+            }
+        }
         return policies.stream()
-                .filter(policy -> requestedCarrier == null || policy.getCarrier() == requestedCarrier)
-                .findFirst()
+                .min(Comparator.comparingInt(policy -> carrierSortIndex(policy.getCarrier())))
                 .orElse(policies.get(0));
     }
 
