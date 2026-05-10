@@ -81,7 +81,7 @@ public class SecurityConfig {
         // 경로별 인가 작업
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/api/v1/chat/**", "/ws-chat/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/inquiries").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

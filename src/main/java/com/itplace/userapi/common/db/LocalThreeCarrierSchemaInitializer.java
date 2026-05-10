@@ -26,6 +26,7 @@ public class LocalThreeCarrierSchemaInitializer implements ApplicationRunner {
         hydrateExistingPoliciesFromLegacyBenefitColumns();
         dropLegacyBenefitPolicyColumns();
         addBenefitIndexes();
+        addInquiryTable();
         log.info("로컬 통신 3사 멤버십 스키마 보정 완료");
     }
 
@@ -263,6 +264,24 @@ public class LocalThreeCarrierSchemaInitializer implements ApplicationRunner {
         }
         jdbcTemplate.execute("UPDATE benefit SET " + quoteIdentifier(targetColumn) + " = COALESCE("
                 + quoteIdentifier(targetColumn) + ", " + quoteIdentifier(sourceColumn) + ")");
+    }
+
+    private void addInquiryTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS inquiries (
+                    id BIGSERIAL PRIMARY KEY,
+                    category VARCHAR(50) NOT NULL,
+                    title VARCHAR(200) NOT NULL,
+                    content TEXT NOT NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'UNREAD',
+                    createdDate TIMESTAMP NOT NULL,
+                    lastModifiedDate TIMESTAMP NOT NULL
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_inquiries_status_created
+                    ON inquiries (status, createdDate DESC)
+                """);
     }
 
     private boolean columnExists(String tableName, String columnName) {
