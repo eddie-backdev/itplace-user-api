@@ -1,16 +1,13 @@
-package com.itplace.userapi.chat.entity;
+package com.itplace.userapi.inquiry.entity;
 
 import com.itplace.userapi.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -19,29 +16,32 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "chat_messages")
+@Table(name = "inquiries")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatMessage extends BaseTimeEntity {
+public class Inquiry extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
-    private ChatSession session;
+    @Column(nullable = false, length = 50)
+    private String category;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "sender_type", nullable = false, length = 10)
-    private SenderType senderType;
+    @Column(nullable = false, length = 200)
+    private String title;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private InquiryStatus status;
+
     @Builder
-    public ChatMessage(ChatSession session, SenderType senderType, String content) {
-        this.session = session;
-        this.senderType = senderType;
+    public Inquiry(String category, String title, String content) {
+        this.category = category;
+        this.title = title;
         this.content = content;
+        this.status = InquiryStatus.UNREAD;
     }
 }

@@ -25,7 +25,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
                 "com.itplace.userapi.recommend",
                 "com.itplace.userapi.ai",
                 "com.itplace.userapi.event",
-                "com.itplace.userapi.chat"
+                "com.itplace.userapi.inquiry"
         }
 )
 @EnableMongoRepositories(  // mongo 사용되는 패키지
