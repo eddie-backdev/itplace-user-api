@@ -8,12 +8,20 @@ import java.util.List;
 
 public class RecommendationMapper {
     public static Recommendation toEntity(Recommendations dto, User user, List<Benefit> benefits) {
+        return toEntity(dto, user, benefits, null, "personalized-es-quality-v1");
+    }
+
+    public static Recommendation toEntity(Recommendations dto, User user, List<Benefit> benefits,
+                                          String cacheBatchId, String algorithmVersion) {
         return Recommendation.builder()
                 .user(user)
                 .rank(dto.getRank())
                 .partnerName(dto.getPartnerName())
                 .reason(dto.getReason())
                 .imgUrl(dto.getImgUrl())
+                .cacheBatchId(cacheBatchId)
+                .algorithmVersion(algorithmVersion)
+                .active(true)
                 .benefits(benefits)
                 .build();
     }

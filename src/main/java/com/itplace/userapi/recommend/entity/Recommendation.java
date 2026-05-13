@@ -50,6 +50,16 @@ public class Recommendation extends BaseTimeEntity {
     @Column(length = 512)
     private String imgUrl;
 
+    @Column(length = 64)
+    private String cacheBatchId;
+
+    @Builder.Default
+    @Column(length = 64)
+    private String algorithmVersion = "personalized-es-quality-v1";
+
+    @Builder.Default
+    private Boolean active = true;
+
     @ManyToMany
     @JoinTable(
             name = "recommendation_benefits",

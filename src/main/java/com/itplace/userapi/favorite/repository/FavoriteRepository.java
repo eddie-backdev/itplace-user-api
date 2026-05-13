@@ -16,6 +16,19 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
 
     Page<Favorite> findByUser(User user, Pageable pageable);
 
+    @Query("""
+                SELECT f FROM Favorite f
+                JOIN FETCH f.benefit b
+                JOIN FETCH b.partner
+                WHERE f.user.id = :userId
+                ORDER BY f.createdDate DESC
+            """)
+    List<Favorite> findByUserIdWithBenefitAndPartner(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(f) > 0 FROM Favorite f WHERE f.user.id = :userId AND f.createdDate > :createdAfter")
+    boolean existsByUserIdAndCreatedDateAfter(@Param("userId") Long userId,
+                                              @Param("createdAfter") java.time.LocalDateTime createdAfter);
+
     Page<Favorite> findByUserAndBenefit_MainCategory(User user, MainCategory mainCategory, Pageable pageable);
 
     @Query("""

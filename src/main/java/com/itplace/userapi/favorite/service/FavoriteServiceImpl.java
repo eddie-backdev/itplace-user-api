@@ -15,6 +15,7 @@ import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.favorite.FavoriteCode;
 import com.itplace.userapi.favorite.exception.DuplicateFavoriteException;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
+import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.user.exception.UserNotFoundException;
@@ -38,6 +39,7 @@ public class FavoriteServiceImpl implements FavoriteService {
     private final BenefitRepository benefitRepository;
     private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
+    private final LogService logService;
 
     @Override
     public void addFavorite(Long userId, Long benefitId) {
@@ -56,6 +58,14 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .build();
 
         favoriteRepository.save(favorite);
+        logService.saveResponseLog(
+                userId,
+                "favorite_add",
+                benefitId,
+                benefit.getPartner() == null ? null : benefit.getPartner().getPartnerId(),
+                "/api/v1/favorites",
+                "benefitId=" + benefitId
+        );
     }
 
     @Override
@@ -69,6 +79,14 @@ public class FavoriteServiceImpl implements FavoriteService {
             throw new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND);
         }
 
+        benefits.forEach(benefit -> logService.saveResponseLog(
+                userId,
+                "favorite_remove",
+                benefit.getBenefitId(),
+                benefit.getPartner() == null ? null : benefit.getPartner().getPartnerId(),
+                "/api/v1/favorites",
+                "benefitId=" + benefit.getBenefitId()
+        ));
         favoriteRepository.deleteByUserAndBenefitIn(user, benefits);
     }
 
