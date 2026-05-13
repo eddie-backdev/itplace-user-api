@@ -2,8 +2,10 @@ package com.itplace.userapi.recommend.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class Phase1RecommendationQualityGatesTest {
@@ -49,23 +51,102 @@ class Phase1RecommendationQualityGatesTest {
     }
 
     @Test
+    void seedQuestionFixtures_coverRequiredFalseRouteCarrierGradeAndRecallSafetyLabels() {
+        List<Phase1RecommendationEvaluationFixtures.QuestionCase> cases =
+                Phase1RecommendationEvaluationFixtures.questionSeedCases();
+        Set<String> labelDimensions = cases.stream()
+                .flatMap(questionCase -> questionCase.labelDimensions().stream())
+                .collect(Collectors.toSet());
+
+        assertThat(Phase1RecommendationQualityGates.hasRequiredQuestionLabelCoverage(cases)).isTrue();
+        assertThat(labelDimensions).containsAll(Phase1RecommendationQualityGates.REQUIRED_QUESTION_LABEL_DIMENSIONS);
+        assertThat(cases)
+                .anySatisfy(questionCase -> {
+                    assertThat(questionCase.id()).isEqualTo("q-hot-cool-place-false-route");
+                    assertThat(questionCase.labelDimensions()).contains("false-route:hot-cool-place");
+                    assertThat(questionCase.disallowedRouteHints())
+                            .contains("weather", "temperature", "air-conditioning");
+                })
+                .anySatisfy(questionCase -> {
+                    assertThat(questionCase.id()).isEqualTo("q-broad-valid-recall-safety");
+                    assertThat(questionCase.labelDimensions()).contains("recall-safety:broad-valid");
+                    assertThat(questionCase.relevantBenefitIds()).hasSizeGreaterThanOrEqualTo(5);
+                });
+    }
+
+    @Test
     void seedFixtures_captureRequiredQuestionLabelsAndPersonalizedAttributionFields() {
         assertThat(Phase1RecommendationQualityGates.MINIMUM_LABELED_QUESTION_FIXTURE_SIZE).isEqualTo(300);
+        assertThat(Phase1RecommendationQualityGates.hasReleaseQuestionFixtureCoverage(
+                Phase1RecommendationEvaluationFixtures.questionSeedCases()
+        )).isFalse();
+        assertThat(Phase1RecommendationEvaluationFixtures.questionSeedCases())
+                .hasSizeLessThan(Phase1RecommendationQualityGates.MINIMUM_LABELED_QUESTION_FIXTURE_SIZE)
+                .extracting(Phase1RecommendationEvaluationFixtures.QuestionCase::id)
+                .doesNotHaveDuplicates();
         assertThat(Phase1RecommendationEvaluationFixtures.questionSeedCases())
                 .allSatisfy(questionCase -> {
                     assertThat(questionCase.id()).isNotBlank();
+                    assertThat(questionCase.question()).isNotBlank();
                     assertThat(questionCase.relevantBenefitIds()).isNotEmpty();
                     assertThat(questionCase.acceptableTop1BenefitIds()).isSubsetOf(questionCase.relevantBenefitIds());
                     assertThat(questionCase.groundingEvidenceIds()).isNotEmpty();
+                    assertThat(questionCase.labelDimensions()).isNotEmpty();
                 });
+        assertThat(Phase1RecommendationQualityGates.hasRequiredPersonalizedFunnelCoverage(
+                Phase1RecommendationEvaluationFixtures.personalizedFunnelSeedEvents()
+        )).isTrue();
         assertThat(Phase1RecommendationEvaluationFixtures.personalizedFunnelSeedEvents())
                 .allSatisfy(event -> {
                     assertThat(event.requestId()).isNotBlank();
                     assertThat(event.impressionId()).isNotBlank();
                     assertThat(event.rank()).isPositive();
                     assertThat(event.benefitId()).isPositive();
-                    assertThat(event.eventType()).isIn("impression", "click", "detail", "favorite", "use");
+                    assertThat(event.eventType()).isIn("impression", "click", "detail", "favorite", "dismiss", "skip", "negative");
+                    assertThat(event.locationContext()).isIn("KNOWN", "UNKNOWN");
                 });
+    }
+
+    @Test
+    void releaseFixtureCoverage_rejectsDuplicatedOrDimensionlessSeedFixtures() {
+        Phase1RecommendationEvaluationFixtures.QuestionCase singleSeedCase =
+                Phase1RecommendationEvaluationFixtures.questionSeedCases().get(0);
+        List<Phase1RecommendationEvaluationFixtures.QuestionCase> duplicatedSeedCases = Stream
+                .generate(() -> singleSeedCase)
+                .limit(Phase1RecommendationQualityGates.MINIMUM_LABELED_QUESTION_FIXTURE_SIZE)
+                .toList();
+
+        assertThat(duplicatedSeedCases)
+                .hasSize(Phase1RecommendationQualityGates.MINIMUM_LABELED_QUESTION_FIXTURE_SIZE);
+        assertThat(Phase1RecommendationQualityGates.hasRequiredQuestionLabelCoverage(duplicatedSeedCases)).isFalse();
+        assertThat(Phase1RecommendationQualityGates.hasReleaseQuestionFixtureCoverage(duplicatedSeedCases)).isFalse();
+    }
+
+    @Test
+    void personalizedFunnelSeedEvents_coverAllEventTypesAndLocationContexts() {
+        List<Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent> events =
+                Phase1RecommendationEvaluationFixtures.personalizedFunnelSeedEvents();
+        Set<String> eventTypes = events.stream()
+                .map(Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent::eventType)
+                .collect(Collectors.toSet());
+        Set<String> locationContexts = events.stream()
+                .map(Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent::locationContext)
+                .collect(Collectors.toSet());
+
+        assertThat(eventTypes).containsExactlyInAnyOrderElementsOf(
+                Phase1RecommendationQualityGates.REQUIRED_PERSONALIZED_EVENT_TYPES
+        );
+        assertThat(locationContexts).containsExactlyInAnyOrderElementsOf(
+                Phase1RecommendationQualityGates.REQUIRED_LOCATION_CONTEXTS
+        );
+
+        Set<String> requestsWithImpression = events.stream()
+                .filter(event -> "impression".equals(event.eventType()))
+                .map(Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent::requestId)
+                .collect(Collectors.toSet());
+        assertThat(events)
+                .filteredOn(event -> !"impression".equals(event.eventType()))
+                .allSatisfy(event -> assertThat(requestsWithImpression).contains(event.requestId()));
     }
 
     private RecommendationEvaluationMetric metric(String key) {

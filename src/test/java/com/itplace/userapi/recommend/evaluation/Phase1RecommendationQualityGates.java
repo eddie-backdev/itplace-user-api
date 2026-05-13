@@ -1,6 +1,8 @@
 package com.itplace.userapi.recommend.evaluation;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Phase 1 ES-only recommendation quality gates from the AI recommendation advancement PRD/test spec.
@@ -18,7 +20,88 @@ final class Phase1RecommendationQualityGates {
     static final double PERSONALIZED_CONVERSION_RELATIVE_LIFT_TARGET = 0.05;
     static final double PERSONALIZED_FALLBACK_ERROR_MAX = 0.01;
 
+    static final Set<String> REQUIRED_QUESTION_LABEL_DIMENSIONS = Set.of(
+            "false-route:hot-cool-place",
+            "carrier:skt",
+            "carrier:kt",
+            "carrier:lgu",
+            "grade:vip",
+            "grade:basic",
+            "grade:all",
+            "recall-safety:broad-valid"
+    );
+    static final Set<String> REQUIRED_PERSONALIZED_EVENT_TYPES = Set.of(
+            "impression",
+            "click",
+            "detail",
+            "favorite",
+            "dismiss",
+            "skip",
+            "negative"
+    );
+    static final Set<String> REQUIRED_LOCATION_CONTEXTS = Set.of("KNOWN", "UNKNOWN");
+
     private Phase1RecommendationQualityGates() {
+    }
+
+    static boolean hasReleaseQuestionFixtureCoverage(List<Phase1RecommendationEvaluationFixtures.QuestionCase> cases) {
+        return uniqueQuestionCaseCount(cases) >= MINIMUM_LABELED_QUESTION_FIXTURE_SIZE
+                && hasRequiredQuestionLabelCoverage(cases);
+    }
+
+    static boolean hasRequiredQuestionLabelCoverage(List<Phase1RecommendationEvaluationFixtures.QuestionCase> cases) {
+        return questionLabelDimensions(cases).containsAll(REQUIRED_QUESTION_LABEL_DIMENSIONS);
+    }
+
+    static boolean hasRequiredPersonalizedFunnelCoverage(
+            List<Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent> events
+    ) {
+        return eventTypes(events).containsAll(REQUIRED_PERSONALIZED_EVENT_TYPES)
+                && locationContexts(events).containsAll(REQUIRED_LOCATION_CONTEXTS)
+                && hasImpressionForEveryFollowUpEvent(events);
+    }
+
+    private static long uniqueQuestionCaseCount(List<Phase1RecommendationEvaluationFixtures.QuestionCase> cases) {
+        return cases.stream()
+                .map(Phase1RecommendationEvaluationFixtures.QuestionCase::id)
+                .distinct()
+                .count();
+    }
+
+    private static Set<String> questionLabelDimensions(
+            List<Phase1RecommendationEvaluationFixtures.QuestionCase> cases
+    ) {
+        return cases.stream()
+                .flatMap(questionCase -> questionCase.labelDimensions().stream())
+                .collect(Collectors.toSet());
+    }
+
+    private static boolean hasImpressionForEveryFollowUpEvent(
+            List<Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent> events
+    ) {
+        Set<String> requestIdsWithImpression = events.stream()
+                .filter(event -> "impression".equals(event.eventType()))
+                .map(Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent::requestId)
+                .collect(Collectors.toSet());
+        return events.stream()
+                .filter(event -> !"impression".equals(event.eventType()))
+                .allMatch(event -> requestIdsWithImpression.contains(event.requestId()));
+    }
+
+    private static Set<String> eventTypes(
+            List<Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent> events
+    ) {
+        return events.stream()
+                .map(Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent::eventType)
+                .collect(Collectors.toSet());
+    }
+
+    private static Set<String> locationContexts(
+            List<Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent> events
+    ) {
+        return events.stream()
+                .map(Phase1RecommendationEvaluationFixtures.PersonalizedFunnelEvent::locationContext)
+                .collect(Collectors.toSet());
     }
 
     static List<RecommendationEvaluationMetric> questionMetrics() {
