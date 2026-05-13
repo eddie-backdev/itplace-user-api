@@ -14,17 +14,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Offline/admin-only question memory maintenance endpoint.
+ * Runtime recommendations must not use this questions index as a router.
+ */
 @Slf4j
 @io.swagger.v3.oas.annotations.tags.Tag(name = "Question", description = "사용자 질문 기반 제휴처 제공 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/questions")
+@Deprecated(forRemoval = false)
 public class QuestionController {
 
     private final EmbeddingService embeddingService;
     private final ElasticQuestionService elasticQuestionService; // saveQuestion() 정의된 서비스
 
     @PostMapping("/save")
+    @Deprecated(forRemoval = false)
     public ResponseEntity<String> saveQuestion(@RequestBody QuestionSaveRequest request) {
         try {
             List<Float> embedding = embeddingService.embed(request.getQuestion());
@@ -47,4 +53,3 @@ public class QuestionController {
         }
     }
 }
-

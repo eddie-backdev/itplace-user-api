@@ -34,7 +34,8 @@ public class QuestionIndexer implements ApplicationRunner {
     private final ElasticQuestionService elasticQuestionService;
     private final ResourceLoader resourceLoader;
 
-    @Value("${app.ai.questions.seed.enabled:true}")
+    // Offline/evaluation seed only. Default false keeps runtime recommendation routing off the questions index.
+    @Value("${app.ai.questions.seed.enabled:false}")
     private boolean seedEnabled;
 
     @Value("${app.ai.questions.seed.csv-location:}")
