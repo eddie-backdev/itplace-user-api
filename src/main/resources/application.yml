@@ -3,58 +3,17 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
 
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
 
-  datasource:
-    source:
-      driver-class-name: org.postgresql.Driver
-      jdbc-url: ${PG_URL}
-      username: ${PG_USERNAME}
-      password: ${PG_PASSWORD}
-      hikari:
-        maximum-pool-size: 50
-        minimum-idle: 10
-        idle-timeout: 30000
-        max-lifetime: 600000
-        connection-timeout: 30000
-        leak-detection-threshold: 30000
-    replica:
-      driver-class-name: org.postgresql.Driver
-      jdbc-url: ${PG_REPLICA_URL:${PG_URL}}
-      username: ${PG_REPLICA_USERNAME:${PG_USERNAME}}
-      password: ${PG_REPLICA_PASSWORD:${PG_PASSWORD}}
-      hikari:
-        maximum-pool-size: 200
-        minimum-idle: 10
-        idle-timeout: 30000
-        max-lifetime: 600000
-        connection-timeout: 30000
-        leak-detection-threshold: 30000
-
-  data:
-    redis:
-      host: ${REDIS_HOST}
-      port: 6379
-      password: ${REDIS_PASSWORD:}
-    mongodb:
-      uri: ${MONGODB_URI}
-
-  jwt:
-    secret: ${JWT_SECRET}
-    access-token-validity-in-seconds: 3600    # 액세스 토큰 유효기간: 1시간
-    refresh-token-validity-in-seconds: 86400  # 리프레시 토큰 유효기간: 24시간
   ai:
     chat:
-      categorizePrompt: file:/app/prompts/categorizePrompt.txt
-      reasonPrompt: file:/app/prompts/reasonPrompt.txt
-
+      categorizePrompt: classpath:prompt/categorizePrompt.txt
+      reasonPrompt: classpath:prompt/reasonPrompt.txt
     openai:
-      api-key: ${OPENAI_API_KEY}
-      organization-id: ${OPENAI_ORGANIZATION_ID}
       base-url: https://api.openai.com/
       chat:
         model: ${OPENAI_CHAT_MODEL:gpt-5-nano}
@@ -71,10 +30,7 @@ spring:
       client:
         registration:
           kakao:
-            redirect-uri: ${KAKAO_REDIRECT_URI}
             client-name: kakao
-            client-id: ${KAKAO_CLIENT_ID}
-            client-secret: ${KAKAO_CLIENT_SECRET}
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
             scope:
@@ -89,8 +45,6 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -99,34 +53,32 @@ spring:
             enable: true
 
 elasticsearch:
-  host: ${ELASTICSEARCH_HOST}
-  port: 9200
-  username: ${ELASTICSEARCH_USERNAME}
-  password: ${ELASTICSEARCH_PASSWORD}
   scheme: http
   connectTimeoutMs: 2000
   socketTimeoutMs: 30000
-
-coolsms:
-  api:
-    key: ${COOLSMS_API_KEY}
-    secret: ${COOLSMS_API_SECRET}
-  fromPhone: ${COOLSMS_FROM_PHONE}
 
 google:
   recaptcha:
     key:
       url: https://www.google.com/recaptcha/api/siteverify
-      secret: ${GOOGLE_RECAPTCHA_SECRET}
 
 app:
+  ai:
+    benefits:
+      seed:
+        enabled: ${BENEFIT_RAG_SEED_ENABLED:true}
+      sync:
+        enabled: ${BENEFIT_RAG_SYNC_ENABLED:true}
+        initial-delay-ms: ${BENEFIT_RAG_SYNC_INITIAL_DELAY_MS:300000}
+        fixed-delay-ms: ${BENEFIT_RAG_SYNC_FIXED_DELAY_MS:3600000}
+        delay-ms: ${BENEFIT_RAG_SYNC_DELAY_MS:0}
   cookie:
-    domain: ${COOKIE_DOMAIN:itplace.click}
-    secure: ${COOKIE_SECURE:true}
-    same-site: ${COOKIE_SAME_SITE:None}
+    domain: ${COOKIE_DOMAIN:}
+    secure: ${COOKIE_SECURE:false}
+    same-site: ${COOKIE_SAME_SITE:Lax}
   oauth2:
-    new-user-redirect-uri: ${OAUTH2_NEW_USER_REDIRECT_URI:https://itplace.click/login?step=oauthIntegration&verifiedType=oauth}
-    exist-user-redirect-uri: ${OAUTH2_EXIST_USER_REDIRECT_URI:https://itplace.click/login?oauth=processing}
+    new-user-redirect-uri: ${OAUTH2_NEW_USER_REDIRECT_URI:http://localhost:5173/login?step=oauthIntegration&verifiedType=oauth}
+    exist-user-redirect-uri: ${OAUTH2_EXIST_USER_REDIRECT_URI:http://localhost:5173/login?oauth=processing}
 
 springdoc:
   swagger-ui:
@@ -140,10 +92,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: [ "health", "info" ]
+        include: ["health", "info"]
   endpoint:
     health:
-      show-details: "always"
+      show-details: always
   health:
     mail:
       enabled: false

@@ -3,6 +3,92 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  datasource:
+    source:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: ${PG_URL}
+      username: ${PG_USERNAME}
+      password: ${PG_PASSWORD}
+      hikari:
+        maximum-pool-size: ${PG_SOURCE_MAX_POOL_SIZE:50}
+        minimum-idle: ${PG_SOURCE_MIN_IDLE:10}
+        idle-timeout: ${PG_IDLE_TIMEOUT_MS:30000}
+        max-lifetime: ${PG_MAX_LIFETIME_MS:600000}
+        connection-timeout: ${PG_CONNECTION_TIMEOUT_MS:30000}
+        leak-detection-threshold: ${PG_LEAK_DETECTION_THRESHOLD_MS:30000}
+    replica:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: ${PG_REPLICA_URL:${PG_URL}}
+      username: ${PG_REPLICA_USERNAME:${PG_USERNAME}}
+      password: ${PG_REPLICA_PASSWORD:${PG_PASSWORD}}
+      hikari:
+        maximum-pool-size: ${PG_REPLICA_MAX_POOL_SIZE:200}
+        minimum-idle: ${PG_REPLICA_MIN_IDLE:10}
+        idle-timeout: ${PG_IDLE_TIMEOUT_MS:30000}
+        max-lifetime: ${PG_MAX_LIFETIME_MS:600000}
+        connection-timeout: ${PG_CONNECTION_TIMEOUT_MS:30000}
+        leak-detection-threshold: ${PG_LEAK_DETECTION_THRESHOLD_MS:30000}
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+    mongodb:
+      uri: ${MONGODB_URI}
+
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-validity-in-seconds: ${JWT_ACCESS_TOKEN_SECONDS:3600}
+    refresh-token-validity-in-seconds: ${JWT_REFRESH_TOKEN_SECONDS:86400}
+
+  ai:
+    chat:
+      categorizePrompt: ${AI_CATEGORIZE_PROMPT:file:/app/prompts/categorizePrompt.txt}
+      reasonPrompt: ${AI_REASON_PROMPT:file:/app/prompts/reasonPrompt.txt}
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      organization-id: ${OPENAI_ORGANIZATION_ID}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: ${KAKAO_REDIRECT_URI}
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+
+  mail:
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST}
+  port: ${ELASTICSEARCH_PORT:9200}
+  username: ${ELASTICSEARCH_USERNAME}
+  password: ${ELASTICSEARCH_PASSWORD}
+
+coolsms:
+  api:
+    key: ${COOLSMS_API_KEY}
+    secret: ${COOLSMS_API_SECRET}
+  fromPhone: ${COOLSMS_FROM_PHONE}
+
+google:
+  recaptcha:
+    key:
+      secret: ${GOOGLE_RECAPTCHA_SECRET}
+
+app:
+  cookie:
+    domain: ${COOKIE_DOMAIN:itplace.click}
+    secure: ${COOKIE_SECURE:true}
+    same-site: ${COOKIE_SAME_SITE:None}
+  oauth2:
+    new-user-redirect-uri: ${OAUTH2_NEW_USER_REDIRECT_URI:https://itplace.click/login?step=oauthIntegration&verifiedType=oauth}
+    exist-user-redirect-uri: ${OAUTH2_EXIST_USER_REDIRECT_URI:https://itplace.click/login?oauth=processing}
+
 logging:
   level:
     root: INFO

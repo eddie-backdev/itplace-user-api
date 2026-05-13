@@ -6,38 +6,38 @@ spring:
   datasource:
     source:
       driver-class-name: org.postgresql.Driver
-      jdbc-url: "jdbc:postgresql://localhost:5432/itplace"
-      username: postgres
-      password: "!Password1127"
+      jdbc-url: ${PG_URL}
+      username: ${PG_USERNAME}
+      password: ${PG_PASSWORD}
       hikari:
         maximum-pool-size: 10
         minimum-idle: 2
     replica:
       driver-class-name: org.postgresql.Driver
-      jdbc-url: "jdbc:postgresql://localhost:5432/itplace"
-      username: postgres
-      password: "!Password1127"
+      jdbc-url: ${PG_REPLICA_URL:${PG_URL}}
+      username: ${PG_REPLICA_USERNAME:${PG_USERNAME}}
+      password: ${PG_REPLICA_PASSWORD:${PG_PASSWORD}}
       hikari:
         maximum-pool-size: 10
         minimum-idle: 2
 
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: ""
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
     mongodb:
-      uri: ${MONGODB_URI:mongodb://root:%21Password1127@localhost:27017/itplace?authSource=admin}
+      uri: ${MONGODB_URI}
 
   jwt:
-    secret: "localDevSecretKeyForJWTTokenGenerationMustBe256BitsLong1234567890AB"
-    access-token-validity-in-seconds: 3600
-    refresh-token-validity-in-seconds: 86400
+    secret: ${JWT_SECRET}
+    access-token-validity-in-seconds: ${JWT_ACCESS_TOKEN_SECONDS:3600}
+    refresh-token-validity-in-seconds: ${JWT_REFRESH_TOKEN_SECONDS:86400}
 
   ai:
     openai:
-      api-key: "sk-placeholder-local-dev"
-      organization-id: "org-placeholder"
+      api-key: ${OPENAI_API_KEY}
+      organization-id: ${OPENAI_ORGANIZATION_ID:}
     chat:
       categorizePrompt: classpath:prompt/categorizePrompt.txt
       reasonPrompt: classpath:prompt/reasonPrompt.txt
@@ -47,33 +47,30 @@ spring:
       client:
         registration:
           kakao:
-            redirect-uri: "http://localhost:8080/login/oauth2/code/kakao"
-            client-id: "placeholder-kakao-client-id"
-            client-secret: "placeholder-kakao-client-secret"
+            redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/login/oauth2/code/kakao}
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: "placeholder@gmail.com"
-    password: "placeholder"
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
 
 elasticsearch:
-  host: localhost
-  port: 9200
-  username: elastic
-  password: "!Password1127"
-  scheme: http
+  host: ${ELASTICSEARCH_HOST:localhost}
+  port: ${ELASTICSEARCH_PORT:9200}
+  username: ${ELASTICSEARCH_USERNAME:elastic}
+  password: ${ELASTICSEARCH_PASSWORD}
 
 coolsms:
   api:
-    key: "placeholder-coolsms-key"
-    secret: "placeholder-coolsms-secret"
-  fromPhone: "01000000000"
+    key: ${COOLSMS_API_KEY}
+    secret: ${COOLSMS_API_SECRET}
+  fromPhone: ${COOLSMS_FROM_PHONE}
 
 google:
   recaptcha:
     key:
-      secret: "placeholder-recaptcha-secret"
+      secret: ${GOOGLE_RECAPTCHA_SECRET}
 
 app:
   cookie:
@@ -81,8 +78,8 @@ app:
     secure: false
     same-site: Lax
   oauth2:
-    new-user-redirect-uri: "http://localhost:5173/login?step=oauthIntegration&verifiedType=oauth"
-    exist-user-redirect-uri: "http://localhost:5173/login?oauth=processing"
+    new-user-redirect-uri: ${OAUTH2_NEW_USER_REDIRECT_URI:http://localhost:5173/login?step=oauthIntegration&verifiedType=oauth}
+    exist-user-redirect-uri: ${OAUTH2_EXIST_USER_REDIRECT_URI:http://localhost:5173/login?oauth=processing}
 
 logging:
   level:

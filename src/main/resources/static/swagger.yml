@@ -2589,7 +2589,8 @@ paths:
         - Question
       summary: 질문 기반 제휴처 추천
       description: |
-        사용자의 질문에 기반하여 유사 질문 카테고리를 분석하고, 해당 카테고리의 주변 제휴처를 추천합니다.  
+        사용자의 질문에 기반하여 혜택 RAG 후보를 먼저 검색하고, 주변 제휴처를 추천합니다.
+        carrier/grade가 제공되면 통신사·등급 메타데이터로 후보를 제한하며, 혜택 RAG 주변 매장 매칭이 없으면 기존 질문 카테고리 memory로 대체합니다.
         금칙어가 포함된 경우 400 에러로 응답되며, 추천할 제휴처가 없을 경우 404를 반환합니다.
       parameters:
         - name: question
@@ -2615,6 +2616,22 @@ paths:
             type: number
             format: double
             example: 126.980717
+        - name: carrier
+          in: query
+          description: 선택 통신사 필터
+          required: false
+          schema:
+            type: string
+            enum: [SKT, KT, LGU]
+            example: SKT
+        - name: grade
+          in: query
+          description: 선택 멤버십 등급 필터
+          required: false
+          schema:
+            type: string
+            enum: [BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP]
+            example: SKT_VIP
       responses:
         '200':
           description: 추천 성공
