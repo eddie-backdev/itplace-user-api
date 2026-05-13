@@ -7,6 +7,8 @@ import com.itplace.userapi.ai.llm.dto.response.RecommendationResponse;
 import com.itplace.userapi.ai.question.QuestionCode;
 import com.itplace.userapi.ai.question.service.QuestionRecommendationService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.common.ApiResponse;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -21,10 +23,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Offline/admin-only question memory search endpoint.
+ * {@code /recommend} delegates to QueryIntent + Benefit RAG and does not search this questions index.
+ */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/questions")
 @Validated
+@Deprecated(forRemoval = false)
 public class QuestionSearchController {
 
     private final EmbeddingService embeddingService;
@@ -32,6 +39,7 @@ public class QuestionSearchController {
     private final QuestionRecommendationService questionRecommendationService;
 
     @GetMapping("/search")
+    @Deprecated(forRemoval = false)
     public Map<String, Object> searchSimilarQuestion(
             @RequestParam @NotBlank @Size(max = 200) String query) {
         List<Float> embedding = embeddingService.embed(query);
@@ -69,9 +77,11 @@ public class QuestionSearchController {
     public ResponseEntity<ApiResponse<RecommendationResponse>> recommend(
             @RequestParam @NotBlank @Size(max = 200) String question,
             @RequestParam double lat,
-            @RequestParam double lng) {
+            @RequestParam double lng,
+            @RequestParam(required = false) Carrier carrier,
+            @RequestParam(required = false) Grade grade) {
 
-        RecommendationResponse result = questionRecommendationService.recommendByQuestion(question, lat, lng);
+        RecommendationResponse result = questionRecommendationService.recommendByQuestion(question, lat, lng, carrier, grade);
         ApiResponse<RecommendationResponse> body = ApiResponse.of(QuestionCode.QUESTION_SUCCESS, result);
         return ResponseEntity.status(body.getStatus()).body(body);
     }
