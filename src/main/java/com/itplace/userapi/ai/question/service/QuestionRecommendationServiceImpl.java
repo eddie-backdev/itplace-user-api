@@ -15,6 +15,7 @@ import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.service.StoreService;
 import com.itplace.userapi.recommend.dto.Candidate;
 import java.util.ArrayList;
@@ -113,7 +114,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
 
         // 5. 추천 이유 생성: 질문형 추천은 후보/의도를 벗어난 LLM 추론을 금지하고
         // 실제 반환 후보와 추출된 의도만으로 결정론적 근거를 만든다.
-        String reason = groundedReason(question, intent, category, partnerNames);
+        String reason = groundedReason(question, intent, category, stores, partnerNames);
 
         // 6. partnerName + imgUrl 조립
         List<RecommendationResponse.PartnerSummary> partners = partnerNames.stream()
@@ -136,23 +137,57 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 .build();
     }
 
-    private String groundedReason(String question, QueryIntent intent, String category, List<String> partnerNames) {
+    private String groundedReason(String question,
+                                  QueryIntent intent,
+                                  String category,
+                                  List<StoreDetailResponse> stores,
+                                  List<String> partnerNames) {
         String normalizedCategory = category == null || category.isBlank() ? "요청하신 조건" : category;
         if (partnerNames == null || partnerNames.isEmpty()) {
             return "%s에 맞는 주변 제휴처를 찾아봤어요.".formatted(normalizedCategory);
         }
 
         String joinedPartners = String.join(", ", partnerNames);
+        String benefitSummary = benefitSummary(stores, partnerNames);
+        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("데이트"))) {
+            return benefitSummary.isBlank()
+                    ? "%s 같은 제휴처는 데이트 코스로 함께 들르기 좋은 선택지예요. 주변에서 이용 가능한 혜택을 확인해보고 가볍게 즐겨보면 좋을 것 같아요."
+                    .formatted(joinedPartners)
+                    : "%s 혜택을 이용할 수 있어서 %s에서 데이트를 하면 더 부담 없이 즐길 수 있을 것 같아요."
+                    .formatted(benefitSummary, joinedPartners);
+        }
         if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("더위") || keyword.contains("시원"))) {
-            return "더운 날씨에는 오래 머물기 좋은 실내 공간이나 차가운 음료·디저트와 연결되는 혜택이 중요해서, "
-                    + normalizedCategory + " 의도와 맞는 후보 중 " + joinedPartners + " 위주로 골랐어요.";
+            return benefitSummary.isBlank()
+                    ? "더운 날에는 " + joinedPartners + "처럼 음료·디저트나 실내 이용과 연결되는 제휴처를 먼저 살펴보면 좋아요."
+                    : benefitSummary + " 혜택을 이용할 수 있어서 더운 날 " + joinedPartners + "에 들러 시원하게 쉬어가기 좋을 것 같아요.";
         }
         if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("음료") || keyword.contains("카페"))) {
-            return "음료나 가벼운 디저트를 이용하기 좋은 제휴처를 우선해, "
-                    + normalizedCategory + " 의도와 맞는 후보 중 " + joinedPartners + " 위주로 추천드려요.";
+            return benefitSummary.isBlank()
+                    ? "음료나 가벼운 디저트를 찾는다면 " + joinedPartners + " 같은 제휴처를 먼저 확인해보면 좋아요."
+                    : benefitSummary + " 혜택을 이용할 수 있어서 음료나 가벼운 디저트를 찾을 때 " + joinedPartners + "를 추천드려요.";
         }
-        return "요청하신 “%s” 의도에 맞춰 %s 후보 중 %s 제휴처를 추천드려요."
-                .formatted(question, normalizedCategory, joinedPartners);
+        return benefitSummary.isBlank()
+                ? "%s 관련 제휴처를 찾는다면 %s를 먼저 확인해보면 좋아요."
+                .formatted(normalizedCategory, joinedPartners)
+                : "%s 혜택을 이용할 수 있어서 %s를 추천드려요."
+                .formatted(benefitSummary, joinedPartners);
+    }
+
+    private String benefitSummary(List<StoreDetailResponse> stores, List<String> partnerNames) {
+        if (stores == null || stores.isEmpty() || partnerNames == null || partnerNames.isEmpty()) {
+            return "";
+        }
+        List<String> summaries = new ArrayList<>();
+        for (String partnerName : partnerNames) {
+            stores.stream()
+                    .filter(store -> store.getPartner() != null && partnerName.equals(store.getPartner().getPartnerName()))
+                    .flatMap(store -> store.getTierBenefit() == null ? java.util.stream.Stream.<TierBenefitDto>empty() : store.getTierBenefit().stream())
+                    .map(TierBenefitDto::getContext)
+                    .filter(context -> context != null && !context.isBlank())
+                    .findFirst()
+                    .ifPresent(context -> summaries.add(partnerName + "의 " + context));
+        }
+        return String.join(", ", summaries);
     }
 
     private StoreCandidateResult findStoresForBenefitCandidates(List<Candidate> benefitCandidates,

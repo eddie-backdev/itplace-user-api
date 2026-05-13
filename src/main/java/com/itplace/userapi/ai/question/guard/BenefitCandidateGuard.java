@@ -78,6 +78,13 @@ public class BenefitCandidateGuard {
                 nullToBlank(candidate.getContext())
         ));
 
+        boolean excludedInPrimary = intent.exclusions().stream()
+                .map(BenefitCandidateGuard::normalize)
+                .anyMatch(primary::contains);
+        if (excludedInPrimary) {
+            return true;
+        }
+
         boolean excluded = intent.exclusions().stream()
                 .map(BenefitCandidateGuard::normalize)
                 .anyMatch(searchable::contains);
@@ -146,6 +153,10 @@ public class BenefitCandidateGuard {
                 Map.entry("식당", List.of("식당", "외식", "레스토랑", "음식")),
                 Map.entry("외식", List.of("외식", "식당", "레스토랑", "음식")),
                 Map.entry("레스토랑", List.of("레스토랑", "식당", "외식")),
+                Map.entry("관광", List.of("관광", "체험", "데이트", "테마", "복합문화")),
+                Map.entry("체험", List.of("체험", "관광", "데이트", "테마", "복합문화")),
+                Map.entry("전시관", List.of("전시", "전시관", "미술관", "복합문화")),
+                Map.entry("복합문화", List.of("복합문화", "문화", "전시", "공연", "데이트")),
                 Map.entry("가족", List.of("가족", "키즈", "패밀리")),
                 Map.entry("키즈", List.of("키즈", "가족", "실내놀이터"))
         );
