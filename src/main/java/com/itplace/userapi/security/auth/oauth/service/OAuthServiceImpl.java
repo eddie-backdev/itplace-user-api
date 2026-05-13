@@ -3,9 +3,13 @@ package com.itplace.userapi.security.auth.oauth.service;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
+import com.itplace.userapi.security.auth.oauth.dto.request.KakaoCodeRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthLinkRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthSignUpRequest;
+import com.itplace.userapi.security.auth.oauth.dto.response.KakaoLoginResult;
+import com.itplace.userapi.security.auth.oauth.dto.response.KakaoUserProfile;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
+import com.itplace.userapi.security.exception.DuplicateEmailException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
@@ -16,8 +20,10 @@ import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.SocialAccount;
 import com.itplace.userapi.user.entity.User;
+import com.itplace.userapi.user.repository.SocialAccountRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +41,25 @@ public class OAuthServiceImpl implements OAuthService {
     private final RedisTemplate<String, String> redisTemplate;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final SocialAccountRepository socialAccountRepository;
     private final JWTUtil jwtUtil;
+    private final KakaoOAuthProviderClient kakaoOAuthProviderClient;
+
+    @Override
+    @Transactional
+    public KakaoLoginResult processKakaoLogin(KakaoCodeRequest request) {
+        KakaoUserProfile profile = kakaoOAuthProviderClient.fetchUser(request.getCode(), request.getRedirectUri());
+
+        return socialAccountRepository.findByProviderAndProviderId("kakao", profile.providerId())
+                .map(socialAccount -> KakaoLoginResult.builder()
+                        .isExistingUser(true)
+                        .authResult(createAuthResultForUser(socialAccount.getUser()))
+                        .build())
+                .orElseGet(() -> KakaoLoginResult.builder()
+                        .isExistingUser(false)
+                        .tempToken(jwtUtil.createTempJwt("kakao", profile.providerId()))
+                        .build());
+    }
 
     @Override
     @Transactional
@@ -44,22 +68,28 @@ public class OAuthServiceImpl implements OAuthService {
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .map(existingUser -> linkSocialAccount(existingUser, provider, providerId))
-                .orElseGet(() -> createNewSocialUser(request, provider, providerId));
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
+        }
+
+        User user = createNewSocialUser(request, provider, providerId);
 
         return createAuthResultForUser(user);
     }
 
     @Override
     @Transactional
-    public OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request) {
+    public OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request, Long authenticatedUserId) {
         Claims claims = getVerifiedClaims(tempToken);
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findById(authenticatedUserId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
+
+        if (!Objects.equals(user.getEmail(), request.getEmail())) {
+            throw new InvalidCredentialsException(SecurityCode.UNAUTHORIZED_ACCESS);
+        }
 
         linkSocialAccount(user, provider, providerId);
         return createAuthResultForUser(user);

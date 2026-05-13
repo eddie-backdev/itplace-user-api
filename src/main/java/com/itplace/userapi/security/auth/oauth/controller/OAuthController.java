@@ -5,11 +5,14 @@ import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
+import com.itplace.userapi.security.auth.oauth.dto.request.KakaoCodeRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthLinkRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthSignUpRequest;
+import com.itplace.userapi.security.auth.oauth.dto.response.KakaoLoginResult;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
 import com.itplace.userapi.security.auth.oauth.service.OAuthService;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +34,24 @@ public class OAuthController {
 
     private final OAuthService oAuthService;
     private final CookieUtil cookieUtil;
+
+    @PostMapping("/kakao")
+    public ResponseEntity<ApiResponse<LoginResponse>> kakaoLogin(
+            @RequestBody @Validated KakaoCodeRequest request,
+            HttpServletResponse httpServletResponse
+    ) {
+        KakaoLoginResult result = oAuthService.processKakaoLogin(request);
+        if (result.isExistingUser()) {
+            OAuthResult authResult = result.getAuthResult();
+            cookieUtil.setTokensToCookie(httpServletResponse, authResult.getAccessToken(), authResult.getRefreshToken());
+            ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, authResult.getLoginResponse());
+            return new ResponseEntity<>(body, body.getStatus());
+        }
+
+        cookieUtil.setTempTokenCookie(httpServletResponse, result.getTempToken(), TimeUnit.MINUTES.toSeconds(10));
+        ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.PRE_AUTHENTICATION_SUCCESS, null);
+        return new ResponseEntity<>(body, body.getStatus());
+    }
 
     /**
      * 신규 사용자가 이메일 인증을 포함한 추가 정보를 입력하여 최종 가입할 때 호출됩니다.
@@ -54,9 +75,15 @@ public class OAuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> oauthSignUpLink(
             @CookieValue("tempToken") String tempToken,
             @RequestBody @Validated OAuthLinkRequest request,
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
             HttpServletResponse httpServletResponse
     ) {
-        OAuthResult result = oAuthService.linkOAuthAccount(tempToken, request);
+        if (principalDetails == null || principalDetails.getUserId() == null) {
+            ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.UNAUTHORIZED_ACCESS, null);
+            return new ResponseEntity<>(body, body.getStatus());
+        }
+
+        OAuthResult result = oAuthService.linkOAuthAccount(tempToken, request, principalDetails.getUserId());
         cookieUtil.setTokensToCookie(httpServletResponse, result.getAccessToken(), result.getRefreshToken());
         ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, result.getLoginResponse());
         return new ResponseEntity<>(body, body.getStatus());
