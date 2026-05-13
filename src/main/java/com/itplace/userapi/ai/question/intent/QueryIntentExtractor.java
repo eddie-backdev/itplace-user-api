@@ -32,7 +32,11 @@ public class QueryIntentExtractor {
         }
         if (containsAny(normalized, "음료", "음료수", "마실", "주스", "에이드", "스무디")) {
             purposeKeywords.add("음료 중심");
-            exclusions.addAll(List.of("상담", "결혼", "육아", "심리", "피자", "치킨", "식당", "회관", "고기", "버거", "레스토랑"));
+            exclusions.addAll(List.of(
+                    "상담", "결혼", "육아", "심리",
+                    "피자", "치킨", "식당", "회관", "고기", "버거", "레스토랑",
+                    "키즈", "키즈카페", "실내놀이터", "스터디", "스터디카페", "독서실", "학원"
+            ));
         }
         if (containsAny(normalized, "영화", "극장", "시네마")) {
             purposeKeywords.add("영화");
@@ -41,6 +45,11 @@ public class QueryIntentExtractor {
         if (containsAny(normalized, "아이", "가족", "키즈")) {
             purposeKeywords.add("가족");
             categoryHints.addAll(List.of("가족", "키즈", "식당", "외식"));
+        }
+        if (containsAny(normalized, "데이트", "연인", "커플", "기념일")) {
+            purposeKeywords.add("데이트");
+            categoryHints.addAll(List.of("카페", "디저트", "영화", "전시관", "복합문화", "관광", "체험", "레스토랑"));
+            exclusions.addAll(List.of("상담", "심리", "결혼", "정비소", "타이어", "학원", "독서실"));
         }
         if (containsAny(normalized, "식당", "맛집", "외식", "레스토랑")) {
             purposeKeywords.add("외식");

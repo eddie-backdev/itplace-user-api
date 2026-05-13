@@ -18,6 +18,7 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.map.dto.PartnerDto;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.service.StoreService;
 import com.itplace.userapi.recommend.dto.Candidate;
 import java.util.List;
@@ -128,7 +129,7 @@ class QuestionRecommendationServiceImplTest {
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
-        assertThat(response.getReason()).contains("더운 날씨").contains("빙수카페");
+        assertThat(response.getReason()).contains("더운 날").contains("빙수카페").doesNotContain("의도").doesNotContain("후보");
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("빙수카페"));
@@ -192,8 +193,26 @@ class QuestionRecommendationServiceImplTest {
                 .candidateSource("es_vector")
                 .semanticScore(0.9)
                 .build();
+        Candidate kidsCafe = Candidate.builder()
+                .partnerName("서울형 키즈카페")
+                .category("키즈카페, 실내놀이터")
+                .description("입장료 할인")
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_vector")
+                .semanticScore(0.99)
+                .build();
+        Candidate studyCafe = Candidate.builder()
+                .partnerName("초심스터디카페")
+                .category("독서실")
+                .description("스터디카페 쿠폰")
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_vector")
+                .semanticScore(0.98)
+                .build();
         Candidate cafe = Candidate.builder()
-                .partnerName("달콤")
+                .partnerName("카페베네")
                 .category("카페")
                 .description("커피와 음료 할인")
                 .carrier("SKT")
@@ -203,7 +222,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
         StoreDetailResponse store = StoreDetailResponse.builder()
                 .partner(PartnerDto.builder()
-                        .partnerName("달콤")
+                        .partnerName("카페베네")
                         .image("drink.png")
                         .category("카페")
                         .build())
@@ -211,21 +230,64 @@ class QuestionRecommendationServiceImplTest {
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
         when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("음료 중심"))).thenReturn(embedding);
-        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30)).thenReturn(List.of(restaurant, pizza, cafe));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "달콤", 37.5, 127.0)).thenReturn(List.of(store));
+        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30))
+                .thenReturn(List.of(kidsCafe, studyCafe, restaurant, pizza, cafe));
+        when(storeService.findNearbyByPartnerName(37.5, 127.0, "카페베네", 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
-        assertThat(response.getReason()).contains("음료").contains("달콤");
+        assertThat(response.getReason()).contains("음료").contains("카페베네");
         assertThat(response.getPartners())
                 .singleElement()
-                .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("달콤"));
+                .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("카페베네"));
+        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "서울형 키즈카페", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "초심스터디카페", 37.5, 127.0);
         verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "삼산회관", 37.5, 127.0);
         verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "피자헛", 37.5, 127.0);
         verify(openAIService, never()).generateReasons(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void recommendByQuestion_explainsDateRecommendationWithBenefitGroundingNotInternalIntentText() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "데이트하기 좋은 제휴처 추천해줘";
+        List<Float> embedding = List.of(0.1f, 0.2f);
+        Candidate movie = Candidate.builder()
+                .partnerName("CGV")
+                .category("영화")
+                .description("영화 예매 할인")
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_vector")
+                .semanticScore(0.8)
+                .build();
+        StoreDetailResponse store = StoreDetailResponse.builder()
+                .partner(PartnerDto.builder()
+                        .partnerName("CGV")
+                        .image("movie.png")
+                        .category("영화")
+                        .build())
+                .tierBenefit(List.of(TierBenefitDto.builder()
+                        .context("영화 예매 30% 할인")
+                        .build()))
+                .build();
+
+        when(forbiddenWordService.censor(question)).thenReturn(question);
+        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("데이트"))).thenReturn(embedding);
+        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30)).thenReturn(List.of(movie));
+        when(storeService.findNearbyByPartnerName(37.5, 127.0, "CGV", 37.5, 127.0)).thenReturn(List.of(store));
+
+        RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
+
+        assertThat(response.getReason())
+                .contains("영화 예매 30% 할인")
+                .contains("CGV")
+                .contains("데이트")
+                .doesNotContain("의도")
+                .doesNotContain("후보");
     }
 
     private QuestionRecommendationServiceImpl service() {
