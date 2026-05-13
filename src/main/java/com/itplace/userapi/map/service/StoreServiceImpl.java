@@ -50,6 +50,8 @@ public class StoreServiceImpl implements StoreService {
     private static final int STORES_PER_CELL = 15;
     private static final int FINAL_LIMIT = 300;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
+    private static final int MAP_DISTRIBUTION_THRESHOLD = 1000;
+    private static final int MAP_STORES_PER_CELL = 12;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @PreDestroy
@@ -147,6 +149,45 @@ public class StoreServiceImpl implements StoreService {
             }
         }
 
+        return awaitGridResults(futures);
+    }
+
+    private List<Long> findDistributedStoreIdsForMap(double lat, double lng, double radiusMeters, String category) {
+        double[] bbox = computeBoundingBox(lat, lng, radiusMeters);
+        double minLat = bbox[0], maxLat = bbox[1], minLng = bbox[2], maxLng = bbox[3];
+
+        double latStep = (maxLat - minLat) / GRID_SIZE;
+        double lngStep = (maxLng - minLng) / GRID_SIZE;
+
+        List<CompletableFuture<List<Long>>> futures = new ArrayList<>();
+
+        for (int i = 0; i < GRID_SIZE; i++) {
+            for (int j = 0; j < GRID_SIZE; j++) {
+                double cellMinLat = minLat + i * latStep;
+                double cellMaxLat = cellMinLat + latStep;
+                double cellMinLng = minLng + j * lngStep;
+                double cellMaxLng = cellMinLng + lngStep;
+
+                futures.add(CompletableFuture.supplyAsync(() ->
+                                storeRepository.findStoreIdsInCellWithinRadius(
+                                        category,
+                                        lat,
+                                        lng,
+                                        radiusMeters,
+                                        cellMinLat,
+                                        cellMaxLat,
+                                        cellMinLng,
+                                        cellMaxLng,
+                                        MAP_STORES_PER_CELL),
+                        GRID_EXECUTOR
+                ));
+            }
+        }
+
+        return awaitGridResults(futures);
+    }
+
+    private List<Long> awaitGridResults(List<CompletableFuture<List<Long>>> futures) {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .get(10, TimeUnit.SECONDS);
@@ -163,6 +204,32 @@ public class StoreServiceImpl implements StoreService {
                 .flatMap(List::stream)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StoreDetailResponse> findNearbyDistributedForMap(double lat, double lng, double radiusMeters,
+                                                                 String category, double userLat, double userLng) {
+        String normalizedCategory = category == null || category.isBlank() || category.equalsIgnoreCase("전체")
+                ? null
+                : category.trim();
+
+        if (radiusMeters <= MAP_DISTRIBUTION_THRESHOLD) {
+            return normalizedCategory == null
+                    ? findNearby(lat, lng, radiusMeters, userLat, userLng)
+                    : findNearbyByCategory(lat, lng, radiusMeters, normalizedCategory, userLat, userLng);
+        }
+
+        List<Long> distributedStoreIds = findDistributedStoreIdsForMap(lat, lng, radiusMeters, normalizedCategory);
+        if (distributedStoreIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> limitedStoreIds = distributedStoreIds.subList(0, Math.min(distributedStoreIds.size(), FINAL_LIMIT));
+        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(limitedStoreIds);
+        return toStoreDetailResponses(stores, userLat, userLng).stream()
+                .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
+                .toList();
     }
 
     @Override
