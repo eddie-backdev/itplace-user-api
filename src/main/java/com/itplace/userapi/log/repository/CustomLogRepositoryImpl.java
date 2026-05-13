@@ -2,9 +2,11 @@ package com.itplace.userapi.log.repository;
 
 import com.itplace.userapi.log.dto.PartnerNameResult;
 import com.itplace.userapi.log.dto.RankResult;
+import com.itplace.userapi.log.entity.LogDocument;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -16,6 +18,7 @@ import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -71,6 +74,42 @@ public class CustomLogRepositoryImpl implements CustomLogRepository {
                 .map(PartnerNameResult::getPartnerName)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    @Override
+    public Optional<Instant> findLatestLoggingAtByEvents(Long userId, List<String> events) {
+        if (events == null || events.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Query query = new Query()
+                .addCriteria(Criteria.where("userId").is(userId).and("event").in(events))
+                .with(Sort.by(Sort.Direction.DESC, "loggingAt"))
+                .limit(1);
+
+        LogDocument latest = mongoTemplate.findOne(query, LogDocument.class, "logs");
+        return latest == null || latest.getLoggingAt() == null
+                ? Optional.empty()
+                : Optional.of(latest.getLoggingAt());
+    }
+
+    @Override
+    public Optional<String> findLatestParamByEvents(Long userId, List<String> events) {
+        if (events == null || events.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Query query = new Query()
+                .addCriteria(Criteria.where("userId").is(userId)
+                        .and("event").in(events)
+                        .and("param").ne(null))
+                .with(Sort.by(Sort.Direction.DESC, "loggingAt"))
+                .limit(1);
+
+        LogDocument latest = mongoTemplate.findOne(query, LogDocument.class, "logs");
+        return latest == null || latest.getParam() == null || latest.getParam().isBlank()
+                ? Optional.empty()
+                : Optional.of(latest.getParam());
     }
 
 }

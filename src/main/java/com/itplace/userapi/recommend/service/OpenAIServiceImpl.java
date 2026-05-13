@@ -4,9 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.ai.rag.service.BenefitSearchService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
-import com.itplace.userapi.benefit.entity.Benefit;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
-import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import com.itplace.userapi.recommend.domain.UserFeature;
@@ -14,10 +13,14 @@ import com.itplace.userapi.recommend.dto.Candidate;
 import com.itplace.userapi.recommend.dto.ChatCompletionResponse;
 import com.itplace.userapi.recommend.dto.response.Recommendations;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -43,7 +46,6 @@ public class OpenAIServiceImpl implements OpenAIService {
     private final EmbeddingService embeddingService;
     private final BenefitSearchService benefitSearchService;
     private final PartnerRepository partnerRepository;
-    private final BenefitRepository benefitRepository;
 
     @Value("${spring.ai.openai.api-key}")
     private String apiKey;
@@ -56,10 +58,11 @@ public class OpenAIServiceImpl implements OpenAIService {
 
 
     @Override
-    public List<Candidate> vectorSearch(UserFeature uf, int CandidateSize) {
+    public List<Candidate> vectorSearch(UserFeature uf, int candidateSize) {
         List<Float> userEmbedding = embeddingService.embed(uf.getEmbeddingText());
+        Carrier carrier = uf.getCarrier();
         Grade grade = uf.getGrade();
-        return benefitSearchService.queryVector(grade, userEmbedding, CandidateSize);
+        return benefitSearchService.queryVector(carrier, grade, userEmbedding, candidateSize);
     }
 
 
@@ -67,7 +70,8 @@ public class OpenAIServiceImpl implements OpenAIService {
     public List<Recommendations> rerankAndExplain(UserFeature uf, List<Candidate> cands, int topK) {
         String url = baseUrl + "/v1/chat/completions";
         int recommendationCount = Math.min(Math.max(topK, 1), MAX_RECOMMENDATION_COUNT);
-        List<Candidate> promptCandidates = cands.stream()
+        List<Candidate> rankedCandidates = deterministicRank(uf, cands);
+        List<Candidate> promptCandidates = rankedCandidates.stream()
                 .limit(MAX_PROMPT_CANDIDATES)
                 .toList();
 
@@ -81,12 +85,19 @@ public class OpenAIServiceImpl implements OpenAIService {
             String context = truncateForPrompt(c.getContext(), MAX_CONTEXT_CHARS, "추가 정보 없음");
 
             items.append(String.format(
-                    "%d. [%s] 제휴처: %s / 설명: %s / 등급 혜택: %s%n",
+                    "%d. 후보ID=%s / source=%s / rankScore=%.2f / 통신사=%s / 등급=%s / 이용=%s / [%s] 제휴처: %s / 설명: %s / 등급 혜택: %s / scoreEvidence=%s%n",
                     i + 1,
+                    c.getBenefitId(),
+                    nullToBlank(c.getCandidateSource()),
+                    c.getRankScore() == null ? 0.0 : c.getRankScore(),
+                    nullToBlank(c.getCarrier()),
+                    nullToBlank(c.getGrade()),
+                    nullToBlank(c.getUsageType()),
                     nullToBlank(c.getCategory()),
                     nullToBlank(c.getPartnerName()),
                     description,
-                    context
+                    context,
+                    c.getScoreComponents() == null ? Map.of() : c.getScoreComponents()
             ));
         }
 
@@ -99,14 +110,18 @@ public class OpenAIServiceImpl implements OpenAIService {
                         - 최근 검색한 제휴사: %s
                         - 최근 상세보기한 제휴사: %s
                         
-                        【멤버십 혜택 이용 이력】
-                        - 실제로 혜택을 자주 사용한 제휴사: %s
+                        【종합 행동 기반 관심 제휴사】
+                        - 클릭/검색/상세/즐겨찾기/이용 이력을 통합한 상위 제휴사: %s
+                        - 노출되었지만 반응이 약한 제휴사: %s
+                        - dismiss/skip/negative/favorite_remove 부정 신호 제휴사: %s
                         
                         【후보 혜택 목록】
                         %s
                         
                         ※ 아래 후보 혜택들 중 사용자에게 적절한 혜택 %d개를 골라주세요.
-                        ※ 추천 이유에는 가능한 경우 등급 혜택과 최근 행동 로그 연관성을 짧게 포함해주세요.
+                        ※ 추천 이유에는 후보별 scoreEvidence에 있는 실제 신호와 등급 혜택만 짧게 포함해주세요.
+                        ※ 부정 신호 또는 tombstone_penalty가 있는 제휴사는 다른 후보가 있으면 선택하지 마세요.
+                        ※ scoreEvidence에 없는 즐겨찾기/사용/상세보기/검색/클릭 근거는 절대 만들지 마세요.
                         ※ 추천 제휴처는 절대 중복되지 않도록 해주세요.
                         ※ 카테고리를 알 수 없는 경우, 카테고리에 관한 내용은 포함하지 마세요.
                         
@@ -121,10 +136,12 @@ public class OpenAIServiceImpl implements OpenAIService {
                           ]
                         }
                         """, uf.getLLMContext(),
-                String.join(", ", uf.getClickPartners()),
-                String.join(", ", uf.getSearchPartners()),
-                String.join(", ", uf.getDetailPartners()),
-                String.join(", ", uf.getRecentPartnerNames()),
+                String.join(", ", safeList(uf.getClickPartners())),
+                String.join(", ", safeList(uf.getSearchPartners())),
+                String.join(", ", safeList(uf.getDetailPartners())),
+                String.join(", ", safeList(uf.getRecentPartnerNames())),
+                String.join(", ", safeList(uf.getImpressionPartners())),
+                negativePartnersSummary(uf),
                 items,
                 recommendationCount);
 
@@ -141,7 +158,12 @@ public class OpenAIServiceImpl implements OpenAIService {
                 Map.of("role", "user", "content", prompt)
         );
 
-        log.debug("추천 후보 리스트: {}", prompt);
+        log.debug("추천 후보 프롬프트 구성 완료: promptCandidateCount={}, signalCounts(click/search/detail/use)={}/{}/{}/{}",
+                promptCandidates.size(),
+                safeList(uf.getClickPartners()).size(),
+                safeList(uf.getSearchPartners()).size(),
+                safeList(uf.getDetailPartners()).size(),
+                safeList(uf.getRecentPartnerNames()).size());
 
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
@@ -172,7 +194,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                 if (recList != null && recList.isArray()) {
                     List<Recommendations> recommendations = mapper.readerForListOf(Recommendations.class)
                             .readValue(recList);
-                    return enrichRecommendations(recommendations);
+                    return constrainRecommendationsToCandidates(recommendations, promptCandidates, recommendationCount);
                 }
             }
         } catch (Exception e) {
@@ -185,44 +207,137 @@ public class OpenAIServiceImpl implements OpenAIService {
 
     }
 
-    private List<Recommendations> enrichRecommendations(List<Recommendations> recommendations) {
-        for (Recommendations rec : recommendations) {
-            Optional<Partner> partnerOpt = partnerRepository.findByPartnerName(rec.getPartnerName());
-            if (partnerOpt.isPresent()) {
-                Partner partner = partnerOpt.get();
+    List<Candidate> deterministicRank(UserFeature uf, List<Candidate> candidates) {
+        return candidates.stream()
+                .map(candidate -> applyRankScore(uf, candidate))
+                .sorted(Comparator
+                        .comparing((Candidate candidate) -> candidate.getRankScore() == null ? 0.0 : candidate.getRankScore())
+                        .reversed()
+                        .thenComparing(candidate -> candidate.getBenefitId() == null ? Long.MAX_VALUE : candidate.getBenefitId()))
+                .toList();
+    }
 
-                rec.setImgUrl(partner.getImage());
+    private Candidate applyRankScore(UserFeature uf, Candidate candidate) {
+        Map<String, Double> components = new LinkedHashMap<>();
+        if (candidate.getScoreComponents() != null) {
+            components.putAll(candidate.getScoreComponents());
+        }
 
-                List<Long> benefitIds = benefitRepository.findByPartner_PartnerId(partner.getPartnerId())
-                        .stream()
-                        .map(Benefit::getBenefitId)
-                        .toList();
+        double semantic = candidate.getSemanticScore() == null ? 0.0 : candidate.getSemanticScore();
+        double behaviorAffinity = uf.partnerAffinity(candidate.getPartnerName());
+        double categoryAffinity = uf.categoryAffinity(candidate.getCategory());
+        double grounding = uf.hasSignalForPartner(candidate.getPartnerName()) ? 1.0 : 0.0;
+        double negativePenalty = uf.negativePartnerScore(candidate.getPartnerName());
+        double tombstonePenalty = uf.isTombstonedPartner(candidate.getPartnerName()) ? 50.0 : 0.0;
+        double rankScore = (semantic * 20.0) + behaviorAffinity + (categoryAffinity * 0.5) + grounding
+                - negativePenalty - tombstonePenalty;
 
-                rec.setBenefitIds(benefitIds);
-            } else {
-                rec.setImgUrl("<UNKNOWN>");
-                rec.setBenefitIds(List.of());
+        components.put("semantic_similarity", semantic);
+        components.put("behavior_affinity", behaviorAffinity);
+        components.put("category_affinity", categoryAffinity);
+        components.put("grounded_user_signal", grounding);
+        components.put("negative_partner_penalty", negativePenalty);
+        if (tombstonePenalty > 0) {
+            components.put("tombstone_penalty", tombstonePenalty);
+        }
+
+        candidate.setRankScore(rankScore);
+        candidate.setScoreComponents(components);
+        return candidate;
+    }
+
+    List<Recommendations> constrainRecommendationsToCandidates(List<Recommendations> recommendations,
+                                                                  List<Candidate> promptCandidates,
+                                                                  int topK) {
+        Map<String, Candidate> allowedByPartner = new LinkedHashMap<>();
+        for (Candidate candidate : promptCandidates) {
+            String key = normalizePartnerName(candidate.getPartnerName());
+            if (!key.isBlank()) {
+                allowedByPartner.putIfAbsent(key, candidate);
             }
         }
 
-        return recommendations;
+        List<Recommendations> constrained = new ArrayList<>();
+        Set<String> usedPartners = new HashSet<>();
+        for (Recommendations recommendation : recommendations) {
+            if (constrained.size() >= topK) {
+                break;
+            }
+
+            String partnerKey = normalizePartnerName(recommendation.getPartnerName());
+            Candidate candidate = allowedByPartner.get(partnerKey);
+            if (candidate == null || usedPartners.contains(partnerKey)) {
+                continue;
+            }
+
+            constrained.add(toRecommendation(candidate, constrained.size() + 1, recommendation.getReason()));
+            usedPartners.add(partnerKey);
+        }
+
+        for (Candidate candidate : promptCandidates) {
+            if (constrained.size() >= topK) {
+                break;
+            }
+            String partnerKey = normalizePartnerName(candidate.getPartnerName());
+            if (partnerKey.isBlank() || usedPartners.contains(partnerKey)) {
+                continue;
+            }
+
+            constrained.add(toRecommendation(candidate, constrained.size() + 1, fallbackReason(candidate)));
+            usedPartners.add(partnerKey);
+        }
+
+        return constrained;
     }
 
     private List<Recommendations> fallbackRecommendations(List<Candidate> candidates, int topK) {
-        List<Recommendations> recommendations = candidates.stream()
-                .filter(candidate -> candidate.getPartnerName() != null && !candidate.getPartnerName().isBlank())
-                .limit(topK)
-                .map(candidate -> Recommendations.builder()
-                        .rank(candidates.indexOf(candidate) + 1)
-                        .partnerName(candidate.getPartnerName())
-                        .reason(String.format("%s 혜택이 지금 조건과 잘 맞는 걸요! %s",
-                                candidate.getPartnerName(),
-                                truncateForPrompt(candidate.getContext(), MAX_CONTEXT_CHARS, "등급별 혜택도 함께 확인해보세요.")))
-                        .benefitIds(candidate.getBenefitId() == null ? List.of() : List.of(candidate.getBenefitId()))
-                        .build())
-                .toList();
+        return constrainRecommendationsToCandidates(List.of(), candidates, topK);
+    }
 
-        return enrichRecommendations(recommendations);
+    private Recommendations toRecommendation(Candidate candidate, int rank, String reason) {
+        return Recommendations.builder()
+                .rank(rank)
+                .partnerName(candidate.getPartnerName())
+                .reason(reason == null || reason.isBlank() ? fallbackReason(candidate) : reason)
+                .imgUrl(resolvePartnerImage(candidate.getPartnerName()))
+                .benefitIds(candidate.getBenefitId() == null ? List.of() : List.of(candidate.getBenefitId()))
+                .build();
+    }
+
+    private String fallbackReason(Candidate candidate) {
+        return String.format("%s 혜택이 지금 조건과 잘 맞는 걸요! %s",
+                candidate.getPartnerName(),
+                truncateForPrompt(candidate.getContext(), MAX_CONTEXT_CHARS, "등급별 혜택도 함께 확인해보세요."));
+    }
+
+    private String resolvePartnerImage(String partnerName) {
+        if (partnerRepository == null || partnerName == null || partnerName.isBlank()) {
+            return null;
+        }
+
+        return partnerRepository.findByPartnerName(partnerName)
+                .map(Partner::getImage)
+                .orElse(null);
+    }
+
+    private String negativePartnersSummary(UserFeature uf) {
+        if (uf.getNegativePartnerScores() == null || uf.getNegativePartnerScores().isEmpty()) {
+            return "없음";
+        }
+        return uf.getNegativePartnerScores().entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue(Comparator.reverseOrder()))
+                .limit(7)
+                .map(entry -> "%s %.1f".formatted(entry.getKey(), entry.getValue()))
+                .toList()
+                .toString();
+    }
+
+    private static List<String> safeList(List<String> values) {
+        return values == null ? List.of() : values;
+    }
+
+    private String normalizePartnerName(String partnerName) {
+        return partnerName == null ? "" : partnerName.trim().toLowerCase();
     }
 
     static String truncateForPrompt(String value, int maxChars, String defaultValue) {

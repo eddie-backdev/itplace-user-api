@@ -74,6 +74,15 @@ public interface MembershipHistoryRepository extends JpaRepository<MembershipHis
     );
 
 
+    @Query("""
+                SELECT COUNT(mh) > 0
+                FROM MembershipHistory mh
+                WHERE mh.membership.membershipId = :membershipId
+                  AND mh.usedAt > :usedAfter
+            """)
+    boolean existsByMembershipIdAndUsedAtAfter(@Param("membershipId") String membershipId,
+                                               @Param("usedAfter") LocalDateTime usedAfter);
+
     boolean existsByMembershipAndBenefit(Membership membership, Benefit benefit);
 
     boolean existsByMembershipAndBenefitAndUsedAtBetween(
