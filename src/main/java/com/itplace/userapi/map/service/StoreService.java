@@ -9,6 +9,10 @@ public interface StoreService {
     List<StoreDetailResponse> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
                                               double userLat, double userLng);
 
+    List<StoreDetailResponse> findNearbyDistributedForMap(double lat, double lng, double radiusMeters, String category,
+                                                           double userLat, double userLng);
+
+
     List<StoreDetailResponse> findNearbyByKeyword(double lat, double lng, String category, String keyword, double userLat,
                                              double userLng);
 

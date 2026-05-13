@@ -16,6 +16,7 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.locationtech.jts.geom.Coordinate;
@@ -349,6 +350,63 @@ class StoreServiceImplTest {
         assertThat(result).singleElement()
                 .extracting(StoreDetailResponse::getTierBenefit)
                 .satisfies(tierBenefits -> assertThat(tierBenefits).containsExactly(skt, kt, lgu));
+    }
+
+
+    @Test
+    void findNearbyDistributedForMap_samplesStoresFromGridCells() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("GS25")
+                .category("생활/편의")
+                .build();
+        Store northWestStore = store(101L, "GS25 북서점", partner, point(126.98, 37.53));
+        Store southEastStore = store(102L, "GS25 남동점", partner, point(127.04, 37.47));
+        AtomicInteger cellCalls = new AtomicInteger();
+
+        when(storeRepository.findStoreIdsInCellWithinRadius(
+                org.mockito.ArgumentMatchers.<String>isNull(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyInt()
+        )).thenAnswer(invocation -> {
+            int call = cellCalls.incrementAndGet();
+            if (call == 1) {
+                return List.of(101L);
+            }
+            if (call == 2) {
+                return List.of(102L);
+            }
+            return List.of();
+        });
+        when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
+                .thenReturn(List.of(northWestStore, southEastStore));
+        when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
+                .thenReturn(Map.<Long, List<BenefitCacheDto>>of());
+
+        List<StoreDetailResponse> result = storeService.findNearbyDistributedForMap(
+                37.50, 127.00, 5_000, null, 37.50, 127.00);
+
+        assertThat(result)
+                .extracting(response -> response.getStore().getStoreId())
+                .containsExactlyInAnyOrder(101L, 102L);
+        org.mockito.Mockito.verify(storeRepository, org.mockito.Mockito.times(25))
+                .findStoreIdsInCellWithinRadius(
+                        org.mockito.ArgumentMatchers.<String>isNull(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyInt()
+                );
     }
 
     private static Store store(long id, String name, Partner partner, Point location) {
