@@ -13,6 +13,7 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
 @Configuration
 public class ElasticsearchConfig {
@@ -34,14 +35,15 @@ public class ElasticsearchConfig {
 
     @Bean
     public ElasticsearchClient elasticsearchClient() {
-        BasicCredentialsProvider creds = new BasicCredentialsProvider();
-        creds.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
-
-        RestClientBuilder builder = RestClient.builder(new HttpHost(host, port, scheme))
-                .setHttpClientConfigCallback(http -> http
-                        .setDefaultCredentialsProvider(creds)
-                        .disableAuthCaching()
-                );
+        RestClientBuilder builder = RestClient.builder(new HttpHost(host, port, scheme));
+        if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
+            BasicCredentialsProvider creds = new BasicCredentialsProvider();
+            creds.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+            builder.setHttpClientConfigCallback(http -> http
+                    .setDefaultCredentialsProvider(creds)
+                    .disableAuthCaching()
+            );
+        }
 
         RestClient restClient = builder.build();
         ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
