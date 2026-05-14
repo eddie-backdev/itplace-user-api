@@ -144,52 +144,60 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                                   String category,
                                   List<StoreDetailResponse> stores,
                                   List<String> partnerNames) {
-        String normalizedCategory = category == null || category.isBlank() ? "요청하신 조건" : category;
         if (partnerNames == null || partnerNames.isEmpty()) {
+            String normalizedCategory = category == null || category.isBlank() ? "요청하신 조건" : category;
             return "%s에 맞는 주변 제휴처를 찾아봤어요.".formatted(normalizedCategory);
         }
 
-        String joinedPartners = String.join(", ", partnerNames);
-        String benefitSummary = benefitSummary(stores, partnerNames);
-        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("데이트"))) {
-            return benefitSummary.isBlank()
-                    ? "%s 같은 제휴처는 데이트 코스로 함께 들르기 좋은 선택지예요. 주변에서 이용 가능한 혜택을 확인해보고 가볍게 즐겨보면 좋을 것 같아요."
-                    .formatted(joinedPartners)
-                    : "%s 혜택을 이용할 수 있어서 %s에서 데이트를 하면 더 부담 없이 즐길 수 있을 것 같아요."
-                    .formatted(benefitSummary, joinedPartners);
-        }
-        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("더위") || keyword.contains("시원"))) {
-            return benefitSummary.isBlank()
-                    ? "더운 날에는 " + joinedPartners + "처럼 음료·디저트나 실내 이용과 연결되는 제휴처를 먼저 살펴보면 좋아요."
-                    : benefitSummary + " 혜택을 이용할 수 있어서 더운 날 " + joinedPartners + "에 들러 시원하게 쉬어가기 좋을 것 같아요.";
-        }
-        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("음료") || keyword.contains("카페"))) {
-            return benefitSummary.isBlank()
-                    ? "음료나 가벼운 디저트를 찾는다면 " + joinedPartners + " 같은 제휴처를 먼저 확인해보면 좋아요."
-                    : benefitSummary + " 혜택을 이용할 수 있어서 음료나 가벼운 디저트를 찾을 때 " + joinedPartners + "를 추천드려요.";
-        }
-        return benefitSummary.isBlank()
-                ? "%s 관련 제휴처를 찾는다면 %s를 먼저 확인해보면 좋아요."
-                .formatted(normalizedCategory, joinedPartners)
-                : "%s 혜택을 이용할 수 있어서 %s를 추천드려요."
-                .formatted(benefitSummary, joinedPartners);
+        String intro = reasonIntro(intent, category);
+        String bulletLines = partnerBenefitLines(stores, partnerNames).stream()
+                .map(line -> "• %s — %s".formatted(line.partnerName(), line.benefitText()))
+                .collect(java.util.stream.Collectors.joining("\n"));
+
+        return intro + "\n\n" + bulletLines + "\n\n가까운 매장을 확인해서 혜택을 챙겨보세요.";
     }
 
-    private String benefitSummary(List<StoreDetailResponse> stores, List<String> partnerNames) {
-        if (stores == null || stores.isEmpty() || partnerNames == null || partnerNames.isEmpty()) {
-            return "";
+    private String reasonIntro(QueryIntent intent, String category) {
+        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("데이트"))) {
+            return "데이트하기 좋은 제휴처를 골라봤어요.\n혜택까지 같이 챙기면 더 부담 없이 즐길 수 있어요.";
         }
-        List<String> summaries = new ArrayList<>();
+        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("더위") || keyword.contains("시원"))) {
+            return "더운 날 시원하게 쉬어가기 좋은 제휴처를 골라봤어요.\n음료·디저트나 실내 이용과 연결되는 혜택을 우선했어요.";
+        }
+        if (intent != null && intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("음료") || keyword.contains("카페"))) {
+            return "음료나 가벼운 디저트를 즐기기 좋은 제휴처를 골라봤어요.\n카페·디저트 혜택을 우선했어요.";
+        }
+
+        String normalizedCategory = category == null || category.isBlank() ? "요청하신 조건" : category;
+        return "%s 관련 제휴처를 골라봤어요.\n사용 가능한 혜택을 함께 확인해보세요.".formatted(normalizedCategory);
+    }
+
+    private List<PartnerBenefitLine> partnerBenefitLines(List<StoreDetailResponse> stores, List<String> partnerNames) {
+        List<PartnerBenefitLine> lines = new ArrayList<>();
         for (String partnerName : partnerNames) {
-            stores.stream()
-                    .filter(store -> store.getPartner() != null && partnerName.equals(store.getPartner().getPartnerName()))
-                    .flatMap(store -> store.getTierBenefit() == null ? java.util.stream.Stream.<TierBenefitDto>empty() : store.getTierBenefit().stream())
-                    .map(TierBenefitDto::getContext)
-                    .filter(context -> context != null && !context.isBlank())
-                    .findFirst()
-                    .ifPresent(context -> summaries.add(partnerName + "의 " + context));
+            String benefitText = benefitTextForPartner(stores, partnerName);
+            lines.add(new PartnerBenefitLine(partnerName, benefitText));
         }
-        return String.join(", ", summaries);
+        return lines;
+    }
+
+    private String benefitTextForPartner(List<StoreDetailResponse> stores, String partnerName) {
+        if (stores == null || stores.isEmpty()) {
+            return "가까운 매장에서 이용 가능한 혜택을 확인해보세요.";
+        }
+
+        return stores.stream()
+                .filter(store -> store.getPartner() != null && partnerName.equals(store.getPartner().getPartnerName()))
+                .flatMap(store -> store.getTierBenefit() == null ? java.util.stream.Stream.<TierBenefitDto>empty() : store.getTierBenefit().stream())
+                .map(TierBenefitDto::getContext)
+                .filter(context -> context != null && !context.isBlank())
+                .map(this::normalizeBenefitText)
+                .findFirst()
+                .orElse("가까운 매장에서 이용 가능한 혜택을 확인해보세요.");
+    }
+
+    private String normalizeBenefitText(String benefitText) {
+        return benefitText.replaceAll("\\s+", " ").trim();
     }
 
     private BenefitSearchCondition searchCondition(QueryIntent intent) {
@@ -266,5 +274,8 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
     }
 
     private record StoreCandidateResult(String category, List<StoreDetailResponse> stores, String source) {
+    }
+
+    private record PartnerBenefitLine(String partnerName, String benefitText) {
     }
 }
