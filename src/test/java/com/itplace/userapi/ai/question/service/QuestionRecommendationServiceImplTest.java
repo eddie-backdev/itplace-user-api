@@ -125,6 +125,9 @@ class QuestionRecommendationServiceImplTest {
                         .image("bingsu.png")
                         .category("카페")
                         .build())
+                .tierBenefit(List.of(TierBenefitDto.builder()
+                        .context("시원한 디저트 20% 할인")
+                        .build()))
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
@@ -139,7 +142,12 @@ class QuestionRecommendationServiceImplTest {
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
-        assertThat(response.getReason()).contains("더운 날").contains("빙수카페").doesNotContain("의도").doesNotContain("후보");
+        assertThat(response.getReason())
+                .contains("더운 날 시원하게 쉬어가기 좋은 제휴처")
+                .contains("• 빙수카페 — 시원한 디저트 20% 할인")
+                .contains("\n\n")
+                .doesNotContain("의도")
+                .doesNotContain("후보");
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("빙수카페"));
@@ -241,6 +249,9 @@ class QuestionRecommendationServiceImplTest {
                         .image("drink.png")
                         .category("카페")
                         .build())
+                .tierBenefit(List.of(TierBenefitDto.builder()
+                        .context("음료 10% 할인")
+                        .build()))
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
@@ -256,7 +267,12 @@ class QuestionRecommendationServiceImplTest {
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
-        assertThat(response.getReason()).contains("음료").contains("카페베네");
+        assertThat(response.getReason())
+                .contains("음료나 가벼운 디저트를 즐기기 좋은 제휴처")
+                .contains("• 카페베네 — 음료 10% 할인")
+                .contains("\n\n")
+                .doesNotContain("의도")
+                .doesNotContain("후보");
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("카페베네"));
@@ -308,9 +324,12 @@ class QuestionRecommendationServiceImplTest {
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
         assertThat(response.getReason())
+                .contains("데이트하기 좋은 제휴처")
+                .contains("• CGV — 영화 예매 30% 할인")
                 .contains("영화 예매 30% 할인")
                 .contains("CGV")
                 .contains("데이트")
+                .contains("\n\n")
                 .doesNotContain("의도")
                 .doesNotContain("후보");
     }
