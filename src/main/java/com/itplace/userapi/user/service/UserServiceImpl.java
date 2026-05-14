@@ -12,17 +12,14 @@ import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
 import com.itplace.userapi.user.dto.request.MembershipProfileUpdateRequest;
 import com.itplace.userapi.user.dto.request.ResetPasswordRequest;
-import com.itplace.userapi.user.dto.response.CheckUplusDataResponse;
 import com.itplace.userapi.user.dto.response.FindPasswordConfirmResponse;
 import com.itplace.userapi.user.dto.response.UserInfoResponse;
-import com.itplace.userapi.user.entity.UplusData;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
-import com.itplace.userapi.user.support.MembershipProfileValidator;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
-import com.itplace.userapi.user.repository.UplusDataRepository;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final UplusDataRepository uplusDataRepository;
     private final StringRedisTemplate redisTemplate;
     private final OtpUtil otpUtil;
     private final PasswordEncoder passwordEncoder;
@@ -147,34 +143,6 @@ public class UserServiceImpl implements UserService {
         favoriteRepository.deleteByUser_Id(userId);
         socialAccountRepository.deleteByUser_Id(userId);
         userRepository.delete(user);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public CheckUplusDataResponse checkUplusData(PrincipalDetails principalDetails) {
-        User user = userRepository.findById(principalDetails.getUserId())
-                .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
-        String phoneNumber = user.getPhoneNumber();
-        boolean uplusDataExists = phoneNumber != null && uplusDataRepository.findByPhoneNumber(phoneNumber).isPresent();
-        return CheckUplusDataResponse.builder()
-                .uplusDataExists(uplusDataExists)
-                .build();
-    }
-
-    @Override
-    @Transactional
-    public void linkUplusData(PrincipalDetails principalDetails) {
-        User user = userRepository.findById(principalDetails.getUserId())
-                .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
-        String phoneNumber = user.getPhoneNumber();
-        if (phoneNumber == null) {
-            throw new UserNotFoundException(UserCode.UPLUS_DATA_NOT_EXISTS);
-        }
-        UplusData uplusData = uplusDataRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new UserNotFoundException(UserCode.UPLUS_DATA_NOT_EXISTS));
-        user.setGender(uplusData.getGender());
-        user.setBirthday(uplusData.getBirthday());
-        user.setMembershipId(uplusData.getMembershipId());
     }
 
     @Override
