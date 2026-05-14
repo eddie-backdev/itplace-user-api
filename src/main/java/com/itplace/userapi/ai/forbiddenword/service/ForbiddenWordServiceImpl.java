@@ -9,6 +9,7 @@ import java.util.ArrayDeque;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @RequiredArgsConstructor
 public class ForbiddenWordServiceImpl implements ForbiddenWordService {
+    private static final int MIN_SUBSTRING_MATCH_LENGTH = 3;
 
     private final ForbiddenWordRepository forbiddenWordRepository;
     private final ExceptionWordRepository exceptionWordRepository;
@@ -36,6 +38,7 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
     private final TrieNode root = new TrieNode();
 
     private final Set<String> specialForbiddenWords = new HashSet<>();  // 특수문자 금칙어 저장
+    private final Set<String> normalizedForbiddenWords = new HashSet<>();
 
     private Set<String> exceptionWords = new HashSet<>();
 
@@ -49,6 +52,8 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
         List<ExceptionWord> exceptionWordList = exceptionWordRepository.findAll();
         exceptionWords = exceptionWordList.stream()
                 .map(ExceptionWord::getWord)
+                .map(this::normalize)
+                .filter(word -> !word.isBlank())
                 .collect(Collectors.toSet());
 
         log.debug("=== 금칙어 init() ===");
@@ -66,6 +71,7 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
             root.fail = root;
             root.isEnd = false;
             specialForbiddenWords.clear();
+            normalizedForbiddenWords.clear();
 
             List<String> forbiddenWords = forbiddenWordRepository.findAll()
                     .stream()
@@ -89,7 +95,6 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
     private void insert(String word) {
         if (isSpecialWord(word)) {
             specialForbiddenWords.add(word);  // 특수문자 금칙어는 Set에 저장
-            return;
         }
 
         String normalized = normalize(word);
@@ -97,6 +102,7 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
         if (normalized.isEmpty()) {
             return;  // 정규화 후 빈 문자열 무시
         }
+        normalizedForbiddenWords.add(normalized);
 
         TrieNode node = root;
         for (char c : normalized.toCharArray()) {
@@ -136,7 +142,8 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
         String normalized = normalize(text);
 
         // 기존 금칙어 검사
-        if (checkTrieForbiddenWord(normalized) || checkSpecialForbiddenWord(normalized)) {
+        String matchedWord = findForbiddenWord(text, normalized);
+        if (matchedWord != null) {
             // 예외 단어 포함 시 욕설 아님 처리
             for (String exception : exceptionWords) {
                 if (normalized.contains(exception)) {
@@ -144,6 +151,7 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
                 }
             }
             // 예외 단어가 없으면 금칙어 포함으로 처리
+            log.debug("금칙어 감지: matchedWord={}, normalizedLength={}", matchedWord, normalized.length());
             return true;
         }
         return false;
@@ -173,6 +181,44 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
             }
         }
         return false;
+    }
+
+    private String findForbiddenWord(String original, String normalized) {
+        Set<String> tokens = normalizedTokens(original);
+        for (String forbidden : normalizedForbiddenWords) {
+            if (matchesForbiddenWord(normalized, tokens, forbidden)) {
+                return forbidden;
+            }
+        }
+        for (String forbidden : specialForbiddenWords) {
+            if (original != null && original.contains(forbidden)) {
+                return forbidden;
+            }
+        }
+        return null;
+    }
+
+    private boolean matchesForbiddenWord(String normalized, Set<String> tokens, String forbidden) {
+        if (forbidden == null || forbidden.isBlank()) {
+            return false;
+        }
+        if (tokens.contains(forbidden) || normalized.equals(forbidden)) {
+            return true;
+        }
+        if (forbidden.length() < MIN_SUBSTRING_MATCH_LENGTH) {
+            return false;
+        }
+        return normalized.contains(forbidden);
+    }
+
+    private Set<String> normalizedTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(text.split("[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]+"))
+                .map(this::normalize)
+                .filter(token -> !token.isBlank())
+                .collect(Collectors.toSet());
     }
 
     private boolean checkSpecialForbiddenWord(String normalized) {
