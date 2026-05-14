@@ -1,6 +1,8 @@
 package com.itplace.userapi.ai.rag.index;
 
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
+import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadata;
+import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
@@ -25,6 +27,7 @@ public class BenefitRagDocumentBuilder {
 
     private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
+    private final BenefitRagMetadataClassifier metadataClassifier;
 
     public List<PendingBenefitDocument> buildPendingDocuments(Benefit benefit) {
         if (benefit.getPartner() == null) {
@@ -69,9 +72,21 @@ public class BenefitRagDocumentBuilder {
         String description = nullToBlank(policy.getDescription());
         String manual = nullToBlank(policy.getManual());
         String tierContext = tierBenefit == null ? "" : nullToBlank(tierBenefit.getContext());
+        BenefitRagMetadata metadata = metadataClassifier.classify(
+                benefit.getPartner().getPartnerName(),
+                benefit.getPartner().getCategory(),
+                enumName(benefit.getMainCategory()),
+                benefit.getBenefitName(),
+                description,
+                manual,
+                tierContext
+        );
         String searchableText = String.join("\n",
                 nullToBlank(benefit.getPartner().getPartnerName()),
                 nullToBlank(benefit.getPartner().getCategory()),
+                metadata.businessType(),
+                String.join(" ", metadata.useCases()),
+                String.join(" ", metadata.tags()),
                 nullToBlank(benefit.getBenefitName()),
                 nullToBlank(policy.getCarrierBenefitName()),
                 enumName(policy.getCarrier()),
@@ -121,6 +136,10 @@ public class BenefitRagDocumentBuilder {
                 .context(tierContext)
                 .tierContext(tierContext)
                 .discountValue(tierBenefit == null ? null : tierBenefit.getDiscountValue())
+                .businessType(metadata.businessType())
+                .useCases(metadata.useCases())
+                .negativeUseCases(metadata.negativeUseCases())
+                .tags(metadata.tags())
                 .build();
         return new PendingBenefitDocument(document, searchableText);
     }

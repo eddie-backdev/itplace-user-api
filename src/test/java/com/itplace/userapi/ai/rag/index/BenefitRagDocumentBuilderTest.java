@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
+import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
@@ -73,7 +74,8 @@ class BenefitRagDocumentBuilderTest {
 
         BenefitRagDocumentBuilder builder = new BenefitRagDocumentBuilder(
                 benefitCarrierPolicyRepository,
-                carrierTierBenefitRepository
+                carrierTierBenefitRepository,
+                new BenefitRagMetadataClassifier()
         );
 
         List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = builder.buildPendingDocuments(benefit);
@@ -97,6 +99,9 @@ class BenefitRagDocumentBuilderTest {
                     assertThat(document.getContentHash()).isNotBlank();
                     assertThat(document.getSyncStatus()).isEqualTo("ACTIVE");
                     assertThat(document.getEmbedding()).containsExactly(0.1f, 0.2f);
+                    assertThat(document.getBusinessType()).isEqualTo("MOVIE_THEATER");
+                    assertThat(document.getUseCases()).contains("영화", "데이트", "문화");
+                    assertThat(document.getTags()).contains("MOVIE_THEATER", "영화");
                 });
     }
 }

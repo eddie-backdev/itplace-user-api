@@ -11,6 +11,7 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +46,9 @@ class BenefitSearchServiceImplTest {
 
     @Mock
     private CarrierTierBenefitRepository carrierTierBenefitRepository;
+
+    @Spy
+    private BenefitRagMetadataClassifier metadataClassifier = new BenefitRagMetadataClassifier();
 
     @InjectMocks
     private BenefitSearchServiceImpl benefitSearchService;
@@ -179,6 +184,74 @@ class BenefitSearchServiceImplTest {
                     assertThat(candidate.getTierBenefitId()).isEqualTo(40L);
                     assertThat(candidate.getAllGrade()).isTrue();
                     assertThat(candidate.getContext()).isEqualTo("전 등급 5% 할인");
+                });
+    }
+
+    @Test
+    void queryVector_conditionFiltersDbFallbackByBusinessType() throws IOException {
+        Partner kidsPartner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("서울형 키즈카페")
+                .category("키즈카페, 실내놀이터")
+                .build();
+        Benefit kidsBenefit = Benefit.builder()
+                .benefitId(20L)
+                .benefitName("입장료 할인")
+                .partner(kidsPartner)
+                .active(true)
+                .build();
+        BenefitCarrierPolicy kidsPolicy = BenefitCarrierPolicy.builder()
+                .benefit(kidsBenefit)
+                .benefitCarrierPolicyId(30L)
+                .carrier(Carrier.SKT)
+                .active(true)
+                .description("키즈카페 입장료 할인")
+                .build();
+
+        Partner cafePartner = Partner.builder()
+                .partnerId(11L)
+                .partnerName("카페베네")
+                .category("카페")
+                .build();
+        Benefit cafeBenefit = Benefit.builder()
+                .benefitId(21L)
+                .benefitName("아메리카노 할인")
+                .partner(cafePartner)
+                .active(true)
+                .build();
+        BenefitCarrierPolicy cafePolicy = BenefitCarrierPolicy.builder()
+                .benefit(cafeBenefit)
+                .benefitCarrierPolicyId(31L)
+                .carrier(Carrier.SKT)
+                .active(true)
+                .description("커피 음료 할인")
+                .build();
+
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenThrow(new IOException("benefit index unavailable"));
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(kidsBenefit, cafeBenefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(kidsPolicy, cafePolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of());
+
+        List<Candidate> candidates = benefitSearchService.queryVector(
+                Carrier.SKT,
+                null,
+                List.of(0.1f),
+                5,
+                new BenefitSearchCondition(
+                        List.of("BEVERAGE_CAFE"),
+                        List.of("KIDS_PLAY", "STUDY_SPACE"),
+                        List.of("음료", "커피"),
+                        List.of("아이동반", "공부")
+                )
+        );
+
+        assertThat(candidates)
+                .singleElement()
+                .satisfies(candidate -> {
+                    assertThat(candidate.getPartnerName()).isEqualTo("카페베네");
+                    assertThat(candidate.getBusinessType()).isEqualTo("BEVERAGE_CAFE");
+                    assertThat(candidate.getUseCases()).contains("음료", "커피");
                 });
     }
 

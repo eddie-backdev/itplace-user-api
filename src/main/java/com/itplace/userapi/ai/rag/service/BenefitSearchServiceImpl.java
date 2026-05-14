@@ -8,6 +8,8 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadata;
+import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
@@ -40,10 +42,21 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
     private final BenefitRepository benefitRepository;
     private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
+    private final BenefitRagMetadataClassifier metadataClassifier;
 
     public List<Candidate> queryVector(Carrier carrier, Grade grade, List<Float> userEmbedding, int candidateSize) {
+        return queryVector(carrier, grade, userEmbedding, candidateSize, BenefitSearchCondition.none());
+    }
+
+    @Override
+    public List<Candidate> queryVector(Carrier carrier,
+                                       Grade grade,
+                                       List<Float> userEmbedding,
+                                       int candidateSize,
+                                       BenefitSearchCondition condition) {
+        BenefitSearchCondition safeCondition = condition == null ? BenefitSearchCondition.none() : condition;
         try {
-            List<Query> filters = metadataFilters(carrier, grade);
+            List<Query> filters = metadataFilters(carrier, grade, safeCondition);
             KnnQuery knnQuery = KnnQuery.of(k -> {
                 KnnQuery.Builder builder = k
                         .field("embedding")
@@ -66,9 +79,10 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
             List<SearchHitSnapshot> hits = response.hits().hits().stream()
                     .map(BenefitSearchServiceImpl::toSnapshot)
                     .flatMap(Optional::stream)
-                    .filter(hit -> matchesHitMetadata(hit.node(), carrier, grade))
+                    .filter(hit -> matchesHitMetadata(hit.node(), carrier, grade, safeCondition))
                     .toList();
             List<Candidate> candidates = hydrateCandidates(carrier, grade, hits, "es_vector");
+            candidates = filterCandidates(candidates, safeCondition);
 
             if (!candidates.isEmpty()) {
                 return candidates;
@@ -80,10 +94,10 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                     carrier, grade, e.getMessage());
         }
 
-        return fallbackCandidates(carrier, grade, candidateSize);
+        return fallbackCandidates(carrier, grade, candidateSize, safeCondition);
     }
 
-    private List<Query> metadataFilters(Carrier carrier, Grade grade) {
+    private List<Query> metadataFilters(Carrier carrier, Grade grade, BenefitSearchCondition condition) {
         List<Query> filters = new ArrayList<>();
         filters.add(Query.of(q -> q.term(t -> t.field("active").value(true))));
         if (carrier != null) {
@@ -95,6 +109,20 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                     .should(s -> s.term(t -> t.field("isAllGrade").value(true)))
                     .minimumShouldMatch("1")
             )));
+        }
+        if (!condition.requiredBusinessTypes().isEmpty()) {
+            filters.add(Query.of(q -> q.bool(b -> {
+                condition.requiredBusinessTypes().forEach(type ->
+                        b.should(s -> s.term(t -> t.field("businessType").value(type))));
+                return b.minimumShouldMatch("1");
+            })));
+        }
+        if (!condition.excludedBusinessTypes().isEmpty()) {
+            filters.add(Query.of(q -> q.bool(b -> {
+                condition.excludedBusinessTypes().forEach(type ->
+                        b.mustNot(s -> s.term(t -> t.field("businessType").value(type))));
+                return b;
+            })));
         }
         return filters;
     }
@@ -120,16 +148,24 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         }
     }
 
-    private static boolean matchesHitMetadata(JsonNode node, Carrier carrier, Grade grade) {
+    private static boolean matchesHitMetadata(JsonNode node, Carrier carrier, Grade grade, BenefitSearchCondition condition) {
         if (!booleanOrDefault(node, "active", true)) {
             return false;
         }
         if (carrier != null && !carrier.name().equals(textOrDefault(node, "carrier", ""))) {
             return false;
         }
-        return grade == null
+        boolean gradeMatches = grade == null
                 || grade.name().equals(textOrDefault(node, "grade", ""))
                 || booleanOrDefault(node, "isAllGrade", false);
+        if (!gradeMatches) {
+            return false;
+        }
+        String businessType = textOrDefault(node, "businessType", "");
+        return (condition.requiredBusinessTypes().isEmpty() || condition.requiredBusinessTypes().contains(businessType))
+                && (condition.excludedBusinessTypes().isEmpty() || !condition.excludedBusinessTypes().contains(businessType))
+                && !intersects(textList(node, "negativeUseCases"), condition.preferredUseCases())
+                && !intersects(textList(node, "useCases"), condition.excludedUseCases());
     }
 
     private List<Candidate> hydrateCandidates(Carrier carrier, Grade grade, List<SearchHitSnapshot> hits, String source) {
@@ -180,6 +216,10 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .sourceUrl(textOrDefault(node, "sourceUrl", ""))
                 .description(textOrDefault(node, "description", policyContext.descriptionFor(benefitId)))
                 .context(textOrDefault(node, "tierContext", textOrDefault(node, "context", policyContext.contextFor(benefitId))))
+                .businessType(textOrDefault(node, "businessType", "OTHER"))
+                .useCases(textList(node, "useCases"))
+                .negativeUseCases(textList(node, "negativeUseCases"))
+                .tags(textList(node, "tags"))
                 .candidateSource(source)
                 .semanticScore(hit.score())
                 .scoreComponents(Map.of(
@@ -224,7 +264,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         return new HydratedPolicyContext(descriptions, contexts);
     }
 
-    private List<Candidate> fallbackCandidates(Carrier carrier, Grade grade, int candidateSize) {
+    private List<Candidate> fallbackCandidates(Carrier carrier, Grade grade, int candidateSize, BenefitSearchCondition condition) {
         List<Benefit> benefits = benefitRepository.findAllWithPartnerAndTierBenefits().stream()
                 .filter(benefit -> !Boolean.FALSE.equals(benefit.getActive()))
                 .filter(benefit -> benefit.getPartner() != null)
@@ -258,10 +298,10 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                     .filter(tierBenefit -> matchesTier(tierBenefit, grade))
                     .toList();
             if (allTierBenefits.isEmpty()) {
-                candidates.add(toFallbackCandidate(benefit, policy, null));
+                addFallbackCandidate(candidates, benefit, policy, null, condition);
             } else if (!matchingTierBenefits.isEmpty()) {
                 for (CarrierTierBenefit tierBenefit : matchingTierBenefits) {
-                    candidates.add(toFallbackCandidate(benefit, policy, tierBenefit));
+                    addFallbackCandidate(candidates, benefit, policy, tierBenefit, condition);
                 }
             }
             if (candidates.size() >= candidateSize) {
@@ -271,7 +311,28 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         return candidates.stream().limit(candidateSize).toList();
     }
 
+    private void addFallbackCandidate(List<Candidate> candidates,
+                                      Benefit benefit,
+                                      BenefitCarrierPolicy policy,
+                                      CarrierTierBenefit tierBenefit,
+                                      BenefitSearchCondition condition) {
+        Candidate candidate = toFallbackCandidate(benefit, policy, tierBenefit);
+        if (candidateMatchesCondition(candidate, condition)) {
+            candidates.add(candidate);
+        }
+    }
+
     private Candidate toFallbackCandidate(Benefit benefit, BenefitCarrierPolicy policy, CarrierTierBenefit tierBenefit) {
+        BenefitRagMetadata metadata = metadataClassifier.classify(
+                benefit.getPartner().getPartnerName(),
+                benefit.getPartner().getCategory(),
+                policy.getBenefit() == null || policy.getBenefit().getMainCategory() == null
+                        ? "" : policy.getBenefit().getMainCategory().name(),
+                benefit.getBenefitName(),
+                policy.getDescription(),
+                policy.getManual(),
+                tierBenefit == null ? "" : tierBenefit.getContext()
+        );
         return Candidate.builder()
                 .benefitId(benefit.getBenefitId())
                 .policyId(policy.getBenefitCarrierPolicyId())
@@ -291,10 +352,40 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .sourceUrl(firstNonBlank(policy.getSourceUrl(), policy.getUrl()))
                 .description(textOrDefault(policy.getDescription(), "설명 없음"))
                 .context(tierBenefit == null ? "등급별 혜택 정보 없음" : textOrDefault(tierBenefit.getContext(), "등급별 혜택 정보 없음"))
+                .businessType(metadata.businessType())
+                .useCases(metadata.useCases())
+                .negativeUseCases(metadata.negativeUseCases())
+                .tags(metadata.tags())
                 .candidateSource("db_fallback")
                 .semanticScore(0.0)
                 .scoreComponents(Map.of("source_db_fallback", 1.0))
                 .build();
+    }
+
+    private List<Candidate> filterCandidates(List<Candidate> candidates, BenefitSearchCondition condition) {
+        if (condition == null || condition.isEmpty()) {
+            return candidates;
+        }
+        return candidates.stream()
+                .filter(candidate -> candidateMatchesCondition(candidate, condition))
+                .toList();
+    }
+
+    private boolean candidateMatchesCondition(Candidate candidate, BenefitSearchCondition condition) {
+        if (candidate == null || condition == null || condition.isEmpty()) {
+            return candidate != null;
+        }
+        String businessType = candidate.getBusinessType() == null ? "" : candidate.getBusinessType();
+        if (!condition.requiredBusinessTypes().isEmpty() && !condition.requiredBusinessTypes().contains(businessType)) {
+            return false;
+        }
+        if (condition.excludedBusinessTypes().contains(businessType)) {
+            return false;
+        }
+        if (intersects(candidate.getNegativeUseCases(), condition.preferredUseCases())) {
+            return false;
+        }
+        return !intersects(candidate.getUseCases(), condition.excludedUseCases());
     }
 
     private static boolean matchesPolicy(BenefitCarrierPolicy policy, Carrier carrier) {
@@ -341,6 +432,30 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private static List<String> textList(JsonNode node, String fieldName) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || value.isNull()) {
+            return List.of();
+        }
+        if (value.isArray()) {
+            List<String> values = new ArrayList<>();
+            value.forEach(item -> {
+                if (item != null && !item.isNull() && !item.asText().isBlank()) {
+                    values.add(item.asText());
+                }
+            });
+            return values;
+        }
+        return value.asText().isBlank() ? List.of() : List.of(value.asText());
+    }
+
+    private static boolean intersects(List<String> left, List<String> right) {
+        if (left == null || right == null || left.isEmpty() || right.isEmpty()) {
+            return false;
+        }
+        return left.stream().anyMatch(right::contains);
     }
 
     private static String firstNonBlank(String left, String right) {
