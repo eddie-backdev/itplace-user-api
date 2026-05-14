@@ -13,7 +13,9 @@ import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -214,6 +216,10 @@ public class BenefitRagSyncService {
                 .context(textOrBlank(node, "context"))
                 .tierContext(textOrBlank(node, "tierContext"))
                 .discountValue(integerOrNull(node, "discountValue"))
+                .businessType(textOrBlank(node, "businessType"))
+                .useCases(textList(node, "useCases"))
+                .negativeUseCases(textList(node, "negativeUseCases"))
+                .tags(textList(node, "tags"))
                 .build();
     }
 
@@ -269,6 +275,23 @@ public class BenefitRagSyncService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private static List<String> textList(JsonNode node, String fieldName) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || value.isNull()) {
+            return List.of();
+        }
+        if (value.isArray()) {
+            List<String> values = new ArrayList<>();
+            value.forEach(item -> {
+                if (item != null && !item.isNull() && !item.asText().isBlank()) {
+                    values.add(item.asText());
+                }
+            });
+            return values;
+        }
+        return value.asText().isBlank() ? List.of() : List.of(value.asText());
     }
 
     public record SyncResult(int scannedBenefits,

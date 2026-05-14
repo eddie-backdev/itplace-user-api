@@ -67,7 +67,12 @@ class QuestionRecommendationServiceImplTest {
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
         when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("영화"))).thenReturn(embedding);
-        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30)).thenReturn(List.of(candidate));
+        when(benefitSearchService.queryVector(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(candidate));
         when(storeService.findNearbyByPartnerName(37.5, 127.0, "영화관", 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
@@ -124,7 +129,12 @@ class QuestionRecommendationServiceImplTest {
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
         when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
-        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30)).thenReturn(List.of(falseRoute, coolPlace));
+        when(benefitSearchService.queryVector(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(falseRoute, coolPlace));
         when(storeService.findNearbyByPartnerName(37.5, 127.0, "빙수카페", 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
@@ -154,7 +164,12 @@ class QuestionRecommendationServiceImplTest {
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
         when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
-        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30)).thenReturn(List.of(falseRoute));
+        when(benefitSearchService.queryVector(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(falseRoute));
 
         assertThatThrownBy(() -> service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP))
                 .isInstanceOf(QuestionException.class);
@@ -230,7 +245,12 @@ class QuestionRecommendationServiceImplTest {
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
         when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("음료 중심"))).thenReturn(embedding);
-        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30))
+        when(benefitSearchService.queryVector(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
                 .thenReturn(List.of(kidsCafe, studyCafe, restaurant, pizza, cafe));
         when(storeService.findNearbyByPartnerName(37.5, 127.0, "카페베네", 37.5, 127.0)).thenReturn(List.of(store));
 
@@ -277,7 +297,12 @@ class QuestionRecommendationServiceImplTest {
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
         when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("데이트"))).thenReturn(embedding);
-        when(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, embedding, 30)).thenReturn(List.of(movie));
+        when(benefitSearchService.queryVector(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(movie));
         when(storeService.findNearbyByPartnerName(37.5, 127.0, "CGV", 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);

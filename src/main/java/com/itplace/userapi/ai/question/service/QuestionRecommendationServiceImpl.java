@@ -11,6 +11,7 @@ import com.itplace.userapi.ai.question.guard.BenefitCandidateGuard.GuardResult;
 import com.itplace.userapi.ai.question.intent.QueryIntent;
 import com.itplace.userapi.ai.question.intent.QueryIntentExtractor;
 import com.itplace.userapi.ai.rag.service.BenefitSearchService;
+import com.itplace.userapi.ai.rag.service.BenefitSearchCondition;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
@@ -72,7 +73,8 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 intent.carrier(),
                 intent.grade(),
                 embedding,
-                BENEFIT_RETRIEVAL_CANDIDATES
+                BENEFIT_RETRIEVAL_CANDIDATES,
+                searchCondition(intent)
         );
         GuardResult guardResult = benefitCandidateGuard.filter(intent, retrievedCandidates);
         StoreCandidateResult storeCandidateResult = findStoresForBenefitCandidates(guardResult.accepted(), lat, lng);
@@ -188,6 +190,41 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                     .ifPresent(context -> summaries.add(partnerName + "의 " + context));
         }
         return String.join(", ", summaries);
+    }
+
+    private BenefitSearchCondition searchCondition(QueryIntent intent) {
+        if (intent == null) {
+            return BenefitSearchCondition.none();
+        }
+
+        List<String> requiredBusinessTypes = new ArrayList<>();
+        List<String> excludedBusinessTypes = new ArrayList<>();
+        List<String> preferredUseCases = new ArrayList<>();
+        List<String> excludedUseCases = new ArrayList<>();
+
+        if (intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("음료"))) {
+            requiredBusinessTypes.addAll(List.of("BEVERAGE_CAFE", "DESSERT", "CONVENIENCE_STORE"));
+            excludedBusinessTypes.addAll(List.of("KIDS_PLAY", "STUDY_SPACE", "FOOD_RESTAURANT", "COUNSELING", "AUTO_SERVICE"));
+            preferredUseCases.addAll(List.of("음료", "커피", "디저트", "휴식"));
+            excludedUseCases.addAll(List.of("아이동반", "공부", "스터디", "학습공간"));
+        }
+        if (intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("더위") || keyword.contains("시원"))) {
+            requiredBusinessTypes.addAll(List.of("BEVERAGE_CAFE", "DESSERT", "MOVIE_THEATER", "SHOPPING", "WATER_PARK"));
+            excludedBusinessTypes.addAll(List.of("COUNSELING", "AUTO_SERVICE", "STUDY_SPACE"));
+            preferredUseCases.addAll(List.of("음료", "디저트", "실내", "시원함", "휴식"));
+        }
+        if (intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("데이트"))) {
+            requiredBusinessTypes.addAll(List.of("BEVERAGE_CAFE", "DESSERT", "MOVIE_THEATER", "CULTURE", "SHOPPING", "FOOD_RESTAURANT", "ATTRACTION"));
+            excludedBusinessTypes.addAll(List.of("COUNSELING", "AUTO_SERVICE", "STUDY_SPACE"));
+            preferredUseCases.addAll(List.of("데이트", "문화", "음료", "디저트", "식사", "관람"));
+        }
+
+        return new BenefitSearchCondition(
+                requiredBusinessTypes.stream().distinct().toList(),
+                excludedBusinessTypes.stream().distinct().toList(),
+                preferredUseCases.stream().distinct().toList(),
+                excludedUseCases.stream().distinct().toList()
+        );
     }
 
     private StoreCandidateResult findStoresForBenefitCandidates(List<Candidate> benefitCandidates,

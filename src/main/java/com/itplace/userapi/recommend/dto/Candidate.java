@@ -28,4 +28,8 @@ public class Candidate {
     private Double semanticScore;
     private Double rankScore;
     private Map<String, Double> scoreComponents;
+    private String businessType;
+    private java.util.List<String> useCases;
+    private java.util.List<String> negativeUseCases;
+    private java.util.List<String> tags;
 }

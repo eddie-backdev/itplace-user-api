@@ -7,4 +7,12 @@ import java.util.List;
 
 public interface BenefitSearchService {
     List<Candidate> queryVector(Carrier carrier, Grade grade, List<Float> userEmbedding, int topK);
+
+    default List<Candidate> queryVector(Carrier carrier,
+                                        Grade grade,
+                                        List<Float> userEmbedding,
+                                        int topK,
+                                        BenefitSearchCondition condition) {
+        return queryVector(carrier, grade, userEmbedding, topK);
+    }
 }
