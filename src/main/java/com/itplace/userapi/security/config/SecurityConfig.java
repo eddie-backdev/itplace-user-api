@@ -92,8 +92,6 @@ public class SecurityConfig {
                                 "/api/v1/recommendations",
                                 "/api/v1/auth/oauth/link",
                                 "/api/v1/users/changePassword",
-                                "/api/v1/users/checkUplusData",
-                                "/api/v1/users/linkUplusData",
                                 "/api/v1/favorites/**"
                         ).authenticated()
 

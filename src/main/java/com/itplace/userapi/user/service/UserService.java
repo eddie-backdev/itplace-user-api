@@ -5,10 +5,8 @@ import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmR
 import com.itplace.userapi.user.dto.request.ChangePasswordRequest;
 import com.itplace.userapi.user.dto.request.MembershipProfileUpdateRequest;
 import com.itplace.userapi.user.dto.request.ResetPasswordRequest;
-import com.itplace.userapi.user.dto.response.CheckUplusDataResponse;
 import com.itplace.userapi.user.dto.response.FindPasswordConfirmResponse;
 import com.itplace.userapi.user.dto.response.UserInfoResponse;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 public interface UserService {
     UserInfoResponse getUserInfo(Long userId);
@@ -22,10 +20,6 @@ public interface UserService {
     UserInfoResponse updateMembershipProfile(PrincipalDetails principalDetails, MembershipProfileUpdateRequest request);
 
     void withdraw(Long userId, String password);
-
-    CheckUplusDataResponse checkUplusData(@AuthenticationPrincipal PrincipalDetails principalDetails);
-
-    void linkUplusData(@AuthenticationPrincipal PrincipalDetails principalDetails);
 
     Integer getUserCouponCount(Long userId);
 }

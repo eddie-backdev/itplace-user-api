@@ -17,9 +17,7 @@ import com.itplace.userapi.user.dto.request.MembershipProfileUpdateRequest;
 import com.itplace.userapi.user.dto.response.UserInfoResponse;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.MembershipRepository;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
-import com.itplace.userapi.user.repository.UplusDataRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -35,12 +33,6 @@ class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private UplusDataRepository uplusDataRepository;
-
-    @Mock
-    private MembershipRepository membershipRepository;
 
     @Mock
     private StringRedisTemplate redisTemplate;
