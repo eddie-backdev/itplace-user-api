@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
-import com.itplace.userapi.history.repository.MembershipHistoryRepository;
 import com.itplace.userapi.log.repository.LogRepository;
 import com.itplace.userapi.recommend.domain.UserFeature;
 import com.itplace.userapi.recommend.dto.Candidate;
@@ -57,9 +56,6 @@ class RecommendationServiceImplTest {
 
     @Mock
     private FavoriteRepository favoriteRepository;
-
-    @Mock
-    private MembershipHistoryRepository membershipHistoryRepository;
 
     @Captor
     private ArgumentCaptor<List<Recommendation>> recommendationsCaptor;
@@ -206,24 +202,6 @@ class RecommendationServiceImplTest {
 
         when(logRepository.findLatestLoggingAtByEvents(eq(7L), anyList())).thenReturn(Optional.empty());
         when(favoriteRepository.existsByUserIdAndCreatedDateAfter(7L, latestRecommendationDate)).thenReturn(true);
-
-        assertThat(recommendationService.hasInvalidatingSignalAfter(7L, latestRecommendationDate)).isTrue();
-    }
-
-    @Test
-    void hasInvalidatingSignalAfter_returnsTrueWhenMembershipUsageChangedAfterCachedRecommendation() {
-        LocalDateTime latestRecommendationDate = LocalDateTime.now().minusHours(2);
-        User user = User.builder()
-                .id(7L)
-                .membershipId("membership-7")
-                .role(Role.USER)
-                .build();
-
-        when(logRepository.findLatestLoggingAtByEvents(eq(7L), anyList())).thenReturn(Optional.empty());
-        when(favoriteRepository.existsByUserIdAndCreatedDateAfter(7L, latestRecommendationDate)).thenReturn(false);
-        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
-        when(membershipHistoryRepository.existsByMembershipIdAndUsedAtAfter("membership-7", latestRecommendationDate))
-                .thenReturn(true);
 
         assertThat(recommendationService.hasInvalidatingSignalAfter(7L, latestRecommendationDate)).isTrue();
     }

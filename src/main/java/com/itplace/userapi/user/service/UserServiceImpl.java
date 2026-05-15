@@ -70,7 +70,7 @@ public class UserServiceImpl implements UserService {
         if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
-        User user = userRepository.findById(principalDetails.getUserId())
+        User user = userRepository.findById(requireUserId(principalDetails))
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         user.setCarrier(request.getCarrier());
         user.setMembershipGradeCode(request.getMembershipGradeCode());
@@ -116,7 +116,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(PrincipalDetails principalDetails, ChangePasswordRequest request) {
-        User user = userRepository.findById(principalDetails.getUserId())
+        User user = userRepository.findById(requireUserId(principalDetails))
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
@@ -145,10 +145,11 @@ public class UserServiceImpl implements UserService {
         userRepository.delete(user);
     }
 
-    @Override
-    public Integer getUserCouponCount(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException(UserCode.USER_NOT_FOUND));
-        return user.getCoupon();
+    private Long requireUserId(PrincipalDetails principalDetails) {
+        if (principalDetails == null || principalDetails.getUserId() == null) {
+            throw new UserNotFoundException(SecurityCode.USER_NOT_FOUND);
+        }
+        return principalDetails.getUserId();
     }
+
 }

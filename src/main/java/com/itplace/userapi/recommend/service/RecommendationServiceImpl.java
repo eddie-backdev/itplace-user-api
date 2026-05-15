@@ -4,7 +4,6 @@ package com.itplace.userapi.recommend.service;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
-import com.itplace.userapi.history.repository.MembershipHistoryRepository;
 import com.itplace.userapi.log.repository.LogRepository;
 import com.itplace.userapi.recommend.domain.UserFeature;
 import com.itplace.userapi.recommend.dto.Candidate;
@@ -61,7 +60,6 @@ public class RecommendationServiceImpl implements RecommendationService {
     private final BenefitRepository benefitRepository;
     private final LogRepository logRepository;
     private final FavoriteRepository favoriteRepository;
-    private final MembershipHistoryRepository membershipHistoryRepository;
 
     @Transactional
     public List<Recommendations> recommend(Long userId, int topK) {
@@ -142,14 +140,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
         LocalDateTime profileUpdatedAt = user.getLastModifiedDate();
-        if (profileUpdatedAt != null && profileUpdatedAt.isAfter(latestRecommendationDate)) {
-            return true;
-        }
-
-        String membershipId = user.getMembershipId();
-        return membershipId != null
-                && !membershipId.isBlank()
-                && membershipHistoryRepository.existsByMembershipIdAndUsedAtAfter(membershipId, latestRecommendationDate);
+        return profileUpdatedAt != null && profileUpdatedAt.isAfter(latestRecommendationDate);
     }
 
     private LocalDateTime toLocalDateTime(Instant instant) {

@@ -3,27 +3,20 @@ package com.itplace.userapi.recommend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
-import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
-import com.itplace.userapi.history.repository.MembershipHistoryRepository;
 import com.itplace.userapi.log.repository.LogRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.recommend.domain.UserFeature;
-import com.itplace.userapi.recommend.projection.BenefitCount;
-import com.itplace.userapi.recommend.projection.CategoryCount;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,16 +31,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class UserFeatureServiceImplTest {
 
     @Mock
-    private MembershipHistoryRepository historyRepo;
-
-    @Mock
     private UserRepository userRepo;
 
     @Mock
     private EmbeddingService embeddingService;
-
-    @Mock
-    private BenefitRepository benefitRepo;
 
     @Mock
     private LogRepository logRepository;
@@ -101,7 +88,6 @@ class UserFeatureServiceImplTest {
                 .role(Role.USER)
                 .carrier(Carrier.LGU)
                 .membershipGradeCode(Grade.VIP)
-                .membershipId(null)
                 .build();
         Benefit favoriteBenefit = Benefit.builder()
                 .benefitId(101L)
@@ -135,24 +121,16 @@ class UserFeatureServiceImplTest {
                 "즐겨찾기파트너", "상세파트너", "클릭파트너", "검색파트너");
         assertThat(feature.hasSignalForPartner("즐겨찾기파트너")).isTrue();
         assertThat(feature.getNegativePartnerScores()).isEmpty();
-        verify(historyRepo, never()).countByPartnerCategorySince(any(), any(LocalDateTime.class));
-        verify(historyRepo, never()).countByBenefitSince(any(), any(LocalDateTime.class));
     }
 
     @Test
-    void loadUserFeature_forMembershipUserIncludesUsageAndCategorySignals() {
+    void loadUserFeature_usesProfileGradeWithoutLegacyMembershipHistory() {
         Long userId = 21L;
-        String membershipId = "UPLUS-123";
         User user = User.builder()
                 .id(userId)
                 .role(Role.USER)
                 .carrier(Carrier.LGU)
                 .membershipGradeCode(Grade.VVIP)
-                .membershipId(membershipId)
-                .build();
-        Benefit usedBenefit = Benefit.builder()
-                .benefitId(201L)
-                .partner(Partner.builder().partnerName("사용파트너").build())
                 .build();
 
         when(userRepo.findById(userId)).thenReturn(Optional.of(user));
@@ -160,29 +138,20 @@ class UserFeatureServiceImplTest {
         when(logRepository.aggregateTopPartnerNamesByEvent(userId, "search", 5)).thenReturn(List.of("검색파트너"));
         when(logRepository.aggregateTopPartnerNamesByEvent(userId, "detail", 5)).thenReturn(List.of());
         when(favoriteRepository.findByUserIdWithBenefitAndPartner(userId)).thenReturn(List.of());
-        when(historyRepo.countByPartnerCategorySince(eq(membershipId), any(LocalDateTime.class)))
-                .thenReturn(List.of(categoryCount("카페", 3L), categoryCount("영화", 1L)));
-        when(historyRepo.countByBenefitSince(eq(membershipId), any(LocalDateTime.class)))
-                .thenReturn(List.of(benefitCount(201L, 2L)));
-        when(benefitRepo.findAllByIdWithPartner(List.of(201L))).thenReturn(List.of(usedBenefit));
 
         UserFeature feature = userFeatureService.loadUserFeature(userId);
 
         assertThat(feature.getCarrier()).isEqualTo(Carrier.LGU);
-        assertThat(feature.getTopCategories()).containsExactly("카페", "영화");
-        assertThat(feature.getBenefitUsageCounts()).containsEntry(201L, 2);
-        assertThat(feature.getRecentPartnerNames()).containsExactly("사용파트너", "검색파트너");
-        assertThat(feature.getPartnerAffinityScores())
-                .containsEntry("사용파트너", 10.0)
-                .containsEntry("검색파트너", 2.0);
-        assertThat(feature.getCategoryAffinityScores())
-                .containsEntry("카페", 30.0)
-                .containsEntry("영화", 10.0);
+        assertThat(feature.getGrade()).isEqualTo(Grade.VVIP);
+        assertThat(feature.getTopCategories()).isEmpty();
+        assertThat(feature.getBenefitUsageCounts()).isEmpty();
+        assertThat(feature.getRecentPartnerNames()).containsExactly("검색파트너");
+        assertThat(feature.getPartnerAffinityScores()).containsEntry("검색파트너", 2.0);
+        assertThat(feature.getCategoryAffinityScores()).isEmpty();
         assertThat(feature.getEmbeddingText())
                 .contains("통신사/등급 조건: LGU / VVIP")
                 .contains("검색 [검색파트너]")
-                .contains("종합 행동 상위 [사용파트너, 검색파트너]")
-                .contains("종합 행동 점수 상위 제휴사");
+                .contains("종합 행동 상위 [검색파트너]");
     }
 
     @DisplayName("favorite_remove, dismiss, skip, negative, and no-click impressions contribute negative scores and tombstones")
@@ -194,7 +163,6 @@ class UserFeatureServiceImplTest {
                 .role(Role.USER)
                 .carrier(Carrier.SKT)
                 .membershipGradeCode(Grade.SKT_VIP)
-                .membershipId(null)
                 .build();
 
         when(userRepo.findById(userId)).thenReturn(Optional.of(user));
@@ -243,31 +211,4 @@ class UserFeatureServiceImplTest {
                 .contains("위치 컨텍스트는 KNOWN(");
     }
 
-    private static CategoryCount categoryCount(String category, Long count) {
-        return new CategoryCount() {
-            @Override
-            public String getCategory() {
-                return category;
-            }
-
-            @Override
-            public Long getCnt() {
-                return count;
-            }
-        };
-    }
-
-    private static BenefitCount benefitCount(Long benefitId, Long count) {
-        return new BenefitCount() {
-            @Override
-            public Long getBenefitId() {
-                return benefitId;
-            }
-
-            @Override
-            public Long getCnt() {
-                return count;
-            }
-        };
-    }
 }
