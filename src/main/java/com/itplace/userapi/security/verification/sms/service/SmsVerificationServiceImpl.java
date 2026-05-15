@@ -22,8 +22,8 @@ public class SmsVerificationServiceImpl implements SmsVerificationService {
 
     private static final String CODE_PREFIX = "sms:";
     private static final String VERIFIED_PREFIX = "sms:verified:";
-    private static final String VERIFICATION_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    private static final int VERIFICATION_TEXT_LENGTH = 18;
+    private static final String VERIFICATION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int VERIFICATION_TEXT_LENGTH = 6;
     private static final Duration CODE_TTL = Duration.ofMinutes(5);
     private static final Duration VERIFIED_TTL = Duration.ofMinutes(30);
     private static final SecureRandom RANDOM = new SecureRandom();
