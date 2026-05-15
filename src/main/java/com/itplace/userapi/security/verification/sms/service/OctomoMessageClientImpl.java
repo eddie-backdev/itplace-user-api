@@ -50,14 +50,11 @@ public class OctomoMessageClientImpl implements OctomoMessageClient {
 
             boolean verified = parseVerified(response.getBody());
             log.info(
-                    "Octomo 문자 인증 조회 결과: mobileNumber={}, text='{}', textLength={}, codePoints={}, status={}, verified={}, body={}",
+                    "Octomo 문자 인증 조회 결과: mobileNumber={}, textLength={}, status={}, verified={}",
                     mobileNumber,
-                    text,
                     text == null ? 0 : text.length(),
-                    toCodePoints(text),
                     response.getStatusCode(),
-                    verified,
-                    response.getBody()
+                    verified
             );
             return verified;
         } catch (RestClientException e) {
@@ -85,12 +82,5 @@ public class OctomoMessageClientImpl implements OctomoMessageClient {
 
     private boolean isTrue(JsonNode node, String fieldName) {
         return node != null && node.has(fieldName) && node.get(fieldName).asBoolean(false);
-    }
-
-    private String toCodePoints(String value) {
-        return value == null ? "" : value.chars()
-                .mapToObj(character -> String.format("U+%04X", character))
-                .reduce((left, right) -> left + " " + right)
-                .orElse("");
     }
 }
