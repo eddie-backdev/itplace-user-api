@@ -92,3 +92,9 @@ app:
 logging:
   level:
     root: INFO
+
+octomo:
+  api:
+    base-url: ${OCTOMO_API_BASE_URL:https://api.octoverse.kr/octomo/v1}
+    key: ${OCTOMO_API_KEY:}
+  receiver-phone: ${OCTOMO_RECEIVER_PHONE:1666-3538}

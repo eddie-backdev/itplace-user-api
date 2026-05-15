@@ -551,77 +551,21 @@ paths:
     post:
       tags:
         - Verification
-      summary: 문자 인증 코드 발송 요청
-      description: 회원가입을 위해 SMS로 인증 코드를 발송합니다.
-      operationId: requestSmsVerificationCode
+      summary: MO 문자 인증 문구 생성
+      description: 서버가 인증 문구를 생성해 반환합니다. 사용자는 반환된 문구를 옥토모 대표번호(1666-3538)로 직접 문자 발송해야 합니다.
+      operationId: issueSmsVerificationCode
       requestBody:
-        description: 인증 코드 발송에 필요한 정보
+        description: 인증 코드를 생성할 휴대폰 번호
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/SmsVerificationRequest'
             example:
-              name: "홍길동"
               phoneNumber: "01012345678"
-      responses:
-        '201':
-          description: 인증 코드 발송 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "SMS_SEND_SUCCESS"
-                status: "OK"
-                message: "문자 인증 코드가 성공적으로 발송되었습니다."
-                data:
-                timestamp: "2025-07-04T11:27:06.789Z"
-        '400':
-          description: 잘못된 요청 (입력값 형식 오류)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "INVALID_INPUT"
-                status: "BAD_REQUEST"
-                message: "입력값이 올바르지 않습니다."
-                data: null
-                timestamp: "2025-07-04T12:23:00.456Z"
-        '409':
-          description: 데이터 충돌 (이미 사용 중인 리소스)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "DUPLICATE_PHONE_NUMBER"
-                status: "CONFLICT"
-                message: "이미 사용 중인 전화번호입니다."
-                data: null
-                timestamp: "2025-07-04T12:23:00.789Z"
-
-  /verification/sms/confirm:
-    post:
-      tags:
-        - Verification
-      summary: 문자 인증 코드 확인
-      description: 서버에서 발송된 인증 코드와 동일한지 확인합니다.
-      operationId: confirmSmsVerificationCode
-      requestBody:
-        description: 인증 코드 확인에 필요한 정보
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SmsConfirmRequest'
-            example:
-              phoneNumber: "01012345678"
-              verificationCode: "123456"
       responses:
         '200':
-          description: 인증 성공
+          description: 인증 문구 생성 성공
           content:
             application/json:
               schema:
@@ -630,40 +574,84 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/SmsConfirmResponse'
+                        $ref: '#/components/schemas/SmsVerificationIssueResponse'
+              example:
+                code: "SMS_ISSUE_SUCCESS"
+                status: "OK"
+                message: "문자 인증 코드가 생성되었습니다."
+                data:
+                  phoneNumber: "01012345678"
+                  verificationText: "adsjJdjfjJjsai873u"
+                  receiverPhoneNumber: "1666-3538"
+                  expiresInSeconds: 300
+                timestamp: "2026-05-15T11:27:06.789Z"
+        '400':
+          description: 잘못된 요청 (입력값 형식 오류)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '409':
+          description: 이미 사용 중인 휴대폰 번호
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: "DUPLICATE_PHONE_NUMBER"
+                status: "CONFLICT"
+                message: "이미 사용 중인 휴대폰 번호입니다."
+                data: null
+                timestamp: "2026-05-15T12:23:00.789Z"
+
+  /verification/sms/confirm:
+    post:
+      tags:
+        - Verification
+      summary: MO 문자 인증 확인
+      description: 최근 5분 내 사용자가 옥토모 대표번호로 발송한 인증 코드 문자를 Octomo API로 조회합니다.
+      operationId: confirmSmsVerificationCode
+      requestBody:
+        description: 인증 확인할 휴대폰 번호
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsConfirmRequest'
+            example:
+              phoneNumber: "01012345678"
+      responses:
+        '200':
+          description: 인증 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
               example:
                 code: "SMS_VERIFICATION_SUCCESS"
                 status: "OK"
                 message: "휴대폰 번호 인증에 성공했습니다."
-                data:
-                  uplusDataFound: "true"
-                  userStatus: "NEW_USER"
-                  isLocalUser: "false"
-                timestamp: "2025-07-04T11:27:06.789Z"
+                data: null
+                timestamp: "2026-05-15T11:27:06.789Z"
         '400':
-          description: 잘못된 인증 번호
+          description: 인증 실패 또는 인증 코드 만료
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "SMS_CODE_MISMATCH"
-                status: "BAD_REQUEST"
-                message: "올바른 문자 인증 코드가 아닙니다."
-                data: null
-                timestamp: "2025-07-04T12:23:00.456Z"
-        '410':
-          description: 인증 코드 입력 시간 초과
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "SMS_CODE_EXPIRED"
-                status: "BAD_REQUEST"
-                message: "문자 인증 코드가 만료되었습니다."
-                data: null
-                timestamp: "2025-07-04T12:23:00.789Z"
+              examples:
+                failed:
+                  value:
+                    code: "SMS_VERIFICATION_FAILURE"
+                    status: "BAD_REQUEST"
+                    message: "휴대폰 번호 인증에 실패했습니다."
+                    data: null
+                expired:
+                  value:
+                    code: "SMS_CODE_EXPIRED"
+                    status: "BAD_REQUEST"
+                    message: "문자 인증 코드가 만료되었습니다."
+                    data: null
 
   /verification/email:
     post:
@@ -2865,31 +2853,43 @@ components:
 
     SmsVerificationRequest:
       type: object
-      description: "문자 인증 코드 발송 요청 DTO"
-      required: [ name, phoneNumber ]
+      description: "MO 문자 인증 문구 생성 요청 DTO"
+      required: [ phoneNumber ]
       properties:
-        name:
-          type: string
-          description: "가입자 이름"
-          example: "홍길동"
         phoneNumber:
           type: string
-          description: "인증을 진행할 전화번호"
+          description: "인증을 진행할 휴대폰 번호('-' 제외)"
           example: "01012345678"
+
+    SmsVerificationIssueResponse:
+      type: object
+      description: "사용자가 직접 문자로 보낼 인증 코드 안내"
+      properties:
+        phoneNumber:
+          type: string
+          example: "01012345678"
+        verificationText:
+          type: string
+          description: "사용자별로 발급되는 랜덤 영문/숫자 인증 문자열"
+          example: "adsjJdjfjJjsai873u"
+        receiverPhoneNumber:
+          type: string
+          description: "Octomo 대표 수신 번호"
+          example: "1666-3538"
+        expiresInSeconds:
+          type: integer
+          format: int64
+          example: 300
 
     SmsConfirmRequest:
       type: object
-      description: "문자 인증 코드 확인 요청 DTO"
-      required: [ phoneNumber, verificationCode ]
+      description: "MO 문자 인증 확인 요청 DTO"
+      required: [ phoneNumber ]
       properties:
         phoneNumber:
           type: string
-          description: "인증을 진행할 전화번호"
+          description: "인증을 진행할 휴대폰 번호('-' 제외)"
           example: "01012345678"
-        verificationCode:
-          type: string
-          description: "인증코드"
-          example: "123456"
 
     FindEmailConfirmRequest:
       type: object

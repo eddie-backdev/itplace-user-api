@@ -9,6 +9,7 @@ import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.jwt.JWTConstants;
+import com.itplace.userapi.security.verification.sms.service.SmsVerificationService;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.security.SignatureException;
@@ -40,6 +41,9 @@ class AuthServiceImplTest {
     @Mock
     private CookieUtil cookieUtil;
 
+    @Mock
+    private SmsVerificationService smsVerificationService;
+
     @Test
     void reissueConvertsRefreshTokenSignatureMismatchToInvalidTokenAndExpiresCookies() {
         AuthServiceImpl authService = new AuthServiceImpl(
@@ -47,7 +51,8 @@ class AuthServiceImplTest {
                 passwordEncoder,
                 userRepository,
                 jwtUtil,
-                cookieUtil
+                cookieUtil,
+                smsVerificationService
         );
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();

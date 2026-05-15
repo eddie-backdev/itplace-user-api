@@ -32,6 +32,13 @@ public enum SecurityCode implements BaseCode {
     EMAIL_VERIFICATION_SUCCESS("EMAIL_VERIFICATION_SUCCESS", HttpStatus.OK, "이메일 인증에 성공했습니다."),
     EMAIL_VERIFICATION_FAILURE("EMAIL_VERIFICATION_FAILURE", HttpStatus.BAD_REQUEST, "이메일 인증에 실패했습니다."),
 
+    // 문자 인증
+    SMS_ISSUE_SUCCESS("SMS_ISSUE_SUCCESS", HttpStatus.OK, "문자 인증 코드가 생성되었습니다."),
+    SMS_VERIFICATION_SUCCESS("SMS_VERIFICATION_SUCCESS", HttpStatus.OK, "휴대폰 번호 인증에 성공했습니다."),
+    SMS_VERIFICATION_FAILURE("SMS_VERIFICATION_FAILURE", HttpStatus.BAD_REQUEST, "대표번호로 인증 문자열을 문자 전송한 뒤 다시 확인해주세요."),
+    SMS_CODE_EXPIRED("SMS_CODE_EXPIRED", HttpStatus.BAD_REQUEST, "문자 인증 코드가 만료되었습니다."),
+    SMS_PROVIDER_NOT_CONFIGURED("SMS_PROVIDER_NOT_CONFIGURED", HttpStatus.INTERNAL_SERVER_ERROR, "문자 인증 서비스가 설정되어 있지 않습니다."),
+    DUPLICATE_PHONE_NUMBER("DUPLICATE_PHONE_NUMBER", HttpStatus.CONFLICT, "이미 사용 중인 휴대폰 번호입니다."),
 
     // 비밀번호 변경
     RESET_PASSWORD_SUCCESS("RESET_PASSWORD_SUCCESS", HttpStatus.OK, "비밀번호가 변경되었습니다."),

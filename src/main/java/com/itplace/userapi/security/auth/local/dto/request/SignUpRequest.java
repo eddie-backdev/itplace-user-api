@@ -44,6 +44,10 @@ public class SignUpRequest {
     )
     private String passwordConfirm;
 
+    @NotBlank(message = "휴대폰 번호는 필수 항목입니다.")
+    @Pattern(regexp = "^01\\d{8,9}$", message = "휴대폰 번호는 '-' 없이 입력해주세요.")
+    private String phoneNumber;
+
     @NotNull(message = "성별은 필수 항목입니다.")
     private Gender gender;
 

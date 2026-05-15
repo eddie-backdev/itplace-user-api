@@ -6,8 +6,11 @@ import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.local.dto.request.SignUpRequest;
 import com.itplace.userapi.security.exception.DuplicateEmailException;
+import com.itplace.userapi.security.exception.DuplicatePhoneNumberException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
+import com.itplace.userapi.security.exception.SmsVerificationException;
+import com.itplace.userapi.security.verification.sms.service.SmsVerificationService;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
@@ -38,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
+    private final SmsVerificationService smsVerificationService;
 
     @Override
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -119,14 +123,25 @@ public class AuthServiceImpl implements AuthService {
             throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
         }
 
+        if (userRepository.findByPhoneNumber(request.getPhoneNumber()).isPresent()) {
+            log.info("휴대폰 번호 중복");
+            throw new DuplicatePhoneNumberException(SecurityCode.DUPLICATE_PHONE_NUMBER);
+        }
+
         if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
+        }
+
+        if (!smsVerificationService.consumeVerified(request.getPhoneNumber())) {
+            log.info("휴대폰 번호 인증 미완료");
+            throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
         }
 
         User user = User.builder()
                 .email(request.getEmail())
                 .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .phoneNumber(request.getPhoneNumber())
                 .gender(request.getGender())
                 .carrier(request.getCarrier())
                 .membershipGradeCode(request.getMembershipGradeCode())
