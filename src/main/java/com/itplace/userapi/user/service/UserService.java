@@ -21,5 +21,4 @@ public interface UserService {
 
     void withdraw(Long userId, String password);
 
-    Integer getUserCouponCount(Long userId);
 }

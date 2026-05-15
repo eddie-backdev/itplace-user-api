@@ -17,14 +17,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
                 "com.itplace.userapi.benefit",
                 "com.itplace.userapi.common",
                 "com.itplace.userapi.favorite",
-                "com.itplace.userapi.history",
                 "com.itplace.userapi.map",
                 "com.itplace.userapi.partner",
                 "com.itplace.userapi.security",
                 "com.itplace.userapi.user",
                 "com.itplace.userapi.recommend",
                 "com.itplace.userapi.ai",
-                "com.itplace.userapi.event",
                 "com.itplace.userapi.inquiry"
         }
 )

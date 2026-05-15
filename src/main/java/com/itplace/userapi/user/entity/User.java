@@ -67,10 +67,6 @@ public class User extends BaseTimeEntity {
     private LocalDate birthday;
 
     @Setter
-    @Column(name = "membershipId", length = 16)
-    private String membershipId;
-
-    @Setter
     @Column(name = "carrier", length = 10)
     @Enumerated(EnumType.STRING)
     private Carrier carrier;
@@ -88,10 +84,6 @@ public class User extends BaseTimeEntity {
     @Column(name = "role", nullable = false, length = 5)
     @Enumerated(EnumType.STRING)
     private Role role;
-
-    @Setter
-    @Column(name = "coupon")
-    private int coupon;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
