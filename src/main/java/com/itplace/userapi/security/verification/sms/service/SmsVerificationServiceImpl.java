@@ -44,11 +44,9 @@ public class SmsVerificationServiceImpl implements SmsVerificationService {
         String verificationText = generateVerificationText();
         redisTemplate.opsForValue().set(codeKey(phoneNumber), verificationText, CODE_TTL);
         log.info(
-                "문자 인증 문자열 발급: mobileNumber={}, verificationText='{}', textLength={}, codePoints={}",
+                "문자 인증 문자열 발급: mobileNumber={}, textLength={}",
                 phoneNumber,
-                verificationText,
-                verificationText.length(),
-                toCodePoints(verificationText)
+                verificationText.length()
         );
 
         return SmsVerificationIssueResponse.builder()
@@ -68,11 +66,9 @@ public class SmsVerificationServiceImpl implements SmsVerificationService {
         }
 
         log.info(
-                "문자 인증 확인 요청: mobileNumber={}, verificationText='{}', textLength={}, codePoints={}",
+                "문자 인증 확인 요청: mobileNumber={}, textLength={}",
                 phoneNumber,
-                verificationText,
-                verificationText.length(),
-                toCodePoints(verificationText)
+                verificationText.length()
         );
 
         if (!octomoMessageClient.exists(phoneNumber, verificationText)) {
@@ -105,13 +101,6 @@ public class SmsVerificationServiceImpl implements SmsVerificationService {
 
     private String normalizePhoneNumber(String phoneNumber) {
         return phoneNumber == null ? "" : phoneNumber.replaceAll("\\D", "");
-    }
-
-    private String toCodePoints(String value) {
-        return value == null ? "" : value.chars()
-                .mapToObj(character -> String.format("U+%04X", character))
-                .reduce((left, right) -> left + " " + right)
-                .orElse("");
     }
 
     private String codeKey(String phoneNumber) {
