@@ -42,6 +42,6 @@ public class MobileMapController {
                 partnerName
         );
         ApiResponse<MobileMapNearbyResponse> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, response);
-        return ResponseEntity.status(body.getStatus()).body(body);
+        return body.toResponseEntity();
     }
 }

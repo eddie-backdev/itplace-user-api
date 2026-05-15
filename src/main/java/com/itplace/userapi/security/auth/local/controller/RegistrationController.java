@@ -27,6 +27,6 @@ public class RegistrationController {
     public ResponseEntity<ApiResponse<Void>> signUp(@RequestBody @Validated SignUpRequest request) {
         authService.signUp(request);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.SIGNUP_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

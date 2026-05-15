@@ -35,20 +35,20 @@ public class UserController {
     private final EmailService emailService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<?>> getUser(@AuthenticationPrincipal PrincipalDetails principalDetails) {
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUser(@AuthenticationPrincipal PrincipalDetails principalDetails) {
         if (principalDetails == null) {
             throw new UserNotFoundException(SecurityCode.USER_NOT_FOUND);
         }
         UserInfoResponse userInfoDto = userService.getUserInfo(principalDetails.getUserId());
-        ApiResponse<?> body = ApiResponse.of(UserCode.USER_INFO_SUCCESS, userInfoDto);
-        return new ResponseEntity<>(body, body.getStatus());
+        ApiResponse<UserInfoResponse> body = ApiResponse.of(UserCode.USER_INFO_SUCCESS, userInfoDto);
+        return body.toResponseEntity();
     }
 
     @PostMapping("/findPassword")
     public ResponseEntity<ApiResponse<Void>> findPassword(@RequestBody @Validated EmailVerificationRequest request) {
         emailService.send(request);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.EMAIL_SEND_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @PostMapping("/findPassword/confirm")
@@ -56,14 +56,14 @@ public class UserController {
             @RequestBody @Validated EmailConfirmRequest request) {
         FindPasswordConfirmResponse response = userService.findPasswordConfirm(request);
         ApiResponse<FindPasswordConfirmResponse> body = ApiResponse.of(SecurityCode.EMAIL_VERIFICATION_SUCCESS, response);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @PostMapping("/resetPassword")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody @Validated ResetPasswordRequest request) {
         userService.resetPassword(request);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.RESET_PASSWORD_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @DeleteMapping
@@ -73,6 +73,6 @@ public class UserController {
     ) {
         userService.withdraw(principalDetails.getUserId(), request.getPassword());
         ApiResponse<Void> body = ApiResponse.ok(UserCode.USER_WITHDRAWAL_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

@@ -29,13 +29,13 @@ public class SmsVerificationController {
     ) {
         SmsVerificationIssueResponse response = smsVerificationService.issue(request);
         ApiResponse<SmsVerificationIssueResponse> body = ApiResponse.of(SecurityCode.SMS_ISSUE_SUCCESS, response);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @PostMapping("/confirm")
     public ResponseEntity<ApiResponse<Void>> confirm(@RequestBody @Validated SmsVerificationConfirmRequest request) {
         smsVerificationService.confirm(request);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.SMS_VERIFICATION_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

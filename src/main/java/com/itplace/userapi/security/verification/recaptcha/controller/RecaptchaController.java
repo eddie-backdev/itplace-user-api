@@ -24,10 +24,10 @@ public class RecaptchaController {
         boolean isRecaptchaVerified = recaptchaService.verifyRecaptcha(request);
         if (isRecaptchaVerified) {
             ApiResponse<Void> body = ApiResponse.of(SecurityCode.RECAPTCHA_SUCCESS, null);
-            return new ResponseEntity<>(body, body.getStatus());
+            return body.toResponseEntity();
         } else {
             ApiResponse<Void> body = ApiResponse.of(SecurityCode.INVALID_INPUT_VALUE, null);
-            return new ResponseEntity<>(body, body.getStatus());
+            return body.toResponseEntity();
         }
     }
 }
