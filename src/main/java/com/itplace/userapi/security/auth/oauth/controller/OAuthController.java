@@ -45,12 +45,12 @@ public class OAuthController {
             OAuthResult authResult = result.getAuthResult();
             cookieUtil.setTokensToCookie(httpServletResponse, authResult.getAccessToken(), authResult.getRefreshToken());
             ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, authResult.getLoginResponse());
-            return new ResponseEntity<>(body, body.getStatus());
+            return body.toResponseEntity();
         }
 
         cookieUtil.setTempTokenCookie(httpServletResponse, result.getTempToken(), TimeUnit.MINUTES.toSeconds(10));
         ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.PRE_AUTHENTICATION_SUCCESS, null);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     /**
@@ -65,7 +65,7 @@ public class OAuthController {
         OAuthResult result = oAuthService.signUpWithOAuth(tempToken, request);
         cookieUtil.setTokensToCookie(httpServletResponse, result.getAccessToken(), result.getRefreshToken());
         ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, result.getLoginResponse());
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     /**
@@ -80,19 +80,19 @@ public class OAuthController {
     ) {
         if (principalDetails == null || principalDetails.getUserId() == null) {
             ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.UNAUTHORIZED_ACCESS, null);
-            return new ResponseEntity<>(body, body.getStatus());
+            return body.toResponseEntity();
         }
 
         OAuthResult result = oAuthService.linkOAuthAccount(tempToken, request, principalDetails.getUserId());
         cookieUtil.setTokensToCookie(httpServletResponse, result.getAccessToken(), result.getRefreshToken());
         ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, result.getLoginResponse());
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @GetMapping("/result")
     public ResponseEntity<ApiResponse<LoginResponse>> result(@AuthenticationPrincipal PrincipalDetails principalDetails) {
         LoginResponse result = oAuthService.result(principalDetails);
         ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.OAUTH_INFO_FOUND, result);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

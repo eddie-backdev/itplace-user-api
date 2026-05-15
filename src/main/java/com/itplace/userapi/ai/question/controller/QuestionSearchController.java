@@ -83,6 +83,6 @@ public class QuestionSearchController {
 
         RecommendationResponse result = questionRecommendationService.recommendByQuestion(question, lat, lng, carrier, grade);
         ApiResponse<RecommendationResponse> body = ApiResponse.of(QuestionCode.QUESTION_SUCCESS, result);
-        return ResponseEntity.status(body.getStatus()).body(body);
+        return body.toResponseEntity();
     }
 }

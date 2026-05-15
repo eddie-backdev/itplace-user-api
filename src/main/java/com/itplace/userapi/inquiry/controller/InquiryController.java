@@ -26,6 +26,6 @@ public class InquiryController {
     ) {
         InquiryCreateResponse response = inquiryService.createInquiry(request);
         ApiResponse<InquiryCreateResponse> body = ApiResponse.of(InquiryCode.INQUIRY_CREATE_SUCCESS, response);
-        return ResponseEntity.status(body.getStatus()).body(body);
+        return body.toResponseEntity();
     }
 }

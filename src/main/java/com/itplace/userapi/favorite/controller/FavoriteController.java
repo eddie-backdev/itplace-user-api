@@ -40,7 +40,7 @@ public class FavoriteController {
             @RequestBody FavoriteRequest request) {
         favoriteService.addFavorite(principalDetails.getUserId(), request.getBenefitId());
         ApiResponse<Void> body = ApiResponse.ok(FavoriteCode.FAVORITE_ADD_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     // 즐겨찾기 삭제
@@ -50,7 +50,7 @@ public class FavoriteController {
             @RequestBody RemoveFavoritesRequest request) {
         favoriteService.removeFavorites(principalDetails.getUserId(), request.getBenefitIds());
         ApiResponse<Void> body = ApiResponse.ok(FavoriteCode.FAVORITE_DELETE_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     // 즐겨찾기 목록 조회 (페이징, 필터링)
@@ -63,7 +63,7 @@ public class FavoriteController {
         Page<FavoriteResponse> page = favoriteService.getFavorites(userId, category, pageable);
         PageResult<FavoriteResponse> result = PageResult.of(page);
         ApiResponse<PageResult<FavoriteResponse>> body = ApiResponse.of(FavoriteCode.FAVORITE_BENEFIT_SUCCESS, result);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     // 즐겨찾기 혜택 이름 검색
@@ -75,7 +75,7 @@ public class FavoriteController {
         List<FavoriteResponse> favorites = favoriteService.searchFavorites(principalDetails.getUserId(), keyword, category);
         ApiResponse<List<FavoriteResponse>> body = ApiResponse.of(FavoriteCode.FAVORITE_BENEFIT_SEARCH_SUCCESS,
                 favorites);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
 
@@ -85,7 +85,7 @@ public class FavoriteController {
             @PathVariable Long benefitId) {
         FavoriteDetailResponse detail = favoriteService.getBenefitDetail(benefitId);
         ApiResponse<FavoriteDetailResponse> body = ApiResponse.of(FavoriteCode.FAVORITE_BENEFIT_DETAIL_SUCCESS, detail);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }
 

@@ -29,7 +29,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> reissue(HttpServletRequest request, HttpServletResponse response) {
         authService.reissue(request, response);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.RENEW_ACCESS_TOKEN);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @PostMapping("/logout")
@@ -38,6 +38,6 @@ public class AuthController {
         cookieUtil.expireCookie(response, JWTConstants.CATEGORY_ACCESS);
         cookieUtil.expireCookie(response, JWTConstants.CATEGORY_REFRESH);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.LOGOUT_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

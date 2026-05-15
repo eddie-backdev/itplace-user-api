@@ -18,9 +18,9 @@ public class ForbiddenWordController {
     private final ForbiddenWordService forbiddenWordService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<?>> filter(@RequestBody String text) {
+    public ResponseEntity<ApiResponse<String>> filter(@RequestBody String text) {
         String result = forbiddenWordService.censor(text);
-        ApiResponse<?> body = ApiResponse.of(ForbiddenWordCode.FORBIDDEN_WORD_SUCCESS, result);
-        return ResponseEntity.status(body.getStatus()).body(body);
+        ApiResponse<String> body = ApiResponse.of(ForbiddenWordCode.FORBIDDEN_WORD_SUCCESS, result);
+        return body.toResponseEntity();
     }
 }

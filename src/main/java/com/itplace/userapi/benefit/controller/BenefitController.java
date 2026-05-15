@@ -52,7 +52,7 @@ public class BenefitController {
                 mainCategory, category, filter, keyword, resolveCarriers(carrier, carriers), userId, pageable
         );
         ApiResponse<PageResult<BenefitListResponse>> body = ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     private List<Carrier> resolveCarriers(Carrier carrier, List<String> carriers) {
@@ -82,7 +82,7 @@ public class BenefitController {
     public ResponseEntity<ApiResponse<BenefitDetailResponse>> getBenefitDetail(@PathVariable Long benefitId) {
         BenefitDetailResponse result = benefitService.getBenefitDetail(benefitId);
         ApiResponse<BenefitDetailResponse> body = ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, result);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @GetMapping("/map-detail")
@@ -97,6 +97,6 @@ public class BenefitController {
         MapBenefitDetailResponse detail = benefitService.getMapBenefitDetail(
                 storeId, partnerId, mainCategory, carrier, userId);
         ApiResponse<MapBenefitDetailResponse> body = ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, detail);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

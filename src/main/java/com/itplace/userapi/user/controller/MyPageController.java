@@ -30,7 +30,7 @@ public class MyPageController {
             @RequestBody @Validated ChangePasswordRequest request) {
         userService.changePassword(principalDetails, request);
         ApiResponse<Void> body = ApiResponse.ok(UserCode.PASSWORD_CHANGE_SUCCESS);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
 
@@ -40,6 +40,6 @@ public class MyPageController {
             @RequestBody @Validated MembershipProfileUpdateRequest request) {
         UserInfoResponse response = userService.updateMembershipProfile(principalDetails, request);
         ApiResponse<UserInfoResponse> body = ApiResponse.of(UserCode.MEMBERSHIP_PROFILE_UPDATE_SUCCESS, response);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

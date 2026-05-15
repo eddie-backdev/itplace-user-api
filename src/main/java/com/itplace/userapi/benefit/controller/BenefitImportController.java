@@ -30,6 +30,6 @@ public class BenefitImportController {
     ) {
         BenefitSnapshotImportResponse result = benefitImportService.importSnapshot(request, apiKey);
         ApiResponse<BenefitSnapshotImportResponse> body = ApiResponse.of(BenefitCode.BENEFIT_IMPORT_SUCCESS, result);
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 }

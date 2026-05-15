@@ -25,7 +25,7 @@ public class StoreController {
 
     // 사용자 위치 기반 전체 지점 목록
     @GetMapping("/nearby")
-    public ResponseEntity<ApiResponse<?>> getNearby(
+    public ResponseEntity<ApiResponse<List<StoreDetailResponse>>> getNearby(
             @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
             @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
             @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
@@ -33,14 +33,14 @@ public class StoreController {
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
         List<StoreDetailResponse> stores = storeService.findNearby(lat, lng, radiusMeters, userLat, userLng);
-        ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+        ApiResponse<List<StoreDetailResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     // 사용자 위치 기반 특정 카테고리 지점 목록
     @GetMapping("/nearby/category")
-    public ResponseEntity<ApiResponse<?>> getNearbyCategory(
+    public ResponseEntity<ApiResponse<List<StoreDetailResponse>>> getNearbyCategory(
             @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
             @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
             @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
@@ -50,14 +50,14 @@ public class StoreController {
     ) {
         List<StoreDetailResponse> stores = storeService.findNearbyByCategory(lat, lng, radiusMeters, category, userLat,
                 userLng);
-        ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+        ApiResponse<List<StoreDetailResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     // 사용자 위치 기반 키워드 검색한 지점 목록
     @GetMapping("/nearby/search")
-    public ResponseEntity<ApiResponse<?>> getNearbySearch(
+    public ResponseEntity<ApiResponse<List<StoreDetailResponse>>> getNearbySearch(
             @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
             @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
             @RequestParam(value = "category", required = false) String category,
@@ -66,13 +66,13 @@ public class StoreController {
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
         List<StoreDetailResponse> stores = storeService.findNearbyByKeyword(lat, lng, category, keyword, userLat, userLng);
-        ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+        ApiResponse<List<StoreDetailResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
-        return new ResponseEntity<>(body, body.getStatus());
+        return body.toResponseEntity();
     }
 
     @GetMapping("/nearby/itplace-ai")
-    public ResponseEntity<ApiResponse<?>> getNearbyByPartner(
+    public ResponseEntity<ApiResponse<List<StoreDetailResponse>>> getNearbyByPartner(
             @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
             @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
             @RequestParam("partnerName") String partnerName,
@@ -80,8 +80,8 @@ public class StoreController {
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
     ) {
         List<StoreDetailResponse> stores = storeService.findNearbyByPartnerName(lat, lng, partnerName, userLat, userLng);
-        ApiResponse<?> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+        ApiResponse<List<StoreDetailResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
-        return ResponseEntity.status(body.getStatus()).body(body);
+        return body.toResponseEntity();
     }
 }

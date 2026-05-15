@@ -3,6 +3,7 @@ package com.itplace.userapi.common;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @Getter
 public class ApiResponse<T> {
@@ -42,5 +43,13 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> ok(BaseCode code) {
         return new ApiResponse<>(code, null);
+    }
+
+    /**
+     * ApiResponse에 담긴 HTTP 상태를 사용해 ResponseEntity를 생성합니다.
+     * 컨트롤러마다 반복되는 ResponseEntity 래핑을 줄이기 위한 헬퍼입니다.
+     */
+    public ResponseEntity<ApiResponse<T>> toResponseEntity() {
+        return ResponseEntity.status(status).body(this);
     }
 }
