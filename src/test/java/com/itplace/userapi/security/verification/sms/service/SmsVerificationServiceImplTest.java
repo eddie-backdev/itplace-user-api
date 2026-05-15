@@ -53,7 +53,7 @@ class SmsVerificationServiceImplTest {
 
         assertThat(response.getPhoneNumber()).isEqualTo("01012345678");
         assertThat(response.getReceiverPhoneNumber()).isEqualTo("1666-3538");
-        assertThat(response.getVerificationText()).matches("[A-Za-z0-9]{18}");
+        assertThat(response.getVerificationText()).matches("[A-HJ-NP-Z2-9]{6}");
         verify(valueOperations).set(eq("sms:01012345678"), eq(response.getVerificationText()), any(Duration.class));
     }
 
@@ -62,8 +62,8 @@ class SmsVerificationServiceImplTest {
         SmsVerificationConfirmRequest request = new SmsVerificationConfirmRequest();
         request.setPhoneNumber("01012345678");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("sms:01012345678")).thenReturn("adsjJdjfjJjsai873u");
-        when(octomoMessageClient.exists("01012345678", "adsjJdjfjJjsai873u")).thenReturn(true);
+        when(valueOperations.get("sms:01012345678")).thenReturn("AB7K9Q");
+        when(octomoMessageClient.exists("01012345678", "AB7K9Q")).thenReturn(true);
 
         smsVerificationService.confirm(request);
 
