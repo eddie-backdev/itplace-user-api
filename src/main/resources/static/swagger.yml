@@ -26,14 +26,10 @@ tags:
     description: 지도 기능 관련 API
   - name: Favorites
     description: 즐겨찾기 관련 API
-  - name: History
-    description: 멤버십 혜택 사용 내역 관련 API
   - name: Recommend
     description: 멤버십 추천 기능 관련 API
   - name: Question
     description: 사용자 질문 기반 제휴처 제공 API
-  - name: Event
-    description: 이벤트 기능 제공 API (REST + WebSocket/STOMP)
 
 paths:
   # =====================================================
@@ -216,59 +212,6 @@ paths:
                     data: null
                     timestamp: "2025-07-04T14:25:38.912Z"
 
-  /auth/loadUplusData:
-    post:
-      tags:
-        - Auth
-      summary: 유플러스 데이터 가져오기
-      description: 유플러스에 기존 데이터가 존재할 경우 해당 데이터를 가져올 것인지 응답을 받습니다.
-      operationId: loadUplusData
-      requestBody:
-        description: 유플러스 데이터를 요청
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UplusDataRequest'
-            example:
-              name: "홍길동"
-              phoneNumber: "01012345678"
-      responses:
-        '200':
-          description: 정상 처리
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/UplusDataResponse'
-              example:
-                code: "UPLUS_DATA_FOUND"
-                status: "OK"
-                message: "데이터를 찾았습니다."
-                data:
-                  name: "홍길동"
-                  phoneNumber: "01012345678"
-                  gender: "MALE"
-                  birthday: "20000101"
-                  carrier: "LGU"
-                  membershipGradeCode: "VIP"
-                timestamp: "2025-07-04T11:27:06.789Z"
-        '400':
-          description: 비정상 처리
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "UPLUS_DATA_NOT_FOUND"
-                status: "BAD_REQUEST"
-                message: "데이터를 찾지 못했습니다."
-                data: null
-                timestamp: "2025-07-04T12:23:00.456Z"
 
   /auth/reissue:
     post:
@@ -1161,72 +1104,6 @@ paths:
                     message: 비밀번호가 일치하지 않습니다.
                     timestamp: '2025-07-23T15:00:00.000Z'
 
-  /users/findEmail:
-    post:
-      tags:
-        - User
-      summary: 아이디(이메일) 찾기 인증코드 받기
-      description: 사용자 전화번호를 인증하여 가입된 이메일을 찾기 위한 인증 코드를 발급 받습니다.
-      operationId: findEmail
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SmsVerificationRequest'
-            example:
-              name: "홍길동"
-              phoneNumber: "010-1234-5678"
-      responses:
-        '200':
-          description: 인증 코드 발송 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "SMS_SEND_SUCCESS"
-                status: "OK"
-                message: "문자 인증 코드가 성공적으로 발송되었습니다."
-                data: null
-                timestamp: "2025-07-04T11:27:06.789Z"
-
-  /users/findEmail/confirm:
-    post:
-      tags:
-        - User
-      summary: 아이디(이메일) 찾기 인증코드 확인
-      description: 사용자 전화번호로 받은 인증코드를 인증합니다.
-      operationId: findEmailConfirm
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FindEmailConfirmRequest'
-            example:
-              name: "홍길동"
-              phoneNumber: "010-1234-5678"
-              verificationCode: "123456"
-      responses:
-        '200':
-          description: 인증 코드 확인 성공
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/FindEmailResponse'
-              example:
-                code: "EMAIL_FIND_SUCCESS"
-                status: "OK"
-                message: "이메일 찾기를 성공했습니다."
-                data:
-                  email: "user@example.com"
-                timestamp: "2025-07-04T11:27:06.789Z"
 
   /users/findPassword:
     post:
@@ -1257,7 +1134,7 @@ paths:
                 data: null
                 timestamp: "2025-07-04T11:27:06.789Z"
 
-  /users/findPasswordConfirm:
+  /users/findPassword/confirm:
     post:
       tags:
         - User
@@ -1402,31 +1279,7 @@ paths:
                 data: null
                 timestamp: "2025-07-24T09:30:01.123Z"
 
-  /users/coupon:
-    get:
-      tags:
-        - User
-      summary: 이벤트 쿠폰 기능 비활성화 상태 조회
-      description: 이벤트 종료로 쿠폰 기능은 비활성화되었습니다. 호환성을 위해 0을 반환하며 사용자 쿠폰 상태를 변경하지 않습니다.
-      operationId: getMyCouponCount
-      responses:
-        '200':
-          description: 이벤트 쿠폰 기능 비활성화
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                code: "COUPON_EVENT_DISABLED"
-                status: "OK"
-                message: "이벤트 종료로 쿠폰 기능이 비활성화되었습니다."
-                data: 0
-                timestamp: "2026-05-01T00:00:00.000Z"
 
-
-  # =====================================================
-  # 지도 관련 기능 API
-  # =====================================================
   /maps/nearby:
     get:
       tags:
@@ -2177,315 +2030,6 @@ paths:
                         rankChange: 0
                         changeDerection: "NEW"
                     timestamp: "2025-07-04T11:27:06.789Z"
-  # =====================================================
-  # 멤버십 혜택 사용 내역 관련 기능 API
-  # =====================================================
-
-  /membership-history:
-    get:
-      tags:
-        - History
-      summary: 마이페이지 내에서 멤버십 사용 내역 조회
-      description: 특정 사용자의 멤버십 사용 내역을 검색어, 날짜, 페이징으로 조회합니다.
-      parameters:
-        - name: keyword
-          in: query
-          required: false
-          schema:
-            type: string
-          description: 혜택명 검색어
-        - name: startDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-          description: 조회 시작일 (yyyy-MM-dd)
-        - name: endDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-          description: 조회 종료일 (yyyy-MM-dd)
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 0
-          description: 페이지 번호 (0부터 시작)
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
-          description: 페이지당 결과 수
-      responses:
-        '200':
-          description: 멤버십 사용 내역 조회 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PagedResponse_MembershipHistoryResponse'
-              examples:
-                successExample:
-                  value:
-                    data:
-                      content:
-                        - image: ""
-                          benefitName: "오가나셀 피부과의원 청담점"
-                          discountAmount: 5700
-                          usedAt: "2025-05-20T03:53:13"
-                      currentPage: 0
-                      totalPages: 1
-                      totalElements: 1
-                      hasNext: false
-                    code: MEMBERSHIP_HISTORY_SUCCESS
-                    status: OK
-                    message: 멤버십 사용 내역 조회에 성공했습니다.
-                    timestamp: "2025-07-18T11:17:57.4030576"
-                successExampleEmpty:
-                  value:
-                    data:
-                      content: [ ]
-                      totalPages: 0
-                      totalElements: 0
-                      hasNext: false
-                    code: MEMBERSHIP_HISTORY_SUCCESS
-                    status: OK
-                    message: 멤버십 사용 내역 조회에 성공했습니다.
-                    timestamp: "2025-07-18T11:17:57.4030576"
-        '400':
-          description: 멤버십 회원이 아닐경우
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data: null
-                code: NO_MEMBERSHIP
-                status: BAD_REQUEST
-                message: 해당 사용자는 멤버십 정보를 가지고 있지 않습니다.
-                timestamp: '2025-07-07T12:00:00Z'
-        '401':
-          description: 로그인이 되어있지 않은 경우
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                noMembershipExample:
-                  value:
-                    data: null
-                    code: UNAUTHORIZED_MEMBERSHIP_ACCESS
-                    status: UNAUTHORIZED
-                    message: 멤버십 내역 조회는 로그인 후 이용 가능합니다.
-                    timestamp: "2025-07-18T14:21:00.123456"
-
-  /membership-history/summary:
-    get:
-      tags:
-        - History
-      summary: 이번 달 총 할인 금액
-      description: 사용자 ID를 기반으로 이번 달 총 할인 금액을 조회합니다.
-      responses:
-        '200':
-          description: 이번 달 할인 금액 조회 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MonthlyDiscountResponse'
-              examples:
-                successExample:
-                  value:
-                    data:
-                      userId: 1608
-                      yearMonth: "2025-07"
-                      totalDiscountAmount: 10000
-                    code: MEMBERSHIP_HISTORY_SUMMARY_SUCCESS
-                    status: OK
-                    message: 이번 달 할인 금액 조회에 성공했습니다.
-                    timestamp: "2025-07-18T14:21:00.123456"
-        '400':
-          description: 멤버십 정보가 없거나 사용자를 찾을 수 없음
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                noMembershipExample:
-                  value:
-                    data: null
-                    code: NO_MEMBERSHIP
-                    status: BAD_REQUEST
-                    message: 해당 사용자는 멤버십 정보를 가지고 있지 않습니다.
-                    timestamp: "2025-07-18T14:21:00.123456"
-                userNotFoundExample:
-                  value:
-                    data: null
-                    code: USER_NOT_FOUND
-                    status: BAD_REQUEST
-                    message: 해당 사용자를 찾을 수 없습니다.
-                    timestamp: "2025-07-18T14:21:00.123456"
-        '401':
-          description: 로그인이 되어있지 않은 경우
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                noMembershipExample:
-                  value:
-                    data: null
-                    code: UNAUTHORIZED_MEMBERSHIP_ACCESS
-                    status: UNAUTHORIZED
-                    message: 멤버십 내역 조회는 로그인 후 이용 가능합니다.
-                    timestamp: "2025-07-18T14:21:00.123456"
-  /membership-history/use:
-    post:
-      tags:
-        - History
-      summary: 멤버십 혜택 사용
-      description: 로그인된 사용자가 특정 혜택을 사용할 때 사용 내역을 기록합니다.
-      security:
-        - bearerAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MembershipUseRequest'
-            examples:
-              discountBenefit:
-                summary: 혜택id와 사용금액을 입력
-                value:
-                  benefitId: 101
-                  amount: 30000
-      responses:
-        '200':
-          description: 멤버십 혜택 사용 성공
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-              examples:
-                success:
-                  summary: 멤버십 혜택 사용 성공 예시
-                  value:
-                    data: null
-                    code: MEMBERSHIP_USE_SUCCESS
-                    status: OK
-                    message: 멤버십 혜택 사용에 성공했습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-        '400':
-          description: 잘못된 요청(사용 제한 또는 금액 누락 등)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                amountRequired:
-                  summary: 금액 입력 누락(% 할인의 경우)
-                  value:
-                    data: null
-                    code: AMOUNT_REQUIRED
-                    status: BAD_REQUEST
-                    message: 할인 금액 계산을 위해 유효한 금액을 입력해야 합니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                alreadyUsedToday:
-                  summary: 일일 사용 제한 위반
-                  value:
-                    data: null
-                    code: ALREADY_USED_TODAY
-                    status: BAD_REQUEST
-                    message: 오늘 이미 사용한 혜택입니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                alreadyUsedMonth:
-                  summary: 월 사용 제한 위반
-                  value:
-                    data: null
-                    code: ALREADY_USED_THIS_MONTH
-                    status: BAD_REQUEST
-                    message: 이번 달에 이미 사용한 혜택입니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                alreadyUsedOnce:
-                  summary: 최초 1회 사용 제한 위반
-                  value:
-                    data: null
-                    code: ALREADY_USED_ONCE
-                    status: BAD_REQUEST
-                    message: 해당 혜택은 최초 1회만 사용할 수 있습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                invalidGrade:
-                  summary: BASIC 등급에서 VIP_COCK 혜택 사용 시
-                  value:
-                    data: null
-                    code: INVALID_GRADE_FOR_BENEFIT
-                    status: BAD_REQUEST
-                    message: 해당 등급은 이 혜택을 사용할 수 없습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                noMembership:
-                  summary: 멤버십 없음
-                  value:
-                    data: null
-                    code: NO_MEMBERSHIP
-                    status: BAD_REQUEST
-                    message: 해당 사용자는 멤버십 정보를 가지고 있지 않습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                tierBenefitNotFound:
-                  summary: tierBenefit 정보 없음
-                  value:
-                    data: null
-                    code: TIER_BENEFIT_NOT_FOUND
-                    status: BAD_REQUEST
-                    message: 해당 등급은 이 혜택을 사용할 수 없습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                invalidBenefitType:
-                  summary: 잘못된 benefitType
-                  value:
-                    data: null
-                    code: INVALID_BENEFIT_TYPE
-                    status: BAD_REQUEST
-                    message: 잘못된 혜택 타입입니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-        '404':
-          description: 사용자, 혜택 정보, 멤버십 없음
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                userNotFound:
-                  summary: 사용자 없음
-                  value:
-                    data: null
-                    code: USER_NOT_FOUND
-                    status: NOT_FOUND
-                    message: 사용자 정보를 찾을 수 없습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                benefitNotFound:
-                  summary: 혜택 없음
-                  value:
-                    data: null
-                    code: BENEFIT_NOT_FOUND
-                    status: NOT_FOUND
-                    message: 존재하지 않는 혜택입니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-                membershipNotFound:
-                  summary: 멤버십 정보 없음
-                  value:
-                    data: null
-                    code: MEMBERSHIP_NOT_FOUND
-                    status: NOT_FOUND
-                    message: 해당 멤버십 정보를 찾을 수 없습니다.
-                    timestamp: '2025-07-28T15:00:00.000Z'
-
-  # =====================================================
-  # 멤버십 추천 관련 기능 API
-  # =====================================================
   /recommendations:
     get:
       tags:
@@ -2523,21 +2067,6 @@ paths:
                     status: OK
                     message: 추천 결과 생성 성공
                     timestamp: "2025-07-24T15:30:00.000000"
-        '400':
-          description: 멤버십 회원이 아님
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              examples:
-                notMembershipExample:
-                  value:
-                    data: null
-                    code: RECOMMENDATION_USER_NOT_MEMBERSHIP
-                    status: BAD_REQUEST
-                    message: 멤버십 회원이 아닙니다.
-                    timestamp: "2025-07-24T15:30:00.000000"
-
 
         '404':
           description: 사용자를 찾을 수 없음
@@ -2668,81 +2197,6 @@ paths:
                 timestamp: "2025-07-30T13:45:22.1029371"
 
 
-  # =====================================================
-  # 이벤트 기능 제공 API (종료)
-  # =====================================================
-  /gifts:
-    get:
-      tags:
-        - Event
-      summary: 이벤트 종료 안내
-      description: 이벤트가 종료되어 경품 목록을 제공하지 않습니다. 호환성을 위해 410 Gone을 반환합니다.
-      responses:
-        '410':
-          description: 이벤트 종료
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data: [ ]
-                code: "EVENT_DISABLED"
-                status: "GONE"
-                message: "이벤트가 종료되었습니다."
-                timestamp: "2026-05-01T00:00:00.000Z"
-
-  /gifts/scratch:
-    post:
-      tags:
-        - Event
-      summary: 이벤트 종료 안내
-      description: 이벤트가 종료되어 스크래치 실행 및 쿠폰/경품 상태 변경을 수행하지 않습니다.
-      responses:
-        '410':
-          description: 이벤트 종료
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  success: false
-                  message: "이벤트가 종료되었습니다."
-                  gift: null
-                code: "EVENT_DISABLED"
-                status: "GONE"
-                message: "이벤트가 종료되었습니다."
-                timestamp: "2026-05-01T00:00:00.000Z"
-
-  /gifts/history:
-    get:
-      tags:
-        - Event
-      summary: 이벤트 종료 안내
-      description: 이벤트가 종료되어 쿠폰 사용 이력을 제공하지 않습니다. 호환성을 위해 410 Gone을 반환합니다.
-      parameters:
-        - name: type
-          in: query
-          description: 과거 이벤트 결과 타입 필터. 현재는 이벤트 종료로 사용되지 않습니다.
-          required: false
-          schema:
-            type: string
-      responses:
-        '410':
-          description: 이벤트 종료
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data: [ ]
-                code: "EVENT_DISABLED"
-                status: "GONE"
-                message: "이벤트가 종료되었습니다."
-                timestamp: "2026-05-01T00:00:00.000Z"
-
-
-
 components:
   schemas:
     # ----------------------------------------------------
@@ -2838,18 +2292,6 @@ components:
           enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "VIP"
 
-    UplusDataRequest:
-      type: object
-      required: [ name, phoneNumber ]
-      properties:
-        email:
-          type: string
-          format: string
-          example: "홍길동"
-        password:
-          type: string
-          format: string
-          example: "01012345678"
 
     SmsVerificationRequest:
       type: object
@@ -2891,23 +2333,6 @@ components:
           description: "인증을 진행할 휴대폰 번호('-' 제외)"
           example: "01012345678"
 
-    FindEmailConfirmRequest:
-      type: object
-      description: "문자 인증 코드 발송 요청 DTO"
-      required: [ name, phoneNumber, verificationCode ]
-      properties:
-        name:
-          type: string
-          description: "가입자 이름"
-          example: "홍길동"
-        phoneNumber:
-          type: string
-          description: "인증을 진행할 전화번호"
-          example: "01012345678"
-        verificationCode:
-          type: string
-          description: "인증 코드"
-          example: "123456"
 
     EmailVerificationRequest:
       type: object
@@ -3028,18 +2453,7 @@ components:
           type: string
           description: 사용자가 입력한 비밀번호
 
-    MembershipUseRequest:
-      type: object
-      properties:
-        benefitId:
-          type: integer
-          format: int64
-        amount:
-          type: integer
 
-    # ----------------------------------------------------
-    # Response DTOs
-    # ----------------------------------------------------
     LoginResponse:
       type: object
       required: [ name, accessToken, refreshToken ]
@@ -3077,29 +2491,6 @@ components:
           format: string
           example: "ZJQp8a0aZJmGqGqG7aJ..."
 
-    SmsConfirmResponse:
-      type: object
-      description: "문자 인증 코드 확인 응답 DTO"
-      required: [ registrationId, uplusDataFound ]
-      properties:
-        registrationId:
-          type: string
-          format: UUID
-          description: "회원가입 세션 Id"
-          example: "f79c2e9c-958d-4925-a562-3b3ad44353c8"
-        uplusDataFound:
-          type: boolean
-          description: "Uplus 데이터 존재 유무"
-          example: "true"
-    
-    FindEmailResponse:
-      type: object
-      required: [ email ]
-      properties:
-        name:
-          type: string
-          format: email
-          example: "user@example.com"
 
     FindPasswordConfirmResponse:
       type: object
@@ -3156,28 +2547,6 @@ components:
           type: string
           example: "VIP 콕"
 
-    UplusDataResponse:
-      type: object
-      properties:
-        name:
-          type: string
-          example: "홍길동"
-        phoneNumber:
-          type: string
-          example: "01012345678"
-        gender:
-          type: string
-          enum: [ MALE, FEMALE ]
-          example: "MALE"
-        birthday:
-          type: string
-          example: "20000101"
-        legacyMembershipId:
-          type: string
-          deprecated: true
-          description: "Legacy U+ internal identifier; not collected in the new self-declared carrier profile flow."
-          example: null
-          nullable: true
 
     FavoriteRequest:
       type: object
@@ -3535,55 +2904,6 @@ components:
           items:
             $ref: '#/components/schemas/TierBenefitInfo'
 
-    MembershipHistoryResponse:
-      type: object
-      properties:
-        image:
-          type: string
-          format: uri
-        benefitName:
-          type: string
-        discountAmount:
-          type: integer
-          format: int64
-        usedAt:
-          type: string
-          format: date-time
-
-    PagedResponse_MembershipHistoryResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                content:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/MembershipHistoryResponse'
-                totalPages:
-                  type: integer
-                totalElements:
-                  type: integer
-                currentPage:
-                  type: integer
-                hasNext:
-                  type: boolean
-
-    MonthlyDiscountResponse:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-        yearMonth:
-          type: string
-          description: 조회 대상 연월
-        totalDiscountAmount:
-          type: integer
-          format: int64
-          description: 총 할인 금액
 
     RecommendationResponse:
       type: object
@@ -3606,31 +2926,3 @@ components:
           type: string
           format: uri
           example: https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/vips.png
-
-    HistoryResponse:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-          description: 사용자 ID
-          example: 1633
-        historyId:
-          type: integer
-          format: int64
-          description: 이력 ID
-          example: 1
-        giftName:
-          type: string
-          description: 선물 이름
-          example: "[브람스] 루카S 안마의자"
-        result:
-          type: string
-          enum: [ SUCCESS, FAIL ]
-          description: 쿠폰 사용 결과
-          example: "FAIL"
-        usedDate:
-          type: string
-          format: date
-          description: 사용 날짜
-          example: "2025-07-31"
