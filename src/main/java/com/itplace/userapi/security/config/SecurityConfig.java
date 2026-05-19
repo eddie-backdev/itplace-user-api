@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.LegacyAwarePasswordEncoder;
 import com.itplace.userapi.security.auth.local.filter.LoginFilter;
+import com.itplace.userapi.security.auth.local.service.CustomUserDetailsService;
 import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationFailureHandler;
 import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationSuccessHandler;
 import com.itplace.userapi.security.auth.oauth.service.CustomOAuth2UserService;
@@ -18,6 +19,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -130,6 +133,17 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new LegacyAwarePasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+            CustomUserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder
+    ) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(passwordEncoder);
+        provider.setUserDetailsService(userDetailsService);
+        provider.setUserDetailsPasswordService(userDetailsService);
+        return provider;
     }
 
     @Bean
