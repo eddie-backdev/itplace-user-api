@@ -6,13 +6,14 @@ import com.itplace.userapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class CustomUserDetailsService implements UserDetailsService {
+public class CustomUserDetailsService implements UserDetailsService, UserDetailsPasswordService {
 
     private final UserRepository userRepository;
 
@@ -21,6 +22,15 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("아이디 / 비밀번호를 다시 확인해주세요."));
+        return new CustomUserDetails(user);
+    }
+
+    @Override
+    @Transactional
+    public UserDetails updatePassword(UserDetails userDetails, String newPassword) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("아이디 / 비밀번호를 다시 확인해주세요."));
+        user.setPassword(newPassword);
         return new CustomUserDetails(user);
     }
 }
