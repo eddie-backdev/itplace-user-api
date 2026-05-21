@@ -57,6 +57,9 @@ class RecommendationServiceImplTest {
     @Mock
     private FavoriteRepository favoriteRepository;
 
+    @Mock
+    private RecommendationTraceRecorder traceRecorder;
+
     @Captor
     private ArgumentCaptor<List<Recommendation>> recommendationsCaptor;
 
@@ -79,6 +82,7 @@ class RecommendationServiceImplTest {
                 .reason("추천 이유")
                 .imgUrl("image")
                 .benefitIds(List.of(1L, 999L))
+                .candidateSource("es_vector")
                 .build();
         Benefit existingBenefit = Benefit.builder()
                 .benefitId(1L)
@@ -102,14 +106,31 @@ class RecommendationServiceImplTest {
 
         org.mockito.Mockito.verify(recommendationRepository).saveAll(recommendationsCaptor.capture());
         assertThat(result).containsExactly(generated);
+        assertThat(result.get(0).getRequestId()).startsWith("rec-req-7-");
+        assertThat(result.get(0).getImpressionId()).contains("-imp-1-");
+        assertThat(result.get(0).getAlgorithmVersion()).isEqualTo("personalized-es-quality-v1");
+        assertThat(result.get(0).getFallbackFlags()).isEmpty();
         assertThat(recommendationsCaptor.getValue())
                 .singleElement()
                 .satisfies(saved -> {
                     assertThat(saved.getBenefits()).containsExactly(existingBenefit);
                     assertThat(saved.getCacheBatchId()).startsWith("rec-7-");
+                    assertThat(saved.getRequestId()).startsWith("rec-req-7-");
+                    assertThat(saved.getImpressionId()).contains("-imp-1-");
+                    assertThat(saved.getCandidateSource()).isEqualTo("es_vector");
                     assertThat(saved.getAlgorithmVersion()).isEqualTo("personalized-es-quality-v1");
                     assertThat(saved.getActive()).isTrue();
                 });
+        org.mockito.Mockito.verify(traceRecorder).recordGenerated(
+                eq(7L),
+                argThat(requestId -> requestId.startsWith("rec-req-7-")),
+                eq("personalized-es-quality-v1"),
+                eq(List.of()),
+                eq(result),
+                argThat(latency -> latency.containsKey("total")),
+                eq("miss"),
+                eq("expired_or_absent")
+        );
     }
 
 
@@ -146,7 +167,21 @@ class RecommendationServiceImplTest {
 
         assertThat(result)
                 .singleElement()
-                .satisfies(recommendation -> assertThat(recommendation.getPartnerName()).isEqualTo("최신파트너"));
+                .satisfies(recommendation -> {
+                    assertThat(recommendation.getPartnerName()).isEqualTo("최신파트너");
+                    assertThat(recommendation.getRequestId()).startsWith("rec-req-7-");
+                    assertThat(recommendation.getImpressionId()).contains("-imp-1-");
+                    assertThat(recommendation.getCandidateSource()).isEqualTo("cached_recommendation");
+                    assertThat(recommendation.getFallbackFlags()).containsExactly("cached_recommendation");
+                });
+        org.mockito.Mockito.verify(traceRecorder).recordCached(
+                eq(7L),
+                argThat(requestId -> requestId.startsWith("rec-req-7-")),
+                eq("personalized-es-quality-v1"),
+                eq(result),
+                argThat(latency -> latency.containsKey("total")),
+                eq("none")
+        );
     }
 
     @Test
