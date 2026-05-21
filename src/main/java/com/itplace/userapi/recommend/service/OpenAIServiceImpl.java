@@ -270,7 +270,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                 continue;
             }
 
-            constrained.add(toRecommendation(candidate, constrained.size() + 1, recommendation.getReason()));
+            constrained.add(toRecommendation(candidate, constrained.size() + 1, recommendation.getReason(), List.of()));
             usedPartners.add(partnerKey);
         }
 
@@ -283,7 +283,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                 continue;
             }
 
-            constrained.add(toRecommendation(candidate, constrained.size() + 1, fallbackReason(candidate)));
+            constrained.add(toRecommendation(candidate, constrained.size() + 1, fallbackReason(candidate), List.of("llm_backfill")));
             usedPartners.add(partnerKey);
         }
 
@@ -291,16 +291,24 @@ public class OpenAIServiceImpl implements OpenAIService {
     }
 
     private List<Recommendations> fallbackRecommendations(List<Candidate> candidates, int topK) {
-        return constrainRecommendationsToCandidates(List.of(), candidates, topK);
+        return constrainRecommendationsToCandidates(List.of(), candidates, topK).stream()
+                .map(recommendation -> {
+                    recommendation.setFallbackFlags(List.of("openai_fallback"));
+                    return recommendation;
+                })
+                .toList();
     }
 
-    private Recommendations toRecommendation(Candidate candidate, int rank, String reason) {
+    private Recommendations toRecommendation(Candidate candidate, int rank, String reason, List<String> fallbackFlags) {
         return Recommendations.builder()
                 .rank(rank)
                 .partnerName(candidate.getPartnerName())
                 .reason(reason == null || reason.isBlank() ? fallbackReason(candidate) : reason)
                 .imgUrl(resolvePartnerImage(candidate.getPartnerName()))
                 .benefitIds(candidate.getBenefitId() == null ? List.of() : List.of(candidate.getBenefitId()))
+                .candidateSource(candidate.getCandidateSource())
+                .scoreComponents(candidate.getScoreComponents())
+                .fallbackFlags(fallbackFlags)
                 .build();
     }
 

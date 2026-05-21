@@ -53,6 +53,15 @@ public class Recommendation extends BaseTimeEntity {
     @Column(length = 64)
     private String cacheBatchId;
 
+    @Column(length = 64)
+    private String requestId;
+
+    @Column(length = 64)
+    private String impressionId;
+
+    @Column(length = 64)
+    private String candidateSource;
+
     @Builder.Default
     @Column(length = 64)
     private String algorithmVersion = "personalized-es-quality-v1";

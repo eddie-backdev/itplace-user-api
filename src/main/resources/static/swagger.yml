@@ -2059,10 +2059,22 @@ paths:
                         partnerName: "DBR동아비즈니스리뷰"
                         reason: "사용자님이 경제와 비즈니스에 관심이 많다면, DBR의 다양한 콘텐츠를 2,500원 할인된 가격에 무제한으로 즐기실 수 있어서 추천 드리는 걸요!"
                         imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/DBRBusiness.png"
+                        benefitIds: [101]
+                        requestId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000"
+                        impressionId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000-imp-1-550e8400-e29b-41d4-a716-446655440001"
+                        candidateSource: "es_vector"
+                        algorithmVersion: "personalized-es-quality-v1"
+                        fallbackFlags: []
                       - rank: 2
                         partnerName: "네이버플러스 멤버십"
                         reason: "네이버 쇼핑 적립 혜택도 받고, 디지털 콘텐츠도 누릴 수 있어 유용할 것 같아 추천합니다!"
                         imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/naverplus.jpg"
+                        benefitIds: [102]
+                        requestId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000"
+                        impressionId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000-imp-2-550e8400-e29b-41d4-a716-446655440002"
+                        candidateSource: "es_vector"
+                        algorithmVersion: "personalized-es-quality-v1"
+                        fallbackFlags: []
                     code: RECOMMENDATION_SUCCESS
                     status: OK
                     message: 추천 결과 생성 성공

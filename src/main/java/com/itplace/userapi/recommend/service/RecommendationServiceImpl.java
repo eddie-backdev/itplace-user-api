@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -60,9 +61,12 @@ public class RecommendationServiceImpl implements RecommendationService {
     private final BenefitRepository benefitRepository;
     private final LogRepository logRepository;
     private final FavoriteRepository favoriteRepository;
+    private final RecommendationTraceRecorder traceRecorder;
 
     @Transactional
     public List<Recommendations> recommend(Long userId, int topK) {
+        long startedAt = System.nanoTime();
+        String requestId = newRequestId(userId);
         LocalDateTime threshold = LocalDateTime.now().minusDays(EXPIRED_DAYS); // n일 기준으로 추천 갱신
 
         // 최근 추천 기록 있으면 동일 batch 안의 active 추천만 반환한다.
@@ -74,7 +78,17 @@ public class RecommendationServiceImpl implements RecommendationService {
                     .findByUser_IdAndCacheBatchIdAndActiveTrueOrderByRankAsc(
                             userId, latestRecommendation.getCacheBatchId());
             if (!saved.isEmpty()) {
-                return RecommendationMapper.toDtoList(saved);
+                List<Recommendations> cached = RecommendationMapper.toDtoList(saved);
+                attachRequestAttribution(cached, requestId, ALGORITHM_VERSION, List.of("cached_recommendation"));
+                traceRecorder.recordCached(
+                        userId,
+                        requestId,
+                        ALGORITHM_VERSION,
+                        cached,
+                        Map.of("total", elapsedMs(startedAt)),
+                        "none"
+                );
+                return cached;
             }
         }
 
@@ -85,6 +99,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         List<Candidate> candidates = aiService.vectorSearch(uf, candidateSize(topK));
         // 재랭킹 및 이유 생성
         List<Recommendations> recommendations = aiService.rerankAndExplain(uf, candidates, topK);
+        attachRequestAttribution(recommendations, requestId, ALGORITHM_VERSION, List.of());
 
         // 저장
         User user = userRepository.findById(userId)
@@ -111,6 +126,16 @@ public class RecommendationServiceImpl implements RecommendationService {
 
         recommendationRepository.deactivateActiveByUserId(userId);
         recommendationRepository.saveAll(entities);
+        traceRecorder.recordGenerated(
+                userId,
+                requestId,
+                ALGORITHM_VERSION,
+                candidates,
+                recommendations,
+                Map.of("total", elapsedMs(startedAt)),
+                latestRecommendation == null ? "miss" : "refresh",
+                latestRecommendation == null ? "expired_or_absent" : "invalidating_signal"
+        );
 
         return recommendations;
     }
@@ -151,8 +176,41 @@ public class RecommendationServiceImpl implements RecommendationService {
         return Math.min(Math.max(topK * 3, MIN_CANDIDATE_SIZE), MAX_CANDIDATE_SIZE);
     }
 
+    private void attachRequestAttribution(List<Recommendations> recommendations,
+                                          String requestId,
+                                          String algorithmVersion,
+                                          List<String> additionalFallbackFlags) {
+        for (Recommendations recommendation : recommendations) {
+            recommendation.setRequestId(requestId);
+            recommendation.setImpressionId(newImpressionId(requestId, recommendation.getRank()));
+            recommendation.setAlgorithmVersion(algorithmVersion);
+            if (recommendation.getCandidateSource() == null || recommendation.getCandidateSource().isBlank()) {
+                recommendation.setCandidateSource(additionalFallbackFlags.contains("cached_recommendation")
+                        ? "cached_recommendation"
+                        : "unknown");
+            }
+            if (!additionalFallbackFlags.isEmpty()) {
+                recommendation.setFallbackFlags(additionalFallbackFlags);
+            } else if (recommendation.getFallbackFlags() == null) {
+                recommendation.setFallbackFlags(List.of());
+            }
+        }
+    }
+
+    private long elapsedMs(long startedAt) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+    }
+
     private String newCacheBatchId(Long userId) {
         return "rec-" + userId + "-" + UUID.randomUUID();
+    }
+
+    private String newRequestId(Long userId) {
+        return "rec-req-" + userId + "-" + UUID.randomUUID();
+    }
+
+    private String newImpressionId(String requestId, int rank) {
+        return requestId + "-imp-" + rank + "-" + UUID.randomUUID();
     }
 
 }

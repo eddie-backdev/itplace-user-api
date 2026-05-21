@@ -20,6 +20,9 @@ public class RecommendationMapper {
                 .reason(dto.getReason())
                 .imgUrl(dto.getImgUrl())
                 .cacheBatchId(cacheBatchId)
+                .requestId(dto.getRequestId())
+                .impressionId(dto.getImpressionId())
+                .candidateSource(dto.getCandidateSource())
                 .algorithmVersion(algorithmVersion)
                 .active(true)
                 .benefits(benefits)
@@ -37,6 +40,10 @@ public class RecommendationMapper {
                 .reason(entity.getReason())
                 .imgUrl(entity.getImgUrl())
                 .benefitIds(benefitIds)
+                .requestId(entity.getRequestId())
+                .impressionId(entity.getImpressionId())
+                .candidateSource(entity.getCandidateSource())
+                .algorithmVersion(entity.getAlgorithmVersion())
                 .build();
     }
 
@@ -46,4 +53,3 @@ public class RecommendationMapper {
                 .toList();
     }
 }
-
