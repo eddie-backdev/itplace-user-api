@@ -2,6 +2,12 @@ package com.itplace.userapi.benefit.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
@@ -31,6 +37,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class BenefitServiceImplTest {
@@ -53,8 +61,92 @@ class BenefitServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private BenefitHybridSearchService benefitHybridSearchService;
+
     @InjectMocks
     private BenefitServiceImpl benefitService;
+
+    @Test
+    void getBenefitList_usesHybridSearchForKeywordAndPreservesRankOrder() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("IT 카페")
+                .category("카페")
+                .image("image")
+                .build();
+        Benefit benefit = benefit(20L, partner, Carrier.LGU, "아메리카노 할인", Grade.VIP, "VIP 커피 할인");
+        BenefitCarrierPolicy policy = policy(120L, benefit, Carrier.LGU, "LGU 사용법", "https://lgu.example");
+        CarrierTierBenefit tier = carrierTier(policy, Grade.VIP, "VIP 커피 할인");
+
+        when(benefitHybridSearchService.search(eq("커피"), eq(MainCategory.BASIC_BENEFIT), eq("카페"),
+                eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU)), any(PageRequest.class)))
+                .thenReturn(new BenefitHybridSearchResult(List.of(20L), 1, 0, 1, false));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of(tier));
+        when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(java.util.Collections.singletonList(new Object[]{20L, 3L}));
+
+        var result = benefitService.getBenefitList(
+                MainCategory.BASIC_BENEFIT,
+                "카페",
+                UsageType.OFFLINE,
+                "  커피  ",
+                List.of(Carrier.LGU),
+                null,
+                PageRequest.of(0, 12)
+        );
+
+        assertThat(result.getContent())
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.getBenefitId()).isEqualTo(20L);
+                    assertThat(item.getBenefitName()).isEqualTo("아메리카노 할인");
+                    assertThat(item.getCarrier()).isEqualTo(Carrier.LGU);
+                    assertThat(item.getFavoriteCount()).isEqualTo(3L);
+                });
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(benefitRepository, never()).findFilteredBenefits(any(), any(), any(), any(), anyBoolean(), anyList(), any());
+    }
+
+    @Test
+    void getBenefitList_fallsBackToDatabaseSearchWhenHybridSearchFails() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("IT 카페")
+                .category("카페")
+                .image("image")
+                .build();
+        Benefit benefit = benefit(20L, partner, Carrier.LGU, "아메리카노 할인", Grade.VIP, "VIP 커피 할인");
+        BenefitCarrierPolicy policy = policy(120L, benefit, Carrier.LGU, "LGU 사용법", "https://lgu.example");
+
+        when(benefitHybridSearchService.search(eq("커피"), eq(MainCategory.BASIC_BENEFIT), eq("카페"),
+                eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU)), any(PageRequest.class)))
+                .thenThrow(new IllegalStateException("es unavailable"));
+        when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
+                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(List.of());
+
+        var result = benefitService.getBenefitList(
+                MainCategory.BASIC_BENEFIT,
+                "카페",
+                UsageType.OFFLINE,
+                "  커피  ",
+                List.of(Carrier.LGU),
+                null,
+                PageRequest.of(0, 12)
+        );
+
+        assertThat(result.getContent())
+                .singleElement()
+                .satisfies(item -> assertThat(item.getBenefitId()).isEqualTo(20L));
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
+                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), any(PageRequest.class));
+    }
 
     @Test
     void getBenefitDetail_handlesMissingManualAndUrlWithoutNullPointerException() {
