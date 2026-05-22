@@ -52,6 +52,7 @@ public class BenefitServiceImpl implements BenefitService {
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
+    private final BenefitHybridSearchService benefitHybridSearchService;
     private static final List<Carrier> CARRIER_DISPLAY_ORDER = List.of(Carrier.SKT, Carrier.KT, Carrier.LGU);
 
     @Override
@@ -70,23 +71,71 @@ public class BenefitServiceImpl implements BenefitService {
         List<String> carrierNames = carrierFilterEnabled
                 ? carrierFilters.stream().map(Carrier::name).toList()
                 : Arrays.stream(Carrier.values()).map(Carrier::name).toList();
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        if (normalizedKeyword != null) {
+            try {
+                BenefitHybridSearchResult hybridResult = benefitHybridSearchService.search(
+                        normalizedKeyword,
+                        mainCategory,
+                        category,
+                        filter,
+                        carrierFilters,
+                        pageable
+                );
+                List<Benefit> orderedBenefits = orderedBenefits(hybridResult.benefitIds());
+                return toBenefitListPage(
+                        orderedBenefits,
+                        carrierFilters,
+                        userId,
+                        hybridResult.currentPage(),
+                        hybridResult.totalPages(),
+                        hybridResult.totalElements(),
+                        hybridResult.hasNext()
+                );
+            } catch (RuntimeException exception) {
+                log.warn("혜택 하이브리드 검색 실패로 DB 검색으로 대체합니다. keyword={}, reason={}",
+                        normalizedKeyword, exception.getMessage());
+            }
+        }
 
         Page<Benefit> benefitPage = benefitRepository.findFilteredBenefits(
                 mainCategory != null ? mainCategory.getLabel() : null,
                 category,
                 filter != null ? filter.name() : null,
-                keyword,
+                normalizedKeyword,
                 carrierFilterEnabled,
                 carrierNames,
                 pageable
         );
 
-        List<Benefit> benefitList = benefitPage.getContent();
+        return toBenefitListPage(
+                benefitPage.getContent(),
+                carrierFilters,
+                userId,
+                benefitPage.getNumber(),
+                benefitPage.getTotalPages(),
+                benefitPage.getTotalElements(),
+                benefitPage.hasNext()
+        );
+    }
+
+    private PageResult<BenefitListResponse> toBenefitListPage(
+            List<Benefit> benefitList,
+            List<Carrier> carrierFilters,
+            Long userId,
+            int currentPage,
+            int totalPages,
+            long totalElements,
+            boolean hasNext
+    ) {
         List<Long> benefitIds = benefitList.stream()
                 .map(Benefit::getBenefitId)
                 .toList();
 
-        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(benefitList);
+        List<BenefitCarrierPolicy> policies = benefitList.isEmpty()
+                ? List.of()
+                : benefitCarrierPolicyRepository.findAllByBenefitIn(benefitList);
         Map<Long, List<BenefitCarrierPolicy>> policyMap = policies.stream()
                 .collect(Collectors.groupingBy(policy -> policy.getBenefit().getBenefitId()));
         List<CarrierTierBenefit> allTierBenefits = policies.isEmpty()
@@ -96,16 +145,18 @@ public class BenefitServiceImpl implements BenefitService {
                 .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
 
         // 즐겨찾기 여부를 한 번에 가져오기
-        Set<Long> userFavoriteBenefitIds = (userId != null)
+        Set<Long> userFavoriteBenefitIds = (userId != null && !benefitIds.isEmpty())
                 ? new HashSet<>(favoriteRepository.findFavoriteBenefitIdsByUser(userId, benefitIds))
                 : Collections.emptySet();
 
         // 즐겨찾기 수를 한 번에 가져오기
-        Map<Long, Long> favoriteCountMap = favoriteRepository.countFavoritesByBenefitIds(benefitIds).stream()
-                .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]
-                ));
+        Map<Long, Long> favoriteCountMap = benefitIds.isEmpty()
+                ? Map.of()
+                : favoriteRepository.countFavoritesByBenefitIds(benefitIds).stream()
+                        .collect(Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> (Long) row[1]
+                        ));
 
         // DTO 변환
         List<BenefitListResponse> result = benefitList.stream()
@@ -143,11 +194,30 @@ public class BenefitServiceImpl implements BenefitService {
 
         return PageResult.<BenefitListResponse>builder()
                 .content(result)
-                .currentPage(benefitPage.getNumber())
-                .totalPages(benefitPage.getTotalPages())
-                .totalElements(benefitPage.getTotalElements())
-                .hasNext(benefitPage.hasNext())
+                .currentPage(currentPage)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .hasNext(hasNext)
                 .build();
+    }
+
+    private List<Benefit> orderedBenefits(List<Long> benefitIds) {
+        if (benefitIds == null || benefitIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Benefit> benefitsById = benefitRepository.findAllByIdWithPartner(benefitIds).stream()
+                .collect(Collectors.toMap(Benefit::getBenefitId, benefit -> benefit));
+        return benefitIds.stream()
+                .map(benefitsById::get)
+                .filter(benefit -> benefit != null && !Boolean.FALSE.equals(benefit.getActive()))
+                .toList();
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
     }
 
     @Override
