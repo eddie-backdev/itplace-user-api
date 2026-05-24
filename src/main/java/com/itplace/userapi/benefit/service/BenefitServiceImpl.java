@@ -61,6 +61,7 @@ public class BenefitServiceImpl implements BenefitService {
             MainCategory mainCategory,
             String category,
             UsageType filter,
+            String sort,
             String keyword,
             List<Carrier> carriers,
             Long userId,
@@ -72,8 +73,9 @@ public class BenefitServiceImpl implements BenefitService {
                 ? carrierFilters.stream().map(Carrier::name).toList()
                 : Arrays.stream(Carrier.values()).map(Carrier::name).toList();
         String normalizedKeyword = normalizeKeyword(keyword);
+        BenefitListSort sortMode = BenefitListSort.from(sort, normalizedKeyword != null);
 
-        if (normalizedKeyword != null) {
+        if (normalizedKeyword != null && sortMode == BenefitListSort.RELEVANCE) {
             try {
                 BenefitHybridSearchResult hybridResult = benefitHybridSearchService.search(
                         normalizedKeyword,
@@ -106,6 +108,7 @@ public class BenefitServiceImpl implements BenefitService {
                 normalizedKeyword,
                 carrierFilterEnabled,
                 carrierNames,
+                sortMode.repositoryKey(),
                 pageable
         );
 
@@ -218,6 +221,39 @@ public class BenefitServiceImpl implements BenefitService {
             return null;
         }
         return keyword.trim();
+    }
+
+    private enum BenefitListSort {
+        RELEVANCE("RELEVANCE"),
+        POPULARITY("POPULARITY"),
+        NAME_ASC("NAME_ASC"),
+        NAME_DESC("NAME_DESC"),
+        LATEST("LATEST");
+
+        private final String repositoryKey;
+
+        BenefitListSort(String repositoryKey) {
+            this.repositoryKey = repositoryKey;
+        }
+
+        private String repositoryKey() {
+            return repositoryKey;
+        }
+
+        private static BenefitListSort from(String sort, boolean keywordSearch) {
+            if (sort == null || sort.isBlank()) {
+                return keywordSearch ? RELEVANCE : POPULARITY;
+            }
+            String normalized = sort.trim().toUpperCase().replace("-", "_");
+            return switch (normalized) {
+                case "RELEVANCE", "ACCURACY", "SCORE" -> RELEVANCE;
+                case "NAME", "NAME_ASC", "ALPHABETICAL" -> NAME_ASC;
+                case "NAME_DESC" -> NAME_DESC;
+                case "LATEST", "RECENT", "NEWEST", "ID_DESC" -> LATEST;
+                case "POPULARITY", "FAVORITE", "FAVORITES" -> POPULARITY;
+                default -> POPULARITY;
+            };
+        }
     }
 
     @Override
