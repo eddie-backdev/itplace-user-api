@@ -15,6 +15,7 @@ public interface BenefitService {
             MainCategory mainCategory,
             String category,
             UsageType filter,
+            String sort,
             String keyword,
             List<Carrier> carriers,
             Long userId,

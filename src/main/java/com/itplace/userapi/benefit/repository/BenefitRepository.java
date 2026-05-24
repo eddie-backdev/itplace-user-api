@@ -45,7 +45,12 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
                 GROUP BY b.benefitId
-                ORDER BY COUNT(f.benefitId) DESC
+                ORDER BY
+                  CASE WHEN :sort = 'NAME_ASC' THEN LOWER(b.benefitName) END ASC,
+                  CASE WHEN :sort = 'NAME_DESC' THEN LOWER(b.benefitName) END DESC,
+                  CASE WHEN :sort = 'LATEST' THEN b.benefitId END DESC,
+                  COUNT(f.benefitId) DESC,
+                  b.benefitId ASC
             """,
             countQuery = """
                 SELECT COUNT(DISTINCT b.benefitId) FROM benefit b
@@ -71,6 +76,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
             @Param("keyword") String keyword,
             @Param("carrierFilterEnabled") boolean carrierFilterEnabled,
             @Param("carriers") List<String> carriers,
+            @Param("sort") String sort,
             Pageable pageable
     );
 

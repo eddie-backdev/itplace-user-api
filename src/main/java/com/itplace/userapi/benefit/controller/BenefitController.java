@@ -38,7 +38,7 @@ public class BenefitController {
             @RequestParam(required = false) MainCategory mainCategory,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) UsageType filter,
-            @RequestParam(required = false, defaultValue = "POPULARITY") String sort,
+            @RequestParam(required = false) String sort,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Carrier carrier,
             @RequestParam(required = false) List<String> carriers,
@@ -49,7 +49,7 @@ public class BenefitController {
         Pageable pageable = PageRequest.of(page, size);
         Long userId = (principalDetails != null) ? principalDetails.getUserId() : null;
         PageResult<BenefitListResponse> result = benefitService.getBenefitList(
-                mainCategory, category, filter, keyword, resolveCarriers(carrier, carriers), userId, pageable
+                mainCategory, category, filter, sort, keyword, resolveCarriers(carrier, carriers), userId, pageable
         );
         ApiResponse<PageResult<BenefitListResponse>> body = ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result);
         return body.toResponseEntity();

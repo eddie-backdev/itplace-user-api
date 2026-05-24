@@ -40,7 +40,7 @@ class BenefitControllerTest {
 
     @Test
     void getBenefits_supportsLegacySingularPath() throws Exception {
-        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(List.of()), eq(null), any(Pageable.class)))
+        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null), eq(List.of()), eq(null), any(Pageable.class)))
                 .thenReturn(PageResult.<BenefitListResponse>builder()
                         .content(List.of())
                         .totalElements(0)
@@ -53,12 +53,12 @@ class BenefitControllerTest {
                         .param("mainCategory", "BASIC_BENEFIT"))
                 .andExpect(status().isOk());
 
-        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(List.of()), eq(null), any(Pageable.class));
+        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null), eq(List.of()), eq(null), any(Pageable.class));
     }
 
     @Test
     void getBenefitsPassesExplicitCarrierFilter() throws Exception {
-        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT)), eq(null), any(Pageable.class)))
+        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT)), eq(null), any(Pageable.class)))
                 .thenReturn(PageResult.<BenefitListResponse>builder()
                         .content(List.of())
                         .totalElements(0)
@@ -72,12 +72,12 @@ class BenefitControllerTest {
                         .param("carrier", "SKT"))
                 .andExpect(status().isOk());
 
-        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT)), eq(null), any(Pageable.class));
+        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT)), eq(null), any(Pageable.class));
     }
 
     @Test
     void getBenefitsPassesMultipleCarrierFilters() throws Exception {
-        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class)))
+        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class)))
                 .thenReturn(PageResult.<BenefitListResponse>builder()
                         .content(List.of())
                         .totalElements(0)
@@ -91,7 +91,26 @@ class BenefitControllerTest {
                         .param("carriers", "SKT,KT"))
                 .andExpect(status().isOk());
 
-        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class));
+        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class));
+    }
+
+    @Test
+    void getBenefitsPassesSortParameter() throws Exception {
+        when(benefitService.getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq("NAME_ASC"), eq(null), eq(List.of()), eq(null), any(Pageable.class)))
+                .thenReturn(PageResult.<BenefitListResponse>builder()
+                        .content(List.of())
+                        .totalElements(0)
+                        .totalPages(0)
+                        .currentPage(0)
+                        .hasNext(false)
+                        .build());
+
+        mockMvc.perform(get("/api/v1/benefits")
+                        .param("mainCategory", "BASIC_BENEFIT")
+                        .param("sort", "NAME_ASC"))
+                .andExpect(status().isOk());
+
+        verify(benefitService).getBenefitList(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq("NAME_ASC"), eq(null), eq(List.of()), eq(null), any(Pageable.class));
     }
 
 }

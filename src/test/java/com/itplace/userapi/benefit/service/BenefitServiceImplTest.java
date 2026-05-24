@@ -91,6 +91,7 @@ class BenefitServiceImplTest {
                 MainCategory.BASIC_BENEFIT,
                 "카페",
                 UsageType.OFFLINE,
+                null,
                 "  커피  ",
                 List.of(Carrier.LGU),
                 null,
@@ -106,7 +107,7 @@ class BenefitServiceImplTest {
                     assertThat(item.getFavoriteCount()).isEqualTo(3L);
                 });
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(benefitRepository, never()).findFilteredBenefits(any(), any(), any(), any(), anyBoolean(), anyList(), any());
+        verify(benefitRepository, never()).findFilteredBenefits(any(), any(), any(), any(), anyBoolean(), anyList(), any(), any());
     }
 
     @Test
@@ -124,7 +125,7 @@ class BenefitServiceImplTest {
                 eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU)), any(PageRequest.class)))
                 .thenThrow(new IllegalStateException("es unavailable"));
         when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
-                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), any(PageRequest.class)))
+                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("RELEVANCE"), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of());
@@ -134,6 +135,7 @@ class BenefitServiceImplTest {
                 MainCategory.BASIC_BENEFIT,
                 "카페",
                 UsageType.OFFLINE,
+                null,
                 "  커피  ",
                 List.of(Carrier.LGU),
                 null,
@@ -145,7 +147,44 @@ class BenefitServiceImplTest {
                 .satisfies(item -> assertThat(item.getBenefitId()).isEqualTo(20L));
         assertThat(result.getTotalElements()).isEqualTo(1);
         verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
-                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), any(PageRequest.class));
+                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("RELEVANCE"), any(PageRequest.class));
+    }
+
+    @Test
+    void getBenefitList_usesDatabaseSearchWhenKeywordSortIsPopularity() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("IT 카페")
+                .category("카페")
+                .image("image")
+                .build();
+        Benefit benefit = benefit(20L, partner, Carrier.LGU, "아메리카노 할인", Grade.VIP, "VIP 커피 할인");
+        BenefitCarrierPolicy policy = policy(120L, benefit, Carrier.LGU, "LGU 사용법", "https://lgu.example");
+
+        when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
+                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("POPULARITY"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(List.of());
+
+        var result = benefitService.getBenefitList(
+                MainCategory.BASIC_BENEFIT,
+                "카페",
+                UsageType.OFFLINE,
+                "POPULARITY",
+                "  커피  ",
+                List.of(Carrier.LGU),
+                null,
+                PageRequest.of(0, 12)
+        );
+
+        assertThat(result.getContent())
+                .singleElement()
+                .satisfies(item -> assertThat(item.getBenefitId()).isEqualTo(20L));
+        verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
+        verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
+                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("POPULARITY"), any(PageRequest.class));
     }
 
     @Test
