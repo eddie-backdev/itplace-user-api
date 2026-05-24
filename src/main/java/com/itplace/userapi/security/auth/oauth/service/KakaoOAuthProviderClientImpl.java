@@ -3,6 +3,7 @@ package com.itplace.userapi.security.auth.oauth.service;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.oauth.dto.response.KakaoUserProfile;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
+import java.time.Duration;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Component
 @RequiredArgsConstructor
 public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
+
+    private static final Duration KAKAO_API_TIMEOUT = Duration.ofSeconds(5);
 
     private final WebClient.Builder webClientBuilder;
 
@@ -66,7 +69,7 @@ public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
                     .body(form)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                    .block();
+                    .block(KAKAO_API_TIMEOUT);
         } catch (RuntimeException ex) {
             throw new InvalidCredentialsException(SecurityCode.INVALID_INPUT_VALUE);
         }
@@ -86,7 +89,7 @@ public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                    .block();
+                    .block(KAKAO_API_TIMEOUT);
             if (userInfo == null) {
                 throw new InvalidCredentialsException(SecurityCode.INVALID_INPUT_VALUE);
             }

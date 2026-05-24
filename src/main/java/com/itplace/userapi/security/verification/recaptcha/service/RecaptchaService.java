@@ -2,6 +2,7 @@ package com.itplace.userapi.security.verification.recaptcha.service;
 
 import com.itplace.userapi.security.verification.recaptcha.dto.request.RecaptchaRequest;
 import com.itplace.userapi.security.verification.recaptcha.dto.response.RecaptchaResponse;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Service
 @RequiredArgsConstructor
 public class RecaptchaService {
+
+    private static final Duration RECAPTCHA_TIMEOUT = Duration.ofSeconds(5);
 
     private final WebClient webClient;
 
@@ -37,7 +40,7 @@ public class RecaptchaService {
                 .body(BodyInserters.fromFormData(formData))
                 .retrieve()
                 .bodyToMono(RecaptchaResponse.class)
-                .block();
+                .block(RECAPTCHA_TIMEOUT);
 
         return response != null && response.isSuccess();
     }
