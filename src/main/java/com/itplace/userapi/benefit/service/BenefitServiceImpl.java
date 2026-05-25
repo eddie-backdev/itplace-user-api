@@ -120,14 +120,23 @@ public class BenefitServiceImpl implements BenefitService {
                 sortMode.repositoryKey(),
                 pageable
         );
+        List<Benefit> benefitContent = normalizedKeyword == null
+                ? benefitPage.getContent()
+                : expandSamePartnerBenefits(
+                        benefitPage.getContent(),
+                        mainCategory,
+                        category,
+                        filter,
+                        carrierFilters
+                );
 
         return toBenefitListPage(
-                benefitPage.getContent(),
+                benefitContent,
                 carrierFilters,
                 userId,
                 benefitPage.getNumber(),
                 benefitPage.getTotalPages(),
-                benefitPage.getTotalElements(),
+                Math.max(benefitPage.getTotalElements(), benefitContent.size()),
                 benefitPage.hasNext()
         );
     }

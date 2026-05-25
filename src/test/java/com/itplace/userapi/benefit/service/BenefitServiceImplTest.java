@@ -177,6 +177,9 @@ class BenefitServiceImplTest {
         when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
                 eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("RELEVANCE"), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
+                eq(List.of(10L)), eq(MainCategory.BASIC_BENEFIT), eq("카페"), eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU))))
+                .thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of());
         when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(List.of());
@@ -214,6 +217,9 @@ class BenefitServiceImplTest {
         when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
                 eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("POPULARITY"), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
+                eq(List.of(10L)), eq(MainCategory.BASIC_BENEFIT), eq("카페"), eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU))))
+                .thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of());
         when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(List.of());
@@ -235,6 +241,48 @@ class BenefitServiceImplTest {
         verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
         verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
                 eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("POPULARITY"), any(PageRequest.class));
+    }
+
+    @Test
+    void getBenefitList_expandsDatabaseSortedSearchToSamePartnerCarrierBenefits() {
+        Partner partner = Partner.builder()
+                .partnerId(30L)
+                .partnerName("배스킨라빈스")
+                .category("푸드")
+                .image("image")
+                .build();
+        Benefit kt = benefit(510L, partner, Carrier.KT, "배스킨라빈스 KT 멤버십", Grade.KT_VIP, "아이스크림 케이크 할인");
+        Benefit lgu = benefit(647L, partner, Carrier.LGU, "배스킨라빈스 LGU+ 멤버십", Grade.VIP, "쿼터 사이즈 할인");
+        BenefitCarrierPolicy ktPolicy = kt.getCarrierPolicies().get(0);
+        BenefitCarrierPolicy lguPolicy = lgu.getCarrierPolicies().get(0);
+
+        when(benefitRepository.findFilteredBenefits(eq(null), eq(null), eq(null), eq("아이스크림"),
+                eq(false), eq(Arrays.stream(Carrier.values()).map(Carrier::name).toList()), eq("POPULARITY"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(kt), PageRequest.of(0, 12), 1));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                .thenReturn(List.of(kt, lgu));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(kt, lgu))).thenReturn(List.of(ktPolicy, lguPolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy, lguPolicy)))
+                .thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(List.of(510L, 647L))).thenReturn(List.of());
+
+        var result = benefitService.getBenefitList(
+                null,
+                null,
+                null,
+                "POPULARITY",
+                "아이스크림",
+                List.of(),
+                null,
+                PageRequest.of(0, 12)
+        );
+
+        assertThat(result.getContent())
+                .extracting(BenefitListResponse::getBenefitId)
+                .containsExactly(510L, 647L);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
     }
 
     @Test
