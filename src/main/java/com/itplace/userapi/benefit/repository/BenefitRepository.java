@@ -29,6 +29,29 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
     @Query("SELECT b FROM Benefit b JOIN FETCH b.partner WHERE b.benefitId IN :benefitIds")
     List<Benefit> findAllByIdWithPartner(@Param("benefitIds") List<Long> benefitIds);
 
+    @Query("""
+                SELECT DISTINCT b
+                FROM Benefit b
+                JOIN FETCH b.partner p
+                JOIN b.carrierPolicies bcp
+                WHERE p.partnerId IN :partnerIds
+                  AND (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
+                  AND (:category IS NULL OR p.category = :category)
+                  AND (:filter IS NULL OR
+                       (:filter = com.itplace.userapi.benefit.entity.enums.UsageType.ONLINE AND bcp.usageType IN (com.itplace.userapi.benefit.entity.enums.UsageType.ONLINE, com.itplace.userapi.benefit.entity.enums.UsageType.BOTH)) OR
+                       (:filter = com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE AND bcp.usageType IN (com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE, com.itplace.userapi.benefit.entity.enums.UsageType.BOTH)))
+                  AND bcp.carrier IN :carriers
+                  AND COALESCE(b.active, true) = true
+                  AND COALESCE(bcp.active, true) = true
+            """)
+    List<Benefit> findActiveBenefitsByPartnerIdsWithPartner(
+            @Param("partnerIds") List<Long> partnerIds,
+            @Param("mainCategory") MainCategory mainCategory,
+            @Param("category") String category,
+            @Param("filter") com.itplace.userapi.benefit.entity.enums.UsageType filter,
+            @Param("carriers") List<com.itplace.userapi.benefit.entity.enums.Carrier> carriers
+    );
+
     @Query(
             value = """
                 SELECT b.* FROM benefit b

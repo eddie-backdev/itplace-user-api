@@ -85,14 +85,20 @@ public class BenefitServiceImpl implements BenefitService {
                         carrierFilters,
                         pageable
                 );
-                List<Benefit> orderedBenefits = orderedBenefits(hybridResult.benefitIds());
+                List<Benefit> orderedBenefits = expandSamePartnerBenefits(
+                        orderedBenefits(hybridResult.benefitIds()),
+                        mainCategory,
+                        category,
+                        filter,
+                        carrierFilters
+                );
                 return toBenefitListPage(
                         orderedBenefits,
                         carrierFilters,
                         userId,
                         hybridResult.currentPage(),
                         hybridResult.totalPages(),
-                        hybridResult.totalElements(),
+                        Math.max(hybridResult.totalElements(), orderedBenefits.size()),
                         hybridResult.hasNext()
                 );
             } catch (RuntimeException exception) {
@@ -214,6 +220,66 @@ public class BenefitServiceImpl implements BenefitService {
                 .map(benefitsById::get)
                 .filter(benefit -> benefit != null && !Boolean.FALSE.equals(benefit.getActive()))
                 .toList();
+    }
+
+    private List<Benefit> expandSamePartnerBenefits(List<Benefit> rankedBenefits,
+                                                    MainCategory mainCategory,
+                                                    String category,
+                                                    UsageType filter,
+                                                    List<Carrier> carrierFilters) {
+        if (rankedBenefits == null || rankedBenefits.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> partnerIds = rankedBenefits.stream()
+                .map(Benefit::getPartner)
+                .filter(java.util.Objects::nonNull)
+                .map(partner -> partner.getPartnerId())
+                .distinct()
+                .toList();
+        if (partnerIds.isEmpty()) {
+            return rankedBenefits;
+        }
+
+        List<Carrier> effectiveCarriers = carrierFilters == null || carrierFilters.isEmpty()
+                ? Arrays.stream(Carrier.values()).toList()
+                : carrierFilters;
+        Map<Long, List<Benefit>> siblingsByPartnerId = benefitRepository
+                .findActiveBenefitsByPartnerIdsWithPartner(partnerIds, mainCategory, category, filter, effectiveCarriers)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        benefit -> benefit.getPartner().getPartnerId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        Map<Long, Benefit> expanded = new LinkedHashMap<>();
+        for (Benefit rankedBenefit : rankedBenefits) {
+            expanded.putIfAbsent(rankedBenefit.getBenefitId(), rankedBenefit);
+            Long partnerId = rankedBenefit.getPartner() == null ? null : rankedBenefit.getPartner().getPartnerId();
+            if (partnerId == null) {
+                continue;
+            }
+            siblingsByPartnerId.getOrDefault(partnerId, List.of()).stream()
+                    .sorted(Comparator
+                            .comparing((Benefit benefit) -> representativeCarrierSortIndex(benefit, effectiveCarriers))
+                            .thenComparing(benefit -> benefit.getBenefitId() == null ? Long.MAX_VALUE : benefit.getBenefitId()))
+                    .forEach(benefit -> expanded.putIfAbsent(benefit.getBenefitId(), benefit));
+        }
+
+        return List.copyOf(expanded.values());
+    }
+
+    private int representativeCarrierSortIndex(Benefit benefit, List<Carrier> effectiveCarriers) {
+        if (benefit == null || benefit.getCarrierPolicies() == null || benefit.getCarrierPolicies().isEmpty()) {
+            return Integer.MAX_VALUE;
+        }
+        return benefit.getCarrierPolicies().stream()
+                .map(BenefitCarrierPolicy::getCarrier)
+                .filter(carrier -> effectiveCarriers == null || effectiveCarriers.contains(carrier))
+                .mapToInt(this::carrierSortIndex)
+                .min()
+                .orElse(Integer.MAX_VALUE);
     }
 
     private String normalizeKeyword(String keyword) {
