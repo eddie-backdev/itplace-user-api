@@ -76,8 +76,9 @@ public class BenefitServiceImpl implements BenefitService {
         BenefitListSort sortMode = BenefitListSort.from(sort, normalizedKeyword != null);
 
         if (normalizedKeyword != null && sortMode == BenefitListSort.RELEVANCE) {
+            BenefitHybridSearchResult hybridResult = null;
             try {
-                BenefitHybridSearchResult hybridResult = benefitHybridSearchService.search(
+                hybridResult = benefitHybridSearchService.search(
                         normalizedKeyword,
                         mainCategory,
                         category,
@@ -85,6 +86,11 @@ public class BenefitServiceImpl implements BenefitService {
                         carrierFilters,
                         pageable
                 );
+            } catch (RuntimeException exception) {
+                log.warn("혜택 하이브리드 검색 실패로 DB 검색으로 대체합니다. keyword={}, reason={}",
+                        normalizedKeyword, exception.getMessage());
+            }
+            if (hybridResult != null) {
                 List<Benefit> orderedBenefits = expandSamePartnerBenefits(
                         orderedBenefits(hybridResult.benefitIds()),
                         mainCategory,
@@ -101,9 +107,6 @@ public class BenefitServiceImpl implements BenefitService {
                         Math.max(hybridResult.totalElements(), orderedBenefits.size()),
                         hybridResult.hasNext()
                 );
-            } catch (RuntimeException exception) {
-                log.warn("혜택 하이브리드 검색 실패로 DB 검색으로 대체합니다. keyword={}, reason={}",
-                        normalizedKeyword, exception.getMessage());
             }
         }
 
