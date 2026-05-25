@@ -37,9 +37,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 WHERE p.partnerId IN :partnerIds
                   AND (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
-                  AND (:filter IS NULL OR
-                       (:filter = com.itplace.userapi.benefit.entity.enums.UsageType.ONLINE AND bcp.usageType IN (com.itplace.userapi.benefit.entity.enums.UsageType.ONLINE, com.itplace.userapi.benefit.entity.enums.UsageType.BOTH)) OR
-                       (:filter = com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE AND bcp.usageType IN (com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE, com.itplace.userapi.benefit.entity.enums.UsageType.BOTH)))
+                  AND (:filter IS NULL OR bcp.usageType = :filter OR bcp.usageType = com.itplace.userapi.benefit.entity.enums.UsageType.BOTH)
                   AND bcp.carrier IN :carriers
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
