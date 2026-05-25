@@ -40,7 +40,18 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                   AND (:filter IS NULL OR
                        (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
                        (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
-                  AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                  AND (:keyword IS NULL OR (
+                       LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(COALESCE(bcp.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(COALESCE(bcp.manual, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       EXISTS (
+                           SELECT 1 FROM carrierTierBenefit ctb
+                           WHERE ctb.benefitCarrierPolicyId = bcp.benefitCarrierPolicyId
+                             AND LOWER(ctb.context) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                       )
+                  ))
                   AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
@@ -62,7 +73,18 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                   AND (:filter IS NULL OR
                        (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
                        (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
-                  AND (:keyword IS NULL OR LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                  AND (:keyword IS NULL OR (
+                       LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(COALESCE(bcp.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       LOWER(COALESCE(bcp.manual, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                       EXISTS (
+                           SELECT 1 FROM carrierTierBenefit ctb
+                           WHERE ctb.benefitCarrierPolicyId = bcp.benefitCarrierPolicyId
+                             AND LOWER(ctb.context) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                       )
+                  ))
                   AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
