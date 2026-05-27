@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,7 @@ public class BenefitServiceImpl implements BenefitService {
     private final UserRepository userRepository;
     private final BenefitHybridSearchService benefitHybridSearchService;
     private static final List<Carrier> CARRIER_DISPLAY_ORDER = List.of(Carrier.SKT, Carrier.KT, Carrier.LGU);
+    private static final int SEARCH_EXPANSION_FETCH_LIMIT = 500;
 
     @Override
     @Transactional(readOnly = true)
@@ -84,7 +86,7 @@ public class BenefitServiceImpl implements BenefitService {
                         category,
                         filter,
                         carrierFilters,
-                        pageable
+                        expansionFetchPageable()
                 );
             } catch (RuntimeException exception) {
                 log.warn("혜택 하이브리드 검색 실패로 DB 검색으로 대체합니다. keyword={}, reason={}",
@@ -98,18 +100,24 @@ public class BenefitServiceImpl implements BenefitService {
                         filter,
                         carrierFilters
                 );
-                return toBenefitListPage(
+                BenefitPage<Benefit> benefitPage = sliceBenefits(
                         orderedBenefits,
+                        pageable,
+                        Math.max(hybridResult.totalElements(), orderedBenefits.size())
+                );
+                return toBenefitListPage(
+                        benefitPage.content(),
                         carrierFilters,
                         userId,
-                        hybridResult.currentPage(),
-                        hybridResult.totalPages(),
-                        Math.max(hybridResult.totalElements(), orderedBenefits.size()),
-                        hybridResult.hasNext()
+                        benefitPage.currentPage(),
+                        benefitPage.totalPages(),
+                        benefitPage.totalElements(),
+                        benefitPage.hasNext()
                 );
             }
         }
 
+        Pageable repositoryPageable = normalizedKeyword == null ? pageable : expansionFetchPageable();
         Page<Benefit> benefitPage = benefitRepository.findFilteredBenefits(
                 mainCategory != null ? mainCategory.getLabel() : null,
                 category,
@@ -118,7 +126,7 @@ public class BenefitServiceImpl implements BenefitService {
                 carrierFilterEnabled,
                 carrierNames,
                 sortMode.repositoryKey(),
-                pageable
+                repositoryPageable
         );
         List<Benefit> benefitContent = normalizedKeyword == null
                 ? benefitPage.getContent()
@@ -129,6 +137,22 @@ public class BenefitServiceImpl implements BenefitService {
                         filter,
                         carrierFilters
                 );
+        if (normalizedKeyword != null) {
+            BenefitPage<Benefit> slicedPage = sliceBenefits(
+                    benefitContent,
+                    pageable,
+                    Math.max(benefitPage.getTotalElements(), benefitContent.size())
+            );
+            return toBenefitListPage(
+                    slicedPage.content(),
+                    carrierFilters,
+                    userId,
+                    slicedPage.currentPage(),
+                    slicedPage.totalPages(),
+                    slicedPage.totalElements(),
+                    slicedPage.hasNext()
+            );
+        }
 
         return toBenefitListPage(
                 benefitContent,
@@ -138,6 +162,28 @@ public class BenefitServiceImpl implements BenefitService {
                 benefitPage.getTotalPages(),
                 Math.max(benefitPage.getTotalElements(), benefitContent.size()),
                 benefitPage.hasNext()
+        );
+    }
+
+    private Pageable expansionFetchPageable() {
+        return PageRequest.of(0, SEARCH_EXPANSION_FETCH_LIMIT);
+    }
+
+    private <T> BenefitPage<T> sliceBenefits(List<T> benefits, Pageable pageable, long totalElementsFloor) {
+        List<T> safeBenefits = benefits == null ? List.of() : benefits;
+        int pageSize = Math.max(pageable.getPageSize(), 1);
+        long offset = pageable.getOffset();
+        int fromIndex = (int) Math.min(offset, safeBenefits.size());
+        int toIndex = Math.min(fromIndex + pageSize, safeBenefits.size());
+        long totalElements = Math.max(totalElementsFloor, safeBenefits.size());
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
+        boolean hasNext = offset + pageSize < totalElements;
+        return new BenefitPage<>(
+                safeBenefits.subList(fromIndex, toIndex),
+                pageable.getPageNumber(),
+                totalPages,
+                totalElements,
+                hasNext
         );
     }
 
@@ -299,6 +345,15 @@ public class BenefitServiceImpl implements BenefitService {
             return null;
         }
         return keyword.trim();
+    }
+
+    private record BenefitPage<T>(
+            List<T> content,
+            int currentPage,
+            int totalPages,
+            long totalElements,
+            boolean hasNext
+    ) {
     }
 
     private enum BenefitListSort {
