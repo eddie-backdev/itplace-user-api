@@ -161,6 +161,48 @@ class BenefitServiceImplTest {
     }
 
     @Test
+    void getBenefitList_paginatesAfterHybridPartnerExpansion() {
+        Partner partner = Partner.builder()
+                .partnerId(30L)
+                .partnerName("배스킨라빈스")
+                .category("푸드")
+                .image("image")
+                .build();
+        Benefit kt = benefit(510L, partner, Carrier.KT, "배스킨라빈스 KT 멤버십", Grade.KT_VIP, "아이스크림 케이크 할인");
+        Benefit lgu = benefit(647L, partner, Carrier.LGU, "배스킨라빈스 LGU+ 멤버십", Grade.VIP, "쿼터 사이즈 할인");
+        BenefitCarrierPolicy ktPolicy = kt.getCarrierPolicies().get(0);
+
+        when(benefitHybridSearchService.search(eq("아이스크림"), eq(null), eq(null),
+                eq(null), eq(List.of()), any(PageRequest.class)))
+                .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
+        when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                .thenReturn(List.of(kt, lgu));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(ktPolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy))).thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(anyList())).thenReturn(List.of());
+
+        var result = benefitService.getBenefitList(
+                null,
+                null,
+                null,
+                null,
+                "아이스크림",
+                List.of(),
+                null,
+                PageRequest.of(0, 1)
+        );
+
+        assertThat(result.getContent())
+                .extracting(BenefitListResponse::getBenefitId)
+                .containsExactly(510L);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.isHasNext()).isTrue();
+    }
+
+    @Test
     void getBenefitList_fallsBackToDatabaseSearchWhenHybridSearchFails() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
@@ -282,6 +324,48 @@ class BenefitServiceImplTest {
                 .extracting(BenefitListResponse::getBenefitId)
                 .containsExactly(510L, 647L);
         assertThat(result.getTotalElements()).isEqualTo(2);
+        verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
+    }
+
+    @Test
+    void getBenefitList_paginatesAfterDatabaseSortedPartnerExpansion() {
+        Partner partner = Partner.builder()
+                .partnerId(30L)
+                .partnerName("배스킨라빈스")
+                .category("푸드")
+                .image("image")
+                .build();
+        Benefit kt = benefit(510L, partner, Carrier.KT, "배스킨라빈스 KT 멤버십", Grade.KT_VIP, "아이스크림 케이크 할인");
+        Benefit lgu = benefit(647L, partner, Carrier.LGU, "배스킨라빈스 LGU+ 멤버십", Grade.VIP, "쿼터 사이즈 할인");
+        BenefitCarrierPolicy ktPolicy = kt.getCarrierPolicies().get(0);
+
+        when(benefitRepository.findFilteredBenefits(eq(null), eq(null), eq(null), eq("아이스크림"),
+                eq(false), eq(Arrays.stream(Carrier.values()).map(Carrier::name).toList()), eq("POPULARITY"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(kt), PageRequest.of(0, 1), 1));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                .thenReturn(List.of(kt, lgu));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(ktPolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy))).thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(anyList())).thenReturn(List.of());
+
+        var result = benefitService.getBenefitList(
+                null,
+                null,
+                null,
+                "POPULARITY",
+                "아이스크림",
+                List.of(),
+                null,
+                PageRequest.of(0, 1)
+        );
+
+        assertThat(result.getContent())
+                .extracting(BenefitListResponse::getBenefitId)
+                .containsExactly(510L);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.isHasNext()).isTrue();
         verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
     }
 
