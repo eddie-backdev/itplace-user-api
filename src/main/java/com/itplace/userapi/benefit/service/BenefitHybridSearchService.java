@@ -15,4 +15,13 @@ public interface BenefitHybridSearchService {
             List<Carrier> carriers,
             Pageable pageable
     );
+
+    BenefitHybridSearchResult searchLexical(
+            String keyword,
+            MainCategory mainCategory,
+            String category,
+            UsageType filter,
+            List<Carrier> carriers,
+            Pageable pageable
+    );
 }

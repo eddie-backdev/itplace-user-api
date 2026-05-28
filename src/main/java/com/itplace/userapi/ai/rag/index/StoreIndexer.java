@@ -6,6 +6,7 @@ import com.itplace.userapi.ai.rag.service.ElasticService;
 import com.itplace.userapi.map.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
@@ -19,8 +20,16 @@ public class StoreIndexer implements ApplicationRunner {
     private final StoreRepository storeRepository;
     private final ElasticService elasticService;
 
+    @Value("${app.ai.stores.seed.enabled:false}")
+    private boolean seedEnabled;
+
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        if (!seedEnabled) {
+            log.info("매장 ES 초기 인덱싱이 비활성화되어 있습니다.");
+            return;
+        }
+
         try {
             elasticService.createStoreIndexIfNotExists();
 
