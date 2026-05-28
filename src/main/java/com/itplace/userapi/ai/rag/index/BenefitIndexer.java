@@ -14,7 +14,7 @@ public class BenefitIndexer implements ApplicationRunner {
 
     private final BenefitRagSyncService benefitRagSyncService;
 
-    @Value("${app.ai.benefits.seed.enabled:true}")
+    @Value("${app.ai.benefits.seed.enabled:false}")
     private boolean seedEnabled;
 
     @Override

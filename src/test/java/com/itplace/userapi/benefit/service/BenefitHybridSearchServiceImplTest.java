@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -87,6 +88,30 @@ class BenefitHybridSearchServiceImplTest {
 
         assertThat(result.benefitIds()).containsExactly(1L);
         assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void searchLexical_usesOnlyLexicalSearchAndPagesBenefitIds() throws IOException {
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenReturn(searchResponse(
+                        hit(1L, 2.0),
+                        hit(2L, 1.5)
+                ));
+
+        BenefitHybridSearchResult result = service.searchLexical(
+                "커피",
+                null,
+                null,
+                null,
+                List.of(),
+                PageRequest.of(0, 1)
+        );
+
+        assertThat(result.benefitIds()).containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(2);
+        assertThat(result.totalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        verify(embeddingService, never()).embed(any());
     }
 
     @Test

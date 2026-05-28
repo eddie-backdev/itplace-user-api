@@ -246,7 +246,7 @@ class BenefitServiceImplTest {
     }
 
     @Test
-    void getBenefitList_usesDatabaseSearchWhenKeywordSortIsPopularity() {
+    void getBenefitList_usesLexicalSearchWhenKeywordSortIsPopularity() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
                 .partnerName("IT 카페")
@@ -256,9 +256,10 @@ class BenefitServiceImplTest {
         Benefit benefit = benefit(20L, partner, Carrier.LGU, "아메리카노 할인", Grade.VIP, "VIP 커피 할인");
         BenefitCarrierPolicy policy = policy(120L, benefit, Carrier.LGU, "LGU 사용법", "https://lgu.example");
 
-        when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
-                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("POPULARITY"), any(PageRequest.class)))
-                .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
+        when(benefitHybridSearchService.searchLexical(eq("커피"), eq(MainCategory.BASIC_BENEFIT), eq("카페"),
+                eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU)), any(PageRequest.class)))
+                .thenReturn(new BenefitHybridSearchResult(List.of(20L), 1, 0, 1, false));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
                 eq(List.of(10L)), eq(MainCategory.BASIC_BENEFIT), eq("카페"), eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU))))
                 .thenReturn(List.of(benefit));
@@ -281,12 +282,11 @@ class BenefitServiceImplTest {
                 .singleElement()
                 .satisfies(item -> assertThat(item.getBenefitId()).isEqualTo(20L));
         verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
-        verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
-                eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("POPULARITY"), any(PageRequest.class));
+        verify(benefitRepository, never()).findFilteredBenefits(any(), any(), any(), any(), anyBoolean(), anyList(), any(), any());
     }
 
     @Test
-    void getBenefitList_expandsDatabaseSortedSearchToSamePartnerCarrierBenefits() {
+    void getBenefitList_expandsLexicalSortedSearchToSamePartnerCarrierBenefits() {
         Partner partner = Partner.builder()
                 .partnerId(30L)
                 .partnerName("배스킨라빈스")
@@ -298,16 +298,17 @@ class BenefitServiceImplTest {
         BenefitCarrierPolicy ktPolicy = kt.getCarrierPolicies().get(0);
         BenefitCarrierPolicy lguPolicy = lgu.getCarrierPolicies().get(0);
 
-        when(benefitRepository.findFilteredBenefits(eq(null), eq(null), eq(null), eq("아이스크림"),
-                eq(false), eq(Arrays.stream(Carrier.values()).map(Carrier::name).toList()), eq("POPULARITY"), any(PageRequest.class)))
-                .thenReturn(new PageImpl<>(List.of(kt), PageRequest.of(0, 12), 1));
+        when(benefitHybridSearchService.searchLexical(eq("아이스크림"), eq(null), eq(null),
+                eq(null), eq(List.of()), any(PageRequest.class)))
+                .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
+        when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
                 eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
                 .thenReturn(List.of(kt, lgu));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(kt, lgu))).thenReturn(List.of(ktPolicy, lguPolicy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy, lguPolicy)))
                 .thenReturn(List.of());
-        when(favoriteRepository.countFavoritesByBenefitIds(List.of(510L, 647L))).thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(anyList())).thenReturn(List.of());
 
         var result = benefitService.getBenefitList(
                 null,
@@ -325,10 +326,11 @@ class BenefitServiceImplTest {
                 .containsExactly(510L, 647L);
         assertThat(result.getTotalElements()).isEqualTo(2);
         verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
+        verify(benefitRepository, never()).findFilteredBenefits(any(), any(), any(), any(), anyBoolean(), anyList(), any(), any());
     }
 
     @Test
-    void getBenefitList_paginatesAfterDatabaseSortedPartnerExpansion() {
+    void getBenefitList_paginatesAfterLexicalSortedPartnerExpansion() {
         Partner partner = Partner.builder()
                 .partnerId(30L)
                 .partnerName("배스킨라빈스")
@@ -339,9 +341,10 @@ class BenefitServiceImplTest {
         Benefit lgu = benefit(647L, partner, Carrier.LGU, "배스킨라빈스 LGU+ 멤버십", Grade.VIP, "쿼터 사이즈 할인");
         BenefitCarrierPolicy ktPolicy = kt.getCarrierPolicies().get(0);
 
-        when(benefitRepository.findFilteredBenefits(eq(null), eq(null), eq(null), eq("아이스크림"),
-                eq(false), eq(Arrays.stream(Carrier.values()).map(Carrier::name).toList()), eq("POPULARITY"), any(PageRequest.class)))
-                .thenReturn(new PageImpl<>(List.of(kt), PageRequest.of(0, 1), 1));
+        when(benefitHybridSearchService.searchLexical(eq("아이스크림"), eq(null), eq(null),
+                eq(null), eq(List.of()), any(PageRequest.class)))
+                .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
+        when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
                 eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
                 .thenReturn(List.of(kt, lgu));
@@ -367,6 +370,7 @@ class BenefitServiceImplTest {
         assertThat(result.getTotalPages()).isEqualTo(2);
         assertThat(result.isHasNext()).isTrue();
         verify(benefitHybridSearchService, never()).search(any(), any(), any(), any(), anyList(), any(PageRequest.class));
+        verify(benefitRepository, never()).findFilteredBenefits(any(), any(), any(), any(), anyBoolean(), anyList(), any(), any());
     }
 
     @Test

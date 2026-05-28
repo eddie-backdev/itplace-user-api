@@ -116,6 +116,49 @@ public class BenefitServiceImpl implements BenefitService {
                 );
             }
         }
+        if (normalizedKeyword != null && sortMode != BenefitListSort.RELEVANCE) {
+            BenefitHybridSearchResult lexicalResult = null;
+            try {
+                lexicalResult = benefitHybridSearchService.searchLexical(
+                        normalizedKeyword,
+                        mainCategory,
+                        category,
+                        filter,
+                        carrierFilters,
+                        expansionFetchPageable()
+                );
+            } catch (RuntimeException exception) {
+                log.warn("혜택 lexical 검색 실패로 DB 검색으로 대체합니다. keyword={}, sort={}, reason={}",
+                        normalizedKeyword, sortMode.repositoryKey(), exception.getMessage());
+            }
+            if (lexicalResult != null) {
+                List<Benefit> sortedBenefits = sortBenefits(
+                        orderedBenefits(lexicalResult.benefitIds()),
+                        sortMode
+                );
+                List<Benefit> expandedBenefits = expandSamePartnerBenefits(
+                        sortedBenefits,
+                        mainCategory,
+                        category,
+                        filter,
+                        carrierFilters
+                );
+                BenefitPage<Benefit> slicedPage = sliceBenefits(
+                        expandedBenefits,
+                        pageable,
+                        Math.max(lexicalResult.totalElements(), expandedBenefits.size())
+                );
+                return toBenefitListPage(
+                        slicedPage.content(),
+                        carrierFilters,
+                        userId,
+                        slicedPage.currentPage(),
+                        slicedPage.totalPages(),
+                        slicedPage.totalElements(),
+                        slicedPage.hasNext()
+                );
+            }
+        }
 
         Pageable repositoryPageable = normalizedKeyword == null ? pageable : expansionFetchPageable();
         Page<Benefit> benefitPage = benefitRepository.findFilteredBenefits(
@@ -278,6 +321,56 @@ public class BenefitServiceImpl implements BenefitService {
                 .map(benefitsById::get)
                 .filter(benefit -> benefit != null && !Boolean.FALSE.equals(benefit.getActive()))
                 .toList();
+    }
+
+    private List<Benefit> sortBenefits(List<Benefit> benefits, BenefitListSort sortMode) {
+        if (benefits == null || benefits.isEmpty()) {
+            return List.of();
+        }
+        return switch (sortMode) {
+            case LATEST -> benefits.stream()
+                    .sorted(Comparator
+                            .comparing((Benefit benefit) -> benefit.getBenefitId() == null ? Long.MIN_VALUE : benefit.getBenefitId())
+                            .reversed())
+                    .toList();
+            case NAME_ASC -> benefits.stream()
+                    .sorted(Comparator.comparing(this::normalizedBenefitName)
+                            .thenComparing(benefit -> benefit.getBenefitId() == null ? Long.MAX_VALUE : benefit.getBenefitId()))
+                    .toList();
+            case NAME_DESC -> benefits.stream()
+                    .sorted(Comparator.comparing(this::normalizedBenefitName).reversed()
+                            .thenComparing(benefit -> benefit.getBenefitId() == null ? Long.MAX_VALUE : benefit.getBenefitId()))
+                    .toList();
+            case POPULARITY -> sortByFavoriteCount(benefits);
+            case RELEVANCE -> benefits;
+        };
+    }
+
+    private List<Benefit> sortByFavoriteCount(List<Benefit> benefits) {
+        List<Long> benefitIds = benefits.stream()
+                .map(Benefit::getBenefitId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        Map<Long, Long> favoriteCountMap = benefitIds.isEmpty()
+                ? Map.of()
+                : favoriteRepository.countFavoritesByBenefitIds(benefitIds).stream()
+                        .collect(Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> (Long) row[1]
+                        ));
+        return benefits.stream()
+                .sorted(Comparator
+                        .comparing((Benefit benefit) -> favoriteCountMap.getOrDefault(benefit.getBenefitId(), 0L))
+                        .reversed()
+                        .thenComparing(benefit -> benefit.getBenefitId() == null ? Long.MAX_VALUE : benefit.getBenefitId()))
+                .toList();
+    }
+
+    private String normalizedBenefitName(Benefit benefit) {
+        if (benefit == null || benefit.getBenefitName() == null) {
+            return "";
+        }
+        return benefit.getBenefitName().toLowerCase(java.util.Locale.ROOT);
     }
 
     private List<Benefit> expandSamePartnerBenefits(List<Benefit> rankedBenefits,

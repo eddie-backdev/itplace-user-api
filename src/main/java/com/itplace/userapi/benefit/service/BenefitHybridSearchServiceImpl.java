@@ -95,6 +95,32 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
                 .map(RankAccumulator::benefitId)
                 .toList();
 
+        return toResult(rankedIds, pageable);
+    }
+
+    @Override
+    public BenefitHybridSearchResult searchLexical(String keyword,
+                                                   MainCategory mainCategory,
+                                                   String category,
+                                                   UsageType filter,
+                                                   List<Carrier> carriers,
+                                                   Pageable pageable) {
+        String normalizedKeyword = normalize(keyword)
+                .orElseThrow(() -> new IllegalArgumentException("검색어가 비어 있습니다."));
+        int candidateWindow = candidateWindow(pageable);
+        List<Query> filters = metadataFilters(mainCategory, category, filter, carriers);
+        try {
+            List<Long> rankedIds = lexicalSearch(normalizedKeyword, filters, candidateWindow).stream()
+                    .map(SearchHitSnapshot::benefitId)
+                    .distinct()
+                    .toList();
+            return toResult(rankedIds, pageable);
+        } catch (IOException | RuntimeException exception) {
+            throw new IllegalStateException("혜택 lexical 검색을 사용할 수 없습니다.", exception);
+        }
+    }
+
+    private BenefitHybridSearchResult toResult(List<Long> rankedIds, Pageable pageable) {
         long totalElements = rankedIds.size();
         int pageSize = Math.max(pageable.getPageSize(), 1);
         int currentPage = pageable.getPageNumber();
@@ -103,7 +129,6 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
         List<Long> pageIds = rankedIds.subList(fromIndex, toIndex);
         int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
         boolean hasNext = toIndex < totalElements;
-
         return new BenefitHybridSearchResult(pageIds, totalElements, currentPage, totalPages, hasNext);
     }
 

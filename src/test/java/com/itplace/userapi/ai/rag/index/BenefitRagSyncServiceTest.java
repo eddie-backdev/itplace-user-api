@@ -35,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class BenefitRagSyncServiceTest {
@@ -83,6 +84,16 @@ class BenefitRagSyncServiceTest {
         assertThat(result.deletedDocuments()).isZero();
         assertThat(result.failedDocuments()).isZero();
         verify(embeddingService, never()).embed(any());
+    }
+
+    @Test
+    void scheduledSync_doesNotTouchElasticsearchWhenSyncIsDisabled() throws Exception {
+        ReflectionTestUtils.setField(syncService, "syncEnabled", false);
+
+        syncService.scheduledSync();
+
+        verify(elasticService, never()).createIndexIfNotExists(any());
+        verify(benefitRepository, never()).findAllWithPartnerAndTierBenefits();
     }
 
     @Test

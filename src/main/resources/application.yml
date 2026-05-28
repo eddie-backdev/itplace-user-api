@@ -64,14 +64,19 @@ google:
 
 app:
   ai:
+    indexing:
+      enabled: ${AI_INDEXING_ENABLED:false}
     benefits:
       seed:
-        enabled: ${BENEFIT_RAG_SEED_ENABLED:true}
+        enabled: ${BENEFIT_RAG_SEED_ENABLED:${AI_INDEXING_ENABLED:false}}
       sync:
-        enabled: ${BENEFIT_RAG_SYNC_ENABLED:true}
+        enabled: ${BENEFIT_RAG_SYNC_ENABLED:${AI_INDEXING_ENABLED:false}}
         initial-delay-ms: ${BENEFIT_RAG_SYNC_INITIAL_DELAY_MS:300000}
         fixed-delay-ms: ${BENEFIT_RAG_SYNC_FIXED_DELAY_MS:3600000}
         delay-ms: ${BENEFIT_RAG_SYNC_DELAY_MS:0}
+    stores:
+      seed:
+        enabled: ${STORE_INDEX_SEED_ENABLED:${AI_INDEXING_ENABLED:false}}
   cookie:
     domain: ${COOKIE_DOMAIN:}
     secure: ${COOKIE_SECURE:false}

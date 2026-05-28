@@ -38,7 +38,7 @@ public class BenefitRagSyncService {
     private final EmbeddingService embeddingService;
     private final BenefitRagDocumentBuilder documentBuilder;
 
-    @Value("${app.ai.benefits.sync.enabled:true}")
+    @Value("${app.ai.benefits.sync.enabled:false}")
     private boolean syncEnabled;
 
     @Value("${app.ai.benefits.sync.delay-ms:0}")
