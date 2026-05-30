@@ -3,6 +3,7 @@ package com.itplace.userapi.map.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.map.dto.BenefitCacheDto;
@@ -17,11 +18,13 @@ import com.itplace.userapi.partner.repository.PartnerRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -56,7 +59,7 @@ class StoreServiceImplTest {
         Store farStore = store(1L, "카페 파트너 먼 매장", partner, point(127.10, 37.50));
         Store nearStore = store(2L, "카페 파트너 가까운 매장", partner, point(127.01, 37.50));
 
-        when(storeRepository.findRandomStoreIdsByCategory("카페", 37.50, 127.00, 10_000, 300))
+        when(storeRepository.findStoreIdsByCategoryWithinRadius("카페", 37.50, 127.00, 10_000, 900))
                 .thenReturn(List.of(1L, 2L));
         when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
                 .thenReturn(List.of(farStore, nearStore));
@@ -72,6 +75,40 @@ class StoreServiceImplTest {
         assertThat(result)
                 .extracting(StoreDetailResponse::getDistance)
                 .isSorted();
+    }
+
+
+    @Test
+    void findNearby_fetchesBoundedCandidateWindowAndSamplesFinalLimitInServer() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("GS25")
+                .category("생활/편의")
+                .build();
+        List<Long> candidateIds = IntStream.rangeClosed(1, 450)
+                .mapToObj(Long::valueOf)
+                .toList();
+
+        when(storeRepository.findStoreIdsInRadius(37.50, 127.00, 1_000, 900))
+                .thenReturn(candidateIds);
+        when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
+                .thenAnswer(invocation -> {
+                    List<Long> selectedIds = invocation.getArgument(0);
+                    return selectedIds.stream()
+                            .map(id -> store(id, "GS25 " + id, partner, point(127.00, 37.50)))
+                            .toList();
+                });
+        when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
+                .thenReturn(Map.<Long, List<BenefitCacheDto>>of());
+
+        List<StoreDetailResponse> result = storeService.findNearby(
+                37.50, 127.00, 1_000, 37.50, 127.00);
+
+        ArgumentCaptor<List<Long>> selectedIdsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(storeRepository).findAllByStoreIdInWithPartner(selectedIdsCaptor.capture());
+        assertThat(selectedIdsCaptor.getValue()).hasSize(300);
+        assertThat(candidateIds).containsAll(selectedIdsCaptor.getValue());
+        assertThat(result).hasSize(300);
     }
 
     @Test
@@ -285,7 +322,7 @@ class StoreServiceImplTest {
                 .context("아메리카노 10% 할인")
                 .build();
 
-        when(storeRepository.findRandomStoreIdsByCategory("카페", 37.50, 127.00, 10_000, 300))
+        when(storeRepository.findStoreIdsByCategoryWithinRadius("카페", 37.50, 127.00, 10_000, 900))
                 .thenReturn(List.of(4L));
         when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
                 .thenReturn(List.of(store));
@@ -333,7 +370,7 @@ class StoreServiceImplTest {
                 .context("LGU VIP 할인")
                 .build();
 
-        when(storeRepository.findRandomStoreIdsByCategory("카페", 37.50, 127.00, 10_000, 300))
+        when(storeRepository.findStoreIdsByCategoryWithinRadius("카페", 37.50, 127.00, 10_000, 900))
                 .thenReturn(List.of(7L));
         when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
                 .thenReturn(List.of(store));

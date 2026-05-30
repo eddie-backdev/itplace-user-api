@@ -49,6 +49,8 @@ public class StoreServiceImpl implements StoreService {
     private static final int GRID_SIZE = 5;
     private static final int STORES_PER_CELL = 15;
     private static final int FINAL_LIMIT = 300;
+    private static final int CANDIDATE_FETCH_MULTIPLIER = 3;
+    private static final int STORE_CANDIDATE_FETCH_LIMIT = FINAL_LIMIT * CANDIDATE_FETCH_MULTIPLIER;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
     private static final int MAP_DISTRIBUTION_THRESHOLD = 1000;
     private static final int MAP_STORES_PER_CELL = 12;
@@ -75,9 +77,8 @@ public class StoreServiceImpl implements StoreService {
             return Collections.emptyList();
         }
 
-        Collections.shuffle(allStoreIds);
-        List<Long> limitedStoreIds = allStoreIds.subList(0, Math.min(allStoreIds.size(), FINAL_LIMIT));
-        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(limitedStoreIds));
+        List<Long> sampledStoreIds = sampleStoreIds(allStoreIds);
+        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds));
 
         List<Long> partnerIds = limitedStores.stream()
                 .map(store -> store.getPartner().getPartnerId())
@@ -123,7 +124,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private List<Long> findNearbyWithSingleQuery(double lat, double lng, double radiusMeters) {
-        return storeRepository.findStoreIdsInRadius(lat, lng, radiusMeters, FINAL_LIMIT);
+        return storeRepository.findStoreIdsInRadius(lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
     }
 
     private List<Long> findNearbyWithGridSampling(double lat, double lng, double radiusMeters) {
@@ -143,7 +144,7 @@ public class StoreServiceImpl implements StoreService {
                 double cellMaxLng = cellMinLng + lngStep;
 
                 futures.add(CompletableFuture.supplyAsync(() ->
-                        storeRepository.findRandomStoreIdsInBounds(cellMinLat, cellMaxLat, cellMinLng, cellMaxLng, STORES_PER_CELL),
+                        storeRepository.findStoreIdsInBounds(cellMinLat, cellMaxLat, cellMinLng, cellMaxLng, STORES_PER_CELL),
                         GRID_EXECUTOR
                 ));
             }
@@ -206,6 +207,20 @@ public class StoreServiceImpl implements StoreService {
                 .collect(Collectors.toList());
     }
 
+
+    /**
+     * DB-level random sorting is intentionally avoided because it is expensive on large geospatial result sets.
+     * Fetch a bounded candidate window from the DB, then randomize only that lightweight ID list in the app server.
+     */
+    private List<Long> sampleStoreIds(List<Long> storeIds) {
+        if (storeIds == null || storeIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> sampled = new ArrayList<>(storeIds);
+        Collections.shuffle(sampled);
+        return sampled.subList(0, Math.min(sampled.size(), FINAL_LIMIT));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<StoreDetailResponse> findNearbyDistributedForMap(double lat, double lng, double radiusMeters,
@@ -225,8 +240,8 @@ public class StoreServiceImpl implements StoreService {
             return Collections.emptyList();
         }
 
-        List<Long> limitedStoreIds = distributedStoreIds.subList(0, Math.min(distributedStoreIds.size(), FINAL_LIMIT));
-        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(limitedStoreIds);
+        List<Long> sampledStoreIds = sampleStoreIds(distributedStoreIds);
+        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds);
         return toStoreDetailResponses(stores, userLat, userLng).stream()
                 .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
                 .toList();
@@ -242,14 +257,14 @@ public class StoreServiceImpl implements StoreService {
 
         log.info("카테고리 기반 반경 검색 실행: {}, 반경: {}m", category, radiusMeters);
 
-        List<Long> storeIds = new ArrayList<>(storeRepository.findRandomStoreIdsByCategory(
-                category, lat, lng, radiusMeters, FINAL_LIMIT));
+        List<Long> storeIds = storeRepository.findStoreIdsByCategoryWithinRadius(
+                category, lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
         if (storeIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Collections.shuffle(storeIds);
-        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(storeIds));
+        List<Long> sampledStoreIds = sampleStoreIds(storeIds);
+        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds));
         if (limitedStores.isEmpty()) {
             return Collections.emptyList();
         }
