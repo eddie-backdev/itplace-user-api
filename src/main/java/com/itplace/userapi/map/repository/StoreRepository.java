@@ -38,7 +38,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 """,
             nativeQuery = true
     )
-    List<Long> findRandomStoreIdsInBounds(
+    List<Long> findStoreIdsInBounds(
             @Param("minLat") double minLat,
             @Param("maxLat") double maxLat,
             @Param("minLng") double minLng,
@@ -61,7 +61,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     """,
             nativeQuery = true
     )
-    List<Long> findRandomStoreIdsByCategory(
+    List<Long> findStoreIdsByCategoryWithinRadius(
             @Param("category") String category,
             @Param("lat") double lat,
             @Param("lng") double lng,
