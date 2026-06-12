@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +28,7 @@ import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,34 +63,62 @@ class BenefitImportServiceImplTest {
                 carrierTierBenefitRepository
         );
         ReflectionTestUtils.setField(service, "expectedApiKey", "internal-key");
-        lenient().when(benefitRepository.findByPartner_PartnerIdAndCanonicalKey(any(Long.class), any(String.class)))
-                .thenReturn(Optional.empty());
-        lenient().when(benefitCarrierPolicyRepository.findByCarrierAndSourceKey(any(Carrier.class), any(String.class)))
-                .thenReturn(Optional.empty());
-        lenient().when(benefitCarrierPolicyRepository.save(any(BenefitCarrierPolicy.class))).thenAnswer(invocation -> {
-            BenefitCarrierPolicy policy = invocation.getArgument(0);
-            if (policy.getBenefitCarrierPolicyId() == null) {
-                policy.setBenefitCarrierPolicyId(31L);
-            }
-            return policy;
-        });
-        lenient().when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicy(any(BenefitCarrierPolicy.class)))
+        lenient().when(partnerRepository.findAllByPartnerNameIn(any())).thenReturn(List.of());
+        lenient().when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(any(Carrier.class), any()))
                 .thenReturn(List.of());
+        lenient().when(benefitRepository.findAllByPartnerIdsAndCanonicalKeys(any(), any())).thenReturn(List.of());
+        lenient().when(partnerRepository.saveAll(any())).thenAnswer(invocation -> {
+            Iterable<Partner> partners = invocation.getArgument(0);
+            AtomicLong sequence = new AtomicLong(7L);
+            partners.forEach(partner -> {
+                if (partner.getPartnerId() == null) {
+                    partner.setPartnerId(sequence.getAndIncrement());
+                }
+            });
+            return partners;
+        });
+        lenient().when(benefitRepository.saveAll(any())).thenAnswer(invocation -> {
+            Iterable<Benefit> benefits = invocation.getArgument(0);
+            AtomicLong sequence = new AtomicLong(11L);
+            benefits.forEach(benefit -> {
+                if (benefit.getBenefitId() == null) {
+                    benefit.setBenefitId(sequence.getAndIncrement());
+                }
+            });
+            return benefits;
+        });
+        lenient().when(benefitCarrierPolicyRepository.saveAll(any())).thenAnswer(invocation -> {
+            Iterable<BenefitCarrierPolicy> policies = invocation.getArgument(0);
+            AtomicLong sequence = new AtomicLong(31L);
+            policies.forEach(policy -> {
+                if (policy.getBenefitCarrierPolicyId() == null) {
+                    policy.setBenefitCarrierPolicyId(sequence.getAndIncrement());
+                }
+            });
+            return policies;
+        });
+        lenient().when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(any()))
+                .thenReturn(List.of());
+        lenient().when(carrierTierBenefitRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private static <T> List<T> toList(Iterable<T> iterable) {
+        if (iterable instanceof List<T> list) {
+            return list;
+        }
+        List<T> result = new java.util.ArrayList<>();
+        iterable.forEach(result::add);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> ArgumentCaptor<Iterable<T>> iterableCaptor() {
+        return ArgumentCaptor.forClass(Iterable.class);
     }
 
     @Test
     void importsSanitizedCarrierScopedSnapshotWithoutMembershipArtifacts() {
         BenefitSnapshotImportRequest request = request();
-        Partner savedPartner = Partner.builder().partnerId(7L).partnerName("제휴사").build();
-        Benefit savedBenefit = Benefit.builder().benefitId(11L).build();
-
-        when(partnerRepository.findByPartnerName("제휴사")).thenReturn(Optional.empty());
-        when(partnerRepository.save(any(Partner.class))).thenAnswer(invocation -> {
-            Partner partner = invocation.getArgument(0);
-            partner.setPartnerId(7L);
-            return partner;
-        });
-        when(benefitRepository.save(any(Benefit.class))).thenReturn(savedBenefit);
 
         BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
 
@@ -97,22 +126,22 @@ class BenefitImportServiceImplTest {
         assertThat(response.getReceivedCount()).isEqualTo(1);
         assertThat(response.getTierBenefitCount()).isEqualTo(1);
 
-        ArgumentCaptor<Benefit> benefitCaptor = ArgumentCaptor.forClass(Benefit.class);
-        verify(benefitRepository).save(benefitCaptor.capture());
-        Benefit imported = benefitCaptor.getValue();
+        ArgumentCaptor<Iterable<Benefit>> benefitCaptor = iterableCaptor();
+        verify(benefitRepository).saveAll(benefitCaptor.capture());
+        Benefit imported = toList(benefitCaptor.getValue()).get(0);
         assertThat(imported.getCanonicalKey()).isEqualTo("7:할인혜택");
         assertThat(imported.getActive()).isTrue();
 
-        ArgumentCaptor<Partner> partnerCaptor = ArgumentCaptor.forClass(Partner.class);
-        verify(partnerRepository).save(partnerCaptor.capture());
-        Partner importedPartner = partnerCaptor.getValue();
+        ArgumentCaptor<Iterable<Partner>> partnerCaptor = iterableCaptor();
+        verify(partnerRepository).saveAll(partnerCaptor.capture());
+        Partner importedPartner = toList(partnerCaptor.getValue()).get(0);
         assertThat(importedPartner.getCategory()).isEqualTo("푸드");
         assertThat(importedPartner.getImage()).isEqualTo("https://images.itplace.click/img/spicus/logo.png");
 
-        ArgumentCaptor<BenefitCarrierPolicy> policyCaptor = ArgumentCaptor.forClass(BenefitCarrierPolicy.class);
-        verify(benefitCarrierPolicyRepository).save(policyCaptor.capture());
-        BenefitCarrierPolicy policy = policyCaptor.getValue();
-        assertThat(policy.getBenefit()).isSameAs(savedBenefit);
+        ArgumentCaptor<Iterable<BenefitCarrierPolicy>> policyCaptor = iterableCaptor();
+        verify(benefitCarrierPolicyRepository).saveAll(policyCaptor.capture());
+        BenefitCarrierPolicy policy = toList(policyCaptor.getValue()).get(0);
+        assertThat(policy.getBenefit()).isSameAs(imported);
         assertThat(policy.getCarrier()).isEqualTo(Carrier.SKT);
         assertThat(policy.getSourceKey()).isEqualTo("skt-benefit-1");
         assertThat(policy.getSourceUrl()).isEqualTo("https://source.example/skt-benefit-1");
@@ -120,12 +149,54 @@ class BenefitImportServiceImplTest {
         assertThat(policy.getCarrierBenefitName()).isEqualTo("할인 혜택");
         assertThat(policy.getActive()).isTrue();
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<CarrierTierBenefit>> carrierTierCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Iterable<CarrierTierBenefit>> carrierTierCaptor = iterableCaptor();
         verify(carrierTierBenefitRepository).saveAll(carrierTierCaptor.capture());
-        assertThat(carrierTierCaptor.getValue()).hasSize(1);
-        assertThat(carrierTierCaptor.getValue().get(0).getBenefitCarrierPolicy()).isSameAs(policy);
-        assertThat(carrierTierCaptor.getValue().get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
+        List<CarrierTierBenefit> carrierTiers = toList(carrierTierCaptor.getValue());
+        assertThat(carrierTiers).hasSize(1);
+        assertThat(carrierTiers.get(0).getBenefitCarrierPolicy()).isSameAs(policy);
+        assertThat(carrierTiers.get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
+
+        verify(partnerRepository, never()).findByPartnerName(any(String.class));
+        verify(benefitRepository, never()).findByPartner_PartnerIdAndCanonicalKey(any(Long.class), any(String.class));
+        verify(benefitCarrierPolicyRepository, never()).findByCarrierAndSourceKey(any(Carrier.class), any(String.class));
+        verify(carrierTierBenefitRepository, never()).findAllByBenefitCarrierPolicy(any(BenefitCarrierPolicy.class));
+    }
+
+    @Test
+    void reusesExistingPolicyBenefitWhenSourceKeyExists() {
+        BenefitSnapshotImportRequest request = request();
+        Partner partner = Partner.builder().partnerId(7L).partnerName("제휴사").build();
+        Benefit existingBenefit = Benefit.builder()
+                .benefitId(11L)
+                .partner(partner)
+                .canonicalKey("7:기존혜택")
+                .build();
+        BenefitCarrierPolicy existingPolicy = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(31L)
+                .carrier(Carrier.SKT)
+                .sourceKey("skt-benefit-1")
+                .benefit(existingBenefit)
+                .build();
+        CarrierTierBenefit existingTier = CarrierTierBenefit.builder()
+                .benefitCarrierPolicy(existingPolicy)
+                .grade(Grade.SKT_VIP)
+                .context("기존")
+                .build();
+
+        when(partnerRepository.findAllByPartnerNameIn(List.of("제휴사"))).thenReturn(List.of(partner));
+        when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(Carrier.SKT, List.of("skt-benefit-1")))
+                .thenReturn(List.of(existingPolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(existingPolicy)))
+                .thenReturn(List.of(existingTier));
+
+        service.importSnapshot(request, "internal-key");
+
+        ArgumentCaptor<Iterable<Benefit>> benefitCaptor = iterableCaptor();
+        verify(benefitRepository).saveAll(benefitCaptor.capture());
+        assertThat(toList(benefitCaptor.getValue()).get(0)).isSameAs(existingBenefit);
+        assertThat(existingBenefit.getBenefitName()).isEqualTo("할인 혜택");
+
+        verify(carrierTierBenefitRepository).deleteAll(List.of(existingTier));
     }
 
     @Test
