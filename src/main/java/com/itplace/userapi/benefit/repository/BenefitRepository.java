@@ -23,6 +23,18 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
 
     Optional<Benefit> findByPartner_PartnerIdAndCanonicalKey(Long partnerId, String canonicalKey);
 
+    @Query("""
+                SELECT b
+                FROM Benefit b
+                JOIN FETCH b.partner p
+                WHERE p.partnerId IN :partnerIds
+                  AND b.canonicalKey IN :canonicalKeys
+            """)
+    List<Benefit> findAllByPartnerIdsAndCanonicalKeys(
+            @Param("partnerIds") List<Long> partnerIds,
+            @Param("canonicalKeys") List<String> canonicalKeys
+    );
+
     @Query("SELECT b FROM Benefit b JOIN FETCH b.partner WHERE b.partner.partnerId IN :partnerIds")
     List<Benefit> findAllByPartnerIdsWithPartner(@Param("partnerIds") List<Long> partnerIds);
 
