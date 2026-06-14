@@ -69,7 +69,7 @@ public class UserController {
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> withdraw(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @RequestBody WithdrawRequest request
+            @RequestBody @Validated WithdrawRequest request
     ) {
         userService.withdraw(principalDetails.getUserId(), request.getPassword());
         ApiResponse<Void> body = ApiResponse.ok(UserCode.USER_WITHDRAWAL_SUCCESS);
