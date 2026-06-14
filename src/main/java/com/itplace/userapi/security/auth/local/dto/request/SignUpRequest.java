@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.user.entity.Gender;
+import com.itplace.userapi.user.support.PasswordPolicy;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -29,19 +30,13 @@ public class SignUpRequest {
     private String email;
 
     @NotBlank(message = "비밀번호는 필수 항목입니다.")
-    @Size(min = 6, max = 30, message = "비밀번호는 6자 이상 30자 이하로 입력해주세요.")
-    @Pattern(
-            regexp = "^(?=.*[!@#$%^&*()_+{}\\[\\]:;<>,.?~/-]).*$",
-            message = "비밀번호에는 특수문자를 최소 1개 이상 포함해야 합니다."
-    )
+    @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH, message = PasswordPolicy.LENGTH_MESSAGE)
+    @Pattern(regexp = PasswordPolicy.SPECIAL_CHARACTER_PATTERN, message = PasswordPolicy.SPECIAL_CHARACTER_MESSAGE)
     private String password;
 
     @NotBlank(message = "비밀번호 확인은 필수 항목입니다.")
-    @Size(min = 6, max = 30, message = "비밀번호는 6자 이상 30자 이하로 입력해주세요.")
-    @Pattern(
-            regexp = "^(?=.*[!@#$%^&*()_+{}\\[\\]:;<>,.?~/-]).*$",
-            message = "비밀번호에는 특수문자를 최소 1개 이상 포함해야 합니다."
-    )
+    @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH, message = PasswordPolicy.LENGTH_MESSAGE)
+    @Pattern(regexp = PasswordPolicy.SPECIAL_CHARACTER_PATTERN, message = PasswordPolicy.SPECIAL_CHARACTER_MESSAGE)
     private String passwordConfirm;
 
     @NotBlank(message = "휴대폰 번호는 필수 항목입니다.")
