@@ -49,18 +49,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        return UserInfoResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber())
-                .gender(user.getGender())
-                .birthday(user.getBirthday())
-                .carrier(user.getCarrier())
-                .membershipGradeCode(user.getMembershipGradeCode())
-                .membershipGrade(user.getMembershipGradeCode())
-                .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
-                .build();
+        return UserInfoResponse.from(user);
     }
 
 
@@ -75,7 +64,7 @@ public class UserServiceImpl implements UserService {
         user.setCarrier(request.getCarrier());
         user.setMembershipGradeCode(request.getMembershipGradeCode());
         user.setMembershipVerified(false);
-        return getUserInfo(user.getId());
+        return UserInfoResponse.from(user);
     }
 
     @Override

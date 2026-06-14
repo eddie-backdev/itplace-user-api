@@ -99,6 +99,7 @@ class UserServiceImplTest {
         assertThat(response.getCarrier()).isEqualTo(Carrier.KT);
         assertThat(response.getMembershipGradeCode()).isEqualTo(Grade.KT_GOLD);
         assertThat(response.getMembershipVerified()).isFalse();
+        verify(userRepository).findById(7L);
     }
 
     @Test
