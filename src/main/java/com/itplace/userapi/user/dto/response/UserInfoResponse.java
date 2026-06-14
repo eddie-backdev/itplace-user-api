@@ -3,6 +3,7 @@ package com.itplace.userapi.user.dto.response;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.user.entity.Gender;
+import com.itplace.userapi.user.entity.User;
 import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,4 +28,19 @@ public class UserInfoResponse {
      */
     @Deprecated
     private Grade membershipGrade;
+
+    public static UserInfoResponse from(User user) {
+        return UserInfoResponse.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .gender(user.getGender())
+                .birthday(user.getBirthday())
+                .carrier(user.getCarrier())
+                .membershipGradeCode(user.getMembershipGradeCode())
+                .membershipGrade(user.getMembershipGradeCode())
+                .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
+                .build();
+    }
 }
