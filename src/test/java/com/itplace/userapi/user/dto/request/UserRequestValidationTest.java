@@ -46,6 +46,18 @@ class UserRequestValidationTest {
     }
 
     @Test
+    void changePasswordUsesSharedPasswordPolicy() {
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setOldPassword("old-password!");
+        request.setNewPassword("abcdef");
+        request.setNewPasswordConfirm("abcdef");
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("newPassword", "newPasswordConfirm");
+    }
+
+    @Test
     void withdrawRejectsBlankPassword() {
         WithdrawRequest request = new WithdrawRequest();
         request.setPassword(" ");
