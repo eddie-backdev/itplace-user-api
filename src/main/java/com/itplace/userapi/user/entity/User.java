@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,7 +31,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 @Getter
 @Entity
 @Builder
-@ToString(exclude = "socialAccounts")
+@ToString(exclude = {"socialAccounts", "authCredentials"})
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users")
@@ -49,10 +48,6 @@ public class User extends BaseTimeEntity {
     @Setter
     @Column(name = "email", unique = true)
     private String email;
-
-    @Setter
-    @Column(name = "password")
-    private String password;
 
     @Column(name = "phoneNumber", length = 11, unique = true)
     private String phoneNumber;
@@ -89,6 +84,10 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private List<SocialAccount> socialAccounts = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AuthCredential> authCredentials = new ArrayList<>();
+
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singletonList(new SimpleGrantedAuthority(this.role.getKey()));
     }
@@ -97,7 +96,6 @@ public class User extends BaseTimeEntity {
     public static User of(String email) {
         return User.builder()
                 .email(email)
-                .password(UUID.randomUUID().toString())
                 .role(Role.GUEST)
                 .build();
     }

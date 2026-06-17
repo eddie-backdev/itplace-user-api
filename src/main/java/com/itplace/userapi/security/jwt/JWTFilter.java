@@ -70,11 +70,10 @@ public class JWTFilter extends OncePerRequestFilter {
 
             User user = User.builder()
                     .id(userId)
-                    .password("")
                     .role(role)
                     .build();
 
-            CustomUserDetails principal = new CustomUserDetails(user);
+            CustomUserDetails principal = new CustomUserDetails(user, "");
             Authentication authToken =
                     new UsernamePasswordAuthenticationToken(
                             principal, null, principal.getAuthorities()

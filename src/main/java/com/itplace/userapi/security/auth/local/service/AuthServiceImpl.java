@@ -16,6 +16,7 @@ import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
+import com.itplace.userapi.user.entity.AuthCredential;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
@@ -140,7 +141,6 @@ public class AuthServiceImpl implements AuthService {
         User user = User.builder()
                 .email(request.getEmail())
                 .name(request.getName())
-                .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
                 .gender(request.getGender())
                 .carrier(request.getCarrier())
@@ -150,6 +150,7 @@ public class AuthServiceImpl implements AuthService {
                 .role(Role.USER)
                 .build();
 
+        user.getAuthCredentials().add(AuthCredential.localPassword(user, passwordEncoder.encode(request.getPassword())));
         userRepository.save(user);
         log.info("USER 저장됨");
     }

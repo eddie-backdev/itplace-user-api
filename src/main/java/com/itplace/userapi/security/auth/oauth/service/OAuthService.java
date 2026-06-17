@@ -16,7 +16,7 @@ public interface OAuthService {
     KakaoLoginResult processKakaoLogin(KakaoCodeRequest request);
 
     // 기존 계정에 OAuth 계정 연동
-    OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request, Long authenticatedUserId);
+    OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request);
 
     LoginResponse result(PrincipalDetails principalDetails);
 }

@@ -1,10 +1,10 @@
 package com.itplace.userapi.security.auth.oauth.service;
 
 import com.itplace.userapi.security.auth.oauth.dto.CustomOAuth2User;
-import com.itplace.userapi.user.entity.SocialAccount;
+import com.itplace.userapi.user.entity.AuthCredential;
+import com.itplace.userapi.user.entity.AuthCredentialType;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.SocialAccountRepository;
-import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.user.repository.AuthCredentialRepository;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final UserRepository userRepository;
-    private final SocialAccountRepository socialAccountRepository;
+    private final AuthCredentialRepository authCredentialRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -34,13 +33,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         log.info("OAuth2 User Attributes: {}", attributes);
 
-        // provider와 providerId로 SocialAccount를 찾습니다.
-        Optional<SocialAccount> socialAccountOpt = socialAccountRepository.findByProviderAndProviderId(provider, providerId);
+        // provider와 providerId로 인증 수단을 찾습니다.
+        Optional<AuthCredential> credentialOpt = authCredentialRepository.findByTypeAndProviderAndProviderUserId(
+                AuthCredentialType.OAUTH,
+                provider,
+                providerId
+        );
 
         User user;
-        if (socialAccountOpt.isPresent()) {
+        if (credentialOpt.isPresent()) {
             // 이미 가입된 경우, 기존 User 정보를 가져옵니다.
-            user = socialAccountOpt.get().getUser();
+            user = credentialOpt.get().getUser();
             log.info("기존 소셜 연동 유저: {}", user.getEmail());
         } else {
             // 신규 사용자인 경우, 임시 User 객체를 생성합니다.

@@ -22,6 +22,8 @@ public class UserInfoResponse {
     private Carrier carrier;
     private Grade membershipGradeCode;
     private Boolean membershipVerified;
+    private Boolean hasLocalPassword;
+    private Boolean socialAccount;
 
     /**
      * @deprecated use membershipGradeCode. Kept temporarily for response compatibility.
@@ -41,6 +43,10 @@ public class UserInfoResponse {
                 .membershipGradeCode(user.getMembershipGradeCode())
                 .membershipGrade(user.getMembershipGradeCode())
                 .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
+                .hasLocalPassword(user.getAuthCredentials().stream()
+                        .anyMatch(credential -> credential.getType() == com.itplace.userapi.user.entity.AuthCredentialType.LOCAL_PASSWORD))
+                .socialAccount(user.getAuthCredentials().stream()
+                        .anyMatch(credential -> credential.getType() == com.itplace.userapi.user.entity.AuthCredentialType.OAUTH))
                 .build();
     }
 }

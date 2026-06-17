@@ -58,13 +58,11 @@ class UserRequestValidationTest {
     }
 
     @Test
-    void withdrawRejectsBlankPassword() {
+    void withdrawAllowsBlankPasswordForSocialAccountFlow() {
         WithdrawRequest request = new WithdrawRequest();
         request.setPassword(" ");
 
-        assertThat(validator.validate(request))
-                .extracting(violation -> violation.getPropertyPath().toString())
-                .containsExactly("password");
+        assertThat(validator.validate(request)).isEmpty();
     }
 
     private ResetPasswordRequest validResetPasswordRequest() {

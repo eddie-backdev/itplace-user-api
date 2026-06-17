@@ -2,7 +2,6 @@ package com.itplace.userapi.security.auth.oauth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,16 +24,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
 
 class OAuthControllerTest {
 
@@ -52,7 +45,6 @@ class OAuthControllerTest {
         OAuthController controller = new OAuthController(oAuthService, cookieUtil);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
-                .setCustomArgumentResolvers(new NullAuthenticationPrincipalResolver())
                 .build();
     }
 
@@ -102,31 +94,34 @@ class OAuthControllerTest {
     }
 
     @Test
-    void linkRejectsUnauthenticatedUserBeforeAccountBinding() throws Exception {
+    void linkVerifiesLocalPasswordAndSetsSessionCookies() throws Exception {
+        LoginResponse loginResponse = LoginResponse.builder()
+                .name("기존회원")
+                .carrier(Carrier.KT)
+                .membershipGradeCode(Grade.KT_GOLD)
+                .membershipGrade(Grade.KT_GOLD)
+                .membershipVerified(false)
+                .build();
+        OAuthResult authResult = OAuthResult.builder()
+                .accessToken("access-token")
+                .refreshToken("refresh-token")
+                .loginResponse(loginResponse)
+                .build();
+
+        when(oAuthService.linkOAuthAccount(any(), any())).thenReturn(authResult);
+
         mockMvc.perform(post("/api/v1/auth/oauth/link")
                         .cookie(new Cookie("tempToken", "temp-token"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(new ObjectMapper().writeValueAsString(Map.of("email", "owner@example.com"))))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHORIZED_ACCESS"));
+                        .content(new ObjectMapper().writeValueAsString(Map.of(
+                                "email", "owner@example.com",
+                                "password", "local-password"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("LOGIN_SUCCESS"))
+                .andExpect(jsonPath("$.data.name").value("기존회원"));
 
-        verify(oAuthService, never()).linkOAuthAccount(any(), any(), any());
-    }
-
-    private static class NullAuthenticationPrincipalResolver implements HandlerMethodArgumentResolver {
-        @Override
-        public boolean supportsParameter(MethodParameter parameter) {
-            return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
-        }
-
-        @Override
-        public Object resolveArgument(
-                MethodParameter parameter,
-                ModelAndViewContainer mavContainer,
-                NativeWebRequest webRequest,
-                WebDataBinderFactory binderFactory
-        ) {
-            return null;
-        }
+        verify(oAuthService).linkOAuthAccount(eq("temp-token"), any());
+        verify(cookieUtil).setTokensToCookie(any(HttpServletResponse.class), eq("access-token"), eq("refresh-token"));
     }
 }

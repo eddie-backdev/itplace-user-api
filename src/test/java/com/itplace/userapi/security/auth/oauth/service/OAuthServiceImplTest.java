@@ -3,7 +3,6 @@ package com.itplace.userapi.security.auth.oauth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,11 +19,12 @@ import com.itplace.userapi.security.exception.DuplicateEmailException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
+import com.itplace.userapi.user.entity.AuthCredential;
+import com.itplace.userapi.user.entity.AuthCredentialType;
 import com.itplace.userapi.user.entity.Gender;
 import com.itplace.userapi.user.entity.Role;
-import com.itplace.userapi.user.entity.SocialAccount;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.SocialAccountRepository;
+import com.itplace.userapi.user.repository.AuthCredentialRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import java.time.LocalDate;
@@ -55,7 +55,7 @@ class OAuthServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private SocialAccountRepository socialAccountRepository;
+    private AuthCredentialRepository authCredentialRepository;
 
     @Mock
     private JWTUtil jwtUtil;
@@ -67,7 +67,7 @@ class OAuthServiceImplTest {
     private OAuthServiceImpl oAuthService;
 
     @Test
-    void processKakaoLoginIssuesSessionForExistingSocialAccount() {
+    void processKakaoLoginIssuesSessionForExistingOAuthCredential() {
         KakaoCodeRequest request = kakaoRequest();
         User user = User.builder()
                 .id(7L)
@@ -77,16 +77,15 @@ class OAuthServiceImplTest {
                 .membershipVerified(true)
                 .role(Role.USER)
                 .build();
-        SocialAccount account = SocialAccount.builder()
-                .provider("kakao")
-                .providerId("kakao-1")
-                .user(user)
-                .build();
+        AuthCredential credential = AuthCredential.oauth(user, "kakao", "kakao-1");
 
         when(kakaoOAuthProviderClient.fetchUser("auth-code", "itplace://oauth/callback/kakao"))
                 .thenReturn(new KakaoUserProfile("kakao-1", "hong@example.com"));
-        when(socialAccountRepository.findByProviderAndProviderId("kakao", "kakao-1"))
-                .thenReturn(Optional.of(account));
+        when(authCredentialRepository.findByTypeAndProviderAndProviderUserId(
+                AuthCredentialType.OAUTH,
+                "kakao",
+                "kakao-1"
+        )).thenReturn(Optional.of(credential));
         when(jwtUtil.createJwt(7L, "ROLE_USER", JWTConstants.CATEGORY_ACCESS)).thenReturn("access-token");
         when(jwtUtil.createJwt(7L, "ROLE_USER", JWTConstants.CATEGORY_REFRESH)).thenReturn("refresh-token");
         when(jwtUtil.getRefreshTokenValidityInMS()).thenReturn(86_400_000L);
@@ -101,12 +100,15 @@ class OAuthServiceImplTest {
     }
 
     @Test
-    void processKakaoLoginReturnsTempTokenForNewSocialAccount() {
+    void processKakaoLoginReturnsTempTokenForNewOAuthCredential() {
         KakaoCodeRequest request = kakaoRequest();
         when(kakaoOAuthProviderClient.fetchUser("auth-code", "itplace://oauth/callback/kakao"))
                 .thenReturn(new KakaoUserProfile("kakao-2", null));
-        when(socialAccountRepository.findByProviderAndProviderId("kakao", "kakao-2"))
-                .thenReturn(Optional.empty());
+        when(authCredentialRepository.findByTypeAndProviderAndProviderUserId(
+                AuthCredentialType.OAUTH,
+                "kakao",
+                "kakao-2"
+        )).thenReturn(Optional.empty());
         when(jwtUtil.createTempJwt("kakao", "kakao-2")).thenReturn("temp-token");
 
         KakaoLoginResult result = oAuthService.processKakaoLogin(request);
@@ -139,19 +141,24 @@ class OAuthServiceImplTest {
     }
 
     @Test
-    void linkOAuthAccountRejectsEmailDifferentFromAuthenticatedUser() {
+    void linkOAuthAccountRejectsWrongLocalPassword() {
         OAuthLinkRequest request = new OAuthLinkRequest();
-        request.setEmail("attacker@example.com");
-        User authenticatedUser = User.builder()
+        request.setEmail("owner@example.com");
+        request.setPassword("wrong-password");
+        User existingUser = User.builder()
                 .id(7L)
                 .email("owner@example.com")
                 .role(Role.USER)
                 .build();
+        AuthCredential localCredential = AuthCredential.localPassword(existingUser, "encoded-password");
 
         mockTempClaims("attacker-kakao");
-        when(userRepository.findById(7L)).thenReturn(Optional.of(authenticatedUser));
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(existingUser));
+        when(authCredentialRepository.findByUser_IdAndType(7L, AuthCredentialType.LOCAL_PASSWORD))
+                .thenReturn(Optional.of(localCredential));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
-        assertThatThrownBy(() -> oAuthService.linkOAuthAccount("temp-token", request, 7L))
+        assertThatThrownBy(() -> oAuthService.linkOAuthAccount("temp-token", request))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(jwtUtil, never()).createJwt(any(), any(), any());
@@ -159,10 +166,35 @@ class OAuthServiceImplTest {
     }
 
     @Test
-    void linkOAuthAccountAddsSocialAccountForAuthenticatedSameEmail() {
+    void linkOAuthAccountRejectsOAuthOnlyAccountWithoutLocalPasswordCredential() {
         OAuthLinkRequest request = new OAuthLinkRequest();
         request.setEmail("owner@example.com");
-        User authenticatedUser = User.builder()
+        request.setPassword("local-password");
+        User existingUser = User.builder()
+                .id(7L)
+                .email("owner@example.com")
+                .role(Role.USER)
+                .build();
+
+        mockTempClaims("kakao-linked");
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(existingUser));
+        when(authCredentialRepository.findByUser_IdAndType(7L, AuthCredentialType.LOCAL_PASSWORD))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> oAuthService.linkOAuthAccount("temp-token", request))
+                .isInstanceOf(InvalidCredentialsException.class);
+
+        verify(passwordEncoder, never()).matches(any(), any());
+        verify(jwtUtil, never()).createJwt(any(), any(), any());
+        verify(redisTemplate, never()).opsForValue();
+    }
+
+    @Test
+    void linkOAuthAccountAddsOAuthCredentialAfterPasswordVerification() {
+        OAuthLinkRequest request = new OAuthLinkRequest();
+        request.setEmail("owner@example.com");
+        request.setPassword("local-password");
+        User existingUser = User.builder()
                 .id(7L)
                 .name("기존회원")
                 .email("owner@example.com")
@@ -171,23 +203,34 @@ class OAuthServiceImplTest {
                 .membershipVerified(true)
                 .role(Role.USER)
                 .build();
+        existingUser.getAuthCredentials().add(AuthCredential.localPassword(existingUser, "encoded-password"));
 
         mockTempClaims("kakao-linked");
-        when(userRepository.findById(7L)).thenReturn(Optional.of(authenticatedUser));
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(existingUser));
+        when(authCredentialRepository.findByUser_IdAndType(7L, AuthCredentialType.LOCAL_PASSWORD))
+                .thenReturn(Optional.of(existingUser.getAuthCredentials().get(0)));
+        when(authCredentialRepository.existsByUser_IdAndTypeAndProviderAndProviderUserId(
+                7L,
+                AuthCredentialType.OAUTH,
+                "kakao",
+                "kakao-linked"
+        )).thenReturn(false);
+        when(passwordEncoder.matches("local-password", "encoded-password")).thenReturn(true);
         when(jwtUtil.createJwt(7L, "ROLE_USER", JWTConstants.CATEGORY_ACCESS)).thenReturn("access-token");
         when(jwtUtil.createJwt(7L, "ROLE_USER", JWTConstants.CATEGORY_REFRESH)).thenReturn("refresh-token");
         when(jwtUtil.getRefreshTokenValidityInMS()).thenReturn(86_400_000L);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        OAuthResult result = oAuthService.linkOAuthAccount("temp-token", request, 7L);
+        OAuthResult result = oAuthService.linkOAuthAccount("temp-token", request);
 
         assertThat(result.getAccessToken()).isEqualTo("access-token");
-        assertThat(authenticatedUser.getSocialAccounts())
+        assertThat(existingUser.getAuthCredentials())
+                .filteredOn(credential -> credential.getType() == AuthCredentialType.OAUTH)
                 .singleElement()
-                .satisfies(account -> {
-                    assertThat(account.getProvider()).isEqualTo("kakao");
-                    assertThat(account.getProviderId()).isEqualTo("kakao-linked");
-                    assertThat(account.getUser()).isSameAs(authenticatedUser);
+                .satisfies(credential -> {
+                    assertThat(credential.getProvider()).isEqualTo("kakao");
+                    assertThat(credential.getProviderUserId()).isEqualTo("kakao-linked");
+                    assertThat(credential.getUser()).isSameAs(existingUser);
                 });
         verify(valueOperations).set("RT:7", "refresh-token", 86_400_000L, TimeUnit.MILLISECONDS);
     }
