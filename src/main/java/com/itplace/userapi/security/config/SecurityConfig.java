@@ -94,7 +94,6 @@ public class SecurityConfig {
                                 "/api/v1/questions/save",
                                 "/api/v1/recommendations",
                                 "/api/v1/auth/logout",
-                                "/api/v1/auth/oauth/link",
                                 "/api/v1/auth/oauth/result",
                                 "/api/v1/users/changePassword",
                                 "/api/v1/users/membership-profile",

@@ -5,15 +5,19 @@ import com.itplace.userapi.user.entity.User;
 import java.util.ArrayList;
 import java.util.Collection;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 @Getter
-@RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails, PrincipalDetails {
 
     private final User user;
+    private final String passwordHash;
+
+    public CustomUserDetails(User user, String passwordHash) {
+        this.user = user;
+        this.passwordHash = passwordHash;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -39,7 +43,7 @@ public class CustomUserDetails implements UserDetails, PrincipalDetails {
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return passwordHash;
     }
 
     @Override

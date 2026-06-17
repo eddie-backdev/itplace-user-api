@@ -75,15 +75,9 @@ public class OAuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> oauthSignUpLink(
             @CookieValue("tempToken") String tempToken,
             @RequestBody @Validated OAuthLinkRequest request,
-            @AuthenticationPrincipal PrincipalDetails principalDetails,
             HttpServletResponse httpServletResponse
     ) {
-        if (principalDetails == null || principalDetails.getUserId() == null) {
-            ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.UNAUTHORIZED_ACCESS, null);
-            return body.toResponseEntity();
-        }
-
-        OAuthResult result = oAuthService.linkOAuthAccount(tempToken, request, principalDetails.getUserId());
+        OAuthResult result = oAuthService.linkOAuthAccount(tempToken, request);
         cookieUtil.setTokensToCookie(httpServletResponse, result.getAccessToken(), result.getRefreshToken());
         ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, result.getLoginResponse());
         return body.toResponseEntity();

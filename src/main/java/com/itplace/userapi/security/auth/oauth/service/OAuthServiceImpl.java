@@ -17,14 +17,13 @@ import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
+import com.itplace.userapi.user.entity.AuthCredential;
+import com.itplace.userapi.user.entity.AuthCredentialType;
 import com.itplace.userapi.user.entity.Role;
-import com.itplace.userapi.user.entity.SocialAccount;
 import com.itplace.userapi.user.entity.User;
-import com.itplace.userapi.user.repository.SocialAccountRepository;
+import com.itplace.userapi.user.repository.AuthCredentialRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +40,7 @@ public class OAuthServiceImpl implements OAuthService {
     private final RedisTemplate<String, String> redisTemplate;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
-    private final SocialAccountRepository socialAccountRepository;
+    private final AuthCredentialRepository authCredentialRepository;
     private final JWTUtil jwtUtil;
     private final KakaoOAuthProviderClient kakaoOAuthProviderClient;
 
@@ -50,10 +49,10 @@ public class OAuthServiceImpl implements OAuthService {
     public KakaoLoginResult processKakaoLogin(KakaoCodeRequest request) {
         KakaoUserProfile profile = kakaoOAuthProviderClient.fetchUser(request.getCode(), request.getRedirectUri());
 
-        return socialAccountRepository.findByProviderAndProviderId("kakao", profile.providerId())
-                .map(socialAccount -> KakaoLoginResult.builder()
+        return authCredentialRepository.findByTypeAndProviderAndProviderUserId(AuthCredentialType.OAUTH, "kakao", profile.providerId())
+                .map(credential -> KakaoLoginResult.builder()
                         .isExistingUser(true)
-                        .authResult(createAuthResultForUser(socialAccount.getUser()))
+                        .authResult(createAuthResultForUser(credential.getUser()))
                         .build())
                 .orElseGet(() -> KakaoLoginResult.builder()
                         .isExistingUser(false)
@@ -79,19 +78,22 @@ public class OAuthServiceImpl implements OAuthService {
 
     @Override
     @Transactional
-    public OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request, Long authenticatedUserId) {
+    public OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request) {
         Claims claims = getVerifiedClaims(tempToken);
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        User user = userRepository.findById(authenticatedUserId)
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        if (!Objects.equals(user.getEmail(), request.getEmail())) {
+        AuthCredential localCredential = authCredentialRepository.findByUser_IdAndType(user.getId(), AuthCredentialType.LOCAL_PASSWORD)
+                .orElseThrow(() -> new InvalidCredentialsException(SecurityCode.UNAUTHORIZED_ACCESS));
+
+        if (!passwordEncoder.matches(request.getPassword(), localCredential.getPasswordHash())) {
             throw new InvalidCredentialsException(SecurityCode.UNAUTHORIZED_ACCESS);
         }
 
-        linkSocialAccount(user, provider, providerId);
+        linkOAuthCredential(user, provider, providerId);
         return createAuthResultForUser(user);
     }
 
@@ -124,29 +126,24 @@ public class OAuthServiceImpl implements OAuthService {
                 .carrier(request.getCarrier())
                 .membershipGradeCode(request.getMembershipGradeCode())
                 .membershipVerified(false)
-                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .role(Role.USER)
                 .build();
 
-        user.getSocialAccounts().add(SocialAccount.builder()
-                .provider(provider)
-                .providerId(providerId)
-                .user(user)
-                .build());
+        user.getAuthCredentials().add(AuthCredential.oauth(user, provider, providerId));
 
         return userRepository.save(user);
     }
 
-    private User linkSocialAccount(User user, String provider, String providerId) {
-        boolean alreadyLinked = user.getSocialAccounts().stream()
-                .anyMatch(sa -> sa.getProvider().equals(provider) && sa.getProviderId().equals(providerId));
+    private User linkOAuthCredential(User user, String provider, String providerId) {
+        boolean alreadyLinked = authCredentialRepository.existsByUser_IdAndTypeAndProviderAndProviderUserId(
+                user.getId(),
+                AuthCredentialType.OAUTH,
+                provider,
+                providerId
+        );
 
         if (!alreadyLinked) {
-            user.getSocialAccounts().add(SocialAccount.builder()
-                    .provider(provider)
-                    .providerId(providerId)
-                    .user(user)
-                    .build());
+            user.getAuthCredentials().add(AuthCredential.oauth(user, provider, providerId));
         }
 
         return user;
