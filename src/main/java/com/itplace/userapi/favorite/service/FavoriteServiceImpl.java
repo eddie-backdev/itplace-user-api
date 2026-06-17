@@ -162,14 +162,17 @@ public class FavoriteServiceImpl implements FavoriteService {
     public FavoriteDetailResponse getBenefitDetail(Long benefitId) {
         Benefit benefit = benefitRepository.findDetailById(benefitId)
                 .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
-        BenefitCarrierPolicy policy = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit)).stream()
-                .findFirst()
-                .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
+        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit));
+        if (policies.isEmpty()) {
+            throw new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND);
+        }
 
+        BenefitCarrierPolicy primaryPolicy = policies.get(0);
         Partner partner = benefit.getPartner();
 
-        List<TierBenefitDetail> tierDtos = carrierTierBenefitRepository.findAllByBenefitCarrierPolicy(policy).stream()
+        List<TierBenefitDetail> tierDtos = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies).stream()
                 .map(tb -> TierBenefitDetail.builder()
+                        .carrier(tb.getBenefitCarrierPolicy().getCarrier())
                         .grade(tb.getGrade())
                         .isAll(tb.getIsAll())
                         .context(tb.getContext())
@@ -180,8 +183,8 @@ public class FavoriteServiceImpl implements FavoriteService {
         return FavoriteDetailResponse.builder()
                 .benefitId(benefit.getBenefitId())
                 .benefitName(benefit.getBenefitName())
-                .benefitDescription(policy.getDescription())
-                .benefitLimit(policy.getBenefitPolicy() == null ? null : policy.getBenefitPolicy().getName())
+                .benefitDescription(primaryPolicy.getDescription())
+                .benefitLimit(primaryPolicy.getBenefitPolicy() == null ? null : primaryPolicy.getBenefitPolicy().getName())
                 .partnerName(partner != null ? partner.getPartnerName() : null)
                 .partnerImage(partner != null ? partner.getImage() : null)
                 .tiers(tierDtos)
