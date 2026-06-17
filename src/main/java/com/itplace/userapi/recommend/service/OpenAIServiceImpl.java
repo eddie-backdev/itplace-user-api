@@ -111,7 +111,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                         - 최근 상세보기한 제휴사: %s
                         
                         【종합 행동 기반 관심 제휴사】
-                        - 클릭/검색/상세/즐겨찾기/이용 이력을 통합한 상위 제휴사: %s
+                        - 클릭/검색/상세/즐겨찾기 신호를 통합한 상위 제휴사: %s
                         - 노출되었지만 반응이 약한 제휴사: %s
                         - dismiss/skip/negative/favorite_remove 부정 신호 제휴사: %s
                         
@@ -121,7 +121,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                         ※ 아래 후보 혜택들 중 사용자에게 적절한 혜택 %d개를 골라주세요.
                         ※ 추천 이유에는 후보별 scoreEvidence에 있는 실제 신호와 등급 혜택만 짧게 포함해주세요.
                         ※ 부정 신호 또는 tombstone_penalty가 있는 제휴사는 다른 후보가 있으면 선택하지 마세요.
-                        ※ scoreEvidence에 없는 즐겨찾기/사용/상세보기/검색/클릭 근거는 절대 만들지 마세요.
+                        ※ scoreEvidence에 없는 즐겨찾기/상세보기/검색/클릭 근거는 절대 만들지 마세요.
                         ※ 추천 제휴처는 절대 중복되지 않도록 해주세요.
                         ※ 카테고리를 알 수 없는 경우, 카테고리에 관한 내용은 포함하지 마세요.
                         
