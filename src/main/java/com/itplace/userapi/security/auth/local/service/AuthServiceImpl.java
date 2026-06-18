@@ -140,7 +140,7 @@ public class AuthServiceImpl implements AuthService {
 
         User user = User.builder()
                 .email(request.getEmail())
-                .name(request.getName())
+                .nickname(request.getNickname())
                 .phoneNumber(request.getPhoneNumber())
                 .gender(request.getGender())
                 .carrier(request.getCarrier())

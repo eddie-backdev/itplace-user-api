@@ -14,7 +14,7 @@ import lombok.Setter;
 @Builder
 public class UserInfoResponse {
     private Long id;
-    private String name;
+    private String nickname;
     private String email;
     private String phoneNumber;
     private Gender gender;
@@ -34,7 +34,7 @@ public class UserInfoResponse {
     public static UserInfoResponse from(User user) {
         return UserInfoResponse.builder()
                 .id(user.getId())
-                .name(user.getName())
+                .nickname(user.getNickname())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .gender(user.getGender())

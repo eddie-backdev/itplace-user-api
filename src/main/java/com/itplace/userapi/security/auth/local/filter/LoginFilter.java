@@ -100,7 +100,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private LoginResponse getLoginResponse(CustomUserDetails customUserDetails) {
         var user = customUserDetails.getUser();
         return LoginResponse.builder()
-                .name(user.getName())
+                .nickname(user.getNickname())
                 .carrier(user.getCarrier())
                 .membershipGradeCode(user.getMembershipGradeCode())
                 .membershipGrade(user.getMembershipGradeCode())

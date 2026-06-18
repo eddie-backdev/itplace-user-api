@@ -9,6 +9,7 @@ import com.itplace.userapi.security.auth.oauth.dto.request.KakaoCodeRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthLinkRequest;
 import com.itplace.userapi.security.auth.oauth.dto.request.OAuthSignUpRequest;
 import com.itplace.userapi.security.auth.oauth.dto.response.KakaoLoginResult;
+import com.itplace.userapi.security.auth.oauth.dto.response.OAuthPreAuthResponse;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
 import com.itplace.userapi.security.auth.oauth.service.OAuthService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,7 +37,7 @@ public class OAuthController {
     private final CookieUtil cookieUtil;
 
     @PostMapping("/kakao")
-    public ResponseEntity<ApiResponse<LoginResponse>> kakaoLogin(
+    public ResponseEntity<ApiResponse<?>> kakaoLogin(
             @RequestBody @Validated KakaoCodeRequest request,
             HttpServletResponse httpServletResponse
     ) {
@@ -45,16 +46,20 @@ public class OAuthController {
             OAuthResult authResult = result.getAuthResult();
             cookieUtil.setTokensToCookie(httpServletResponse, authResult.getAccessToken(), authResult.getRefreshToken());
             ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.LOGIN_SUCCESS, authResult.getLoginResponse());
-            return body.toResponseEntity();
+            return ResponseEntity.status(body.getStatus()).body(body);
         }
 
         cookieUtil.setTempTokenCookie(httpServletResponse, result.getTempToken(), TimeUnit.MINUTES.toSeconds(10));
-        ApiResponse<LoginResponse> body = ApiResponse.of(SecurityCode.PRE_AUTHENTICATION_SUCCESS, null);
-        return body.toResponseEntity();
+        OAuthPreAuthResponse preAuthResponse = OAuthPreAuthResponse.builder()
+                .email(result.getEmail())
+                .nickname(result.getNickname())
+                .build();
+        ApiResponse<OAuthPreAuthResponse> body = ApiResponse.of(SecurityCode.PRE_AUTHENTICATION_SUCCESS, preAuthResponse);
+        return ResponseEntity.status(body.getStatus()).body(body);
     }
 
     /**
-     * 신규 사용자가 이메일 인증을 포함한 추가 정보를 입력하여 최종 가입할 때 호출됩니다.
+     * 신규 사용자가 카카오 검증 이메일과 추가 정보를 조합해 최종 가입할 때 호출됩니다.
      */
     @PostMapping("/signUp")
     public ResponseEntity<ApiResponse<LoginResponse>> oauthSignUpNew(

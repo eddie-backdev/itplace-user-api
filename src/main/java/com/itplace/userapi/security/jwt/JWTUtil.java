@@ -63,6 +63,10 @@ public class JWTUtil {
     }
 
     public String createTempJwt(String provider, String providerId) {
+        return createTempJwt(provider, providerId, null, null);
+    }
+
+    public String createTempJwt(String provider, String providerId, String email, String nickname) {
         long now = System.currentTimeMillis();
         long validity = 10 * 60 * 1000L; // 10분 유효
 
@@ -70,6 +74,8 @@ public class JWTUtil {
                 .claim(JWTConstants.CLAIM_CATEGORY, "temp")
                 .claim("provider", provider)
                 .claim("providerId", providerId)
+                .claim("email", email)
+                .claim("nickname", nickname)
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + validity))
                 .signWith(secretKey)

@@ -46,7 +46,13 @@ public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
             throw new InvalidCredentialsException(SecurityCode.INVALID_INPUT_VALUE);
         }
 
-        return new KakaoUserProfile(providerId, nestedString(userInfo, "kakao_account", "email"));
+        return new KakaoUserProfile(
+                providerId,
+                nestedString(userInfo, "kakao_account", "email"),
+                nestedString(userInfo, "kakao_account", "profile", "nickname"),
+                nestedBoolean(userInfo, "kakao_account", "is_email_valid"),
+                nestedBoolean(userInfo, "kakao_account", "is_email_verified")
+        );
     }
 
     private String requestAccessToken(String authorizationCode, String redirectUri) {
@@ -99,13 +105,30 @@ public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private String nestedString(Map<String, Object> root, String objectKey, String valueKey) {
-        Object nested = root.get(objectKey);
-        if (!(nested instanceof Map<?, ?> nestedMap)) {
-            return null;
-        }
-        Object value = ((Map<String, Object>) nestedMap).get(valueKey);
+    private String nestedString(Map<String, Object> root, String firstKey, String secondKey) {
+        Object value = nestedValue(root, firstKey, secondKey);
         return value == null ? null : String.valueOf(value);
+    }
+
+    private String nestedString(Map<String, Object> root, String firstKey, String secondKey, String thirdKey) {
+        Object value = nestedValue(root, firstKey, secondKey, thirdKey);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Boolean nestedBoolean(Map<String, Object> root, String firstKey, String secondKey) {
+        Object value = nestedValue(root, firstKey, secondKey);
+        return value instanceof Boolean booleanValue ? booleanValue : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object nestedValue(Map<String, Object> root, String... keys) {
+        Object current = root;
+        for (String key : keys) {
+            if (!(current instanceof Map<?, ?> currentMap)) {
+                return null;
+            }
+            current = ((Map<String, Object>) currentMap).get(key);
+        }
+        return current;
     }
 }

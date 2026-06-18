@@ -10,6 +10,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,12 +43,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         if (oAuth2User.isNewUser()) {
             // Case 1: 신규 사용자 -> 임시 토큰 발급 및 추가 정보 입력 페이지로 리다이렉트
             log.info("신규 OAuth 사용자. 추가 정보 입력 페이지로 리다이렉트합니다.");
-            String tempToken = jwtUtil.createTempJwt(oAuth2User.getProvider(), oAuth2User.getProviderId());
+            String tempToken = jwtUtil.createTempJwt(
+                    oAuth2User.getProvider(),
+                    oAuth2User.getProviderId(),
+                    oAuth2User.getEmail(),
+                    oAuth2User.getNickname()
+            );
 
             cookieUtil.setTempTokenCookie(response, tempToken, TimeUnit.MINUTES.toSeconds(10));
 
             // 프론트엔드의 추가 정보 입력 페이지로 리다이렉트
-            getRedirectStrategy().sendRedirect(request, response, newUserRedirectUri);
+            getRedirectStrategy().sendRedirect(request, response, buildNewUserRedirectUri(oAuth2User));
         } else {
             // Case 2: 기존 사용자 -> 즉시 로그인 성공 처리 (JWT 발급)
             log.info("기존 OAuth 사용자. 로그인을 완료합니다.");
@@ -64,5 +71,16 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             // ApiResponse JSON 형식으로 응답
             getRedirectStrategy().sendRedirect(request, response, existUserRedirectUri);
         }
+    }
+    private String buildNewUserRedirectUri(CustomOAuth2User oAuth2User) {
+        String delimiter = newUserRedirectUri.contains("?") ? "&" : "?";
+        return newUserRedirectUri + delimiter
+                + "verifiedType=oauth"
+                + "&email=" + encode(oAuth2User.getEmail())
+                + "&nickname=" + encode(oAuth2User.getNickname());
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 }

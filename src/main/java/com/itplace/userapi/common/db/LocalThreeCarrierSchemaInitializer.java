@@ -18,6 +18,7 @@ public class LocalThreeCarrierSchemaInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        addUserNicknameColumn();
         addUserMembershipProfileColumns();
         addAuthCredentialSchema();
         addBenefitPolicyNormalizationTables();
@@ -29,6 +30,21 @@ public class LocalThreeCarrierSchemaInitializer implements ApplicationRunner {
         addBenefitIndexes();
         addInquiryTable();
         log.info("로컬 통신 3사 멤버십 스키마 보정 완료");
+    }
+
+    private void addUserNicknameColumn() {
+        jdbcTemplate.execute("""
+                ALTER TABLE users
+                    ADD COLUMN IF NOT EXISTS nickname VARCHAR(30)
+                """);
+        if (columnExists("users", "name")) {
+            jdbcTemplate.execute("""
+                    UPDATE users
+                    SET nickname = name
+                    WHERE nickname IS NULL
+                      AND name IS NOT NULL
+                    """);
+        }
     }
 
     private void addUserMembershipProfileColumns() {
