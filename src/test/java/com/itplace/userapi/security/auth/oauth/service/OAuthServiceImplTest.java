@@ -71,7 +71,7 @@ class OAuthServiceImplTest {
         KakaoCodeRequest request = kakaoRequest();
         User user = User.builder()
                 .id(7L)
-                .name("홍길동")
+                .nickname("홍길동")
                 .carrier(Carrier.LGU)
                 .membershipGradeCode(Grade.VIP)
                 .membershipVerified(true)
@@ -80,7 +80,7 @@ class OAuthServiceImplTest {
         AuthCredential credential = AuthCredential.oauth(user, "kakao", "kakao-1");
 
         when(kakaoOAuthProviderClient.fetchUser("auth-code", "itplace://oauth/callback/kakao"))
-                .thenReturn(new KakaoUserProfile("kakao-1", "hong@example.com"));
+                .thenReturn(new KakaoUserProfile("kakao-1", "hong@example.com", "홍길동", true, true));
         when(authCredentialRepository.findByTypeAndProviderAndProviderUserId(
                 AuthCredentialType.OAUTH,
                 "kakao",
@@ -95,7 +95,7 @@ class OAuthServiceImplTest {
 
         assertThat(result.isExistingUser()).isTrue();
         assertThat(result.getAuthResult().getAccessToken()).isEqualTo("access-token");
-        assertThat(result.getAuthResult().getLoginResponse().getName()).isEqualTo("홍길동");
+        assertThat(result.getAuthResult().getLoginResponse().getNickname()).isEqualTo("홍길동");
         verify(valueOperations).set("RT:7", "refresh-token", 86_400_000L, TimeUnit.MILLISECONDS);
     }
 
@@ -103,13 +103,13 @@ class OAuthServiceImplTest {
     void processKakaoLoginReturnsTempTokenForNewOAuthCredential() {
         KakaoCodeRequest request = kakaoRequest();
         when(kakaoOAuthProviderClient.fetchUser("auth-code", "itplace://oauth/callback/kakao"))
-                .thenReturn(new KakaoUserProfile("kakao-2", null));
+                .thenReturn(new KakaoUserProfile("kakao-2", "new@example.com", "카카오닉", true, true));
         when(authCredentialRepository.findByTypeAndProviderAndProviderUserId(
                 AuthCredentialType.OAUTH,
                 "kakao",
                 "kakao-2"
         )).thenReturn(Optional.empty());
-        when(jwtUtil.createTempJwt("kakao", "kakao-2")).thenReturn("temp-token");
+        when(jwtUtil.createTempJwt("kakao", "kakao-2", "new@example.com", "카카오닉")).thenReturn("temp-token");
 
         KakaoLoginResult result = oAuthService.processKakaoLogin(request);
 
@@ -122,8 +122,7 @@ class OAuthServiceImplTest {
     @Test
     void signUpWithOAuthRejectsExistingEmailInsteadOfLinkingAccount() {
         OAuthSignUpRequest request = new OAuthSignUpRequest();
-        request.setName("김카카오");
-        request.setEmail("owner@example.com");
+        request.setNickname("김카카오");
         request.setGender(Gender.MALE);
         request.setBirthday(LocalDate.of(1990, 1, 1));
         request.setCarrier(Carrier.LGU);
@@ -196,7 +195,7 @@ class OAuthServiceImplTest {
         request.setPassword("local-password");
         User existingUser = User.builder()
                 .id(7L)
-                .name("기존회원")
+                .nickname("기존회원")
                 .email("owner@example.com")
                 .carrier(Carrier.LGU)
                 .membershipGradeCode(Grade.VIP)
@@ -250,5 +249,6 @@ class OAuthServiceImplTest {
         when(jwtUtil.getClaims("temp-token")).thenReturn(claims);
         when(claims.get("provider", String.class)).thenReturn("kakao");
         when(claims.get("providerId", String.class)).thenReturn(providerId);
+        when(claims.get("email", String.class)).thenReturn("owner@example.com");
     }
 }

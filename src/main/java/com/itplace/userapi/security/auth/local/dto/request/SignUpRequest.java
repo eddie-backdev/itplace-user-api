@@ -22,8 +22,8 @@ import lombok.ToString;
 @Builder
 @ToString
 public class SignUpRequest {
-    @NotBlank(message = "이름은 필수 항목입니다.")
-    private String name;
+    @NotBlank(message = "닉네임은 필수 항목입니다.")
+    private String nickname;
 
     @NotBlank(message = "이메일은 필수 항목입니다.")
     @Email(message = "유효한 이메일 형식이 아닙니다.")

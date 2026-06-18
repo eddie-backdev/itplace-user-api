@@ -40,12 +40,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 providerId
         );
 
+        String email = nestedString(attributes, "kakao_account", "email");
+        String nickname = nestedString(attributes, "kakao_account", "profile", "nickname");
+
         User user;
         if (credentialOpt.isPresent()) {
             // 이미 가입된 경우, 기존 User 정보를 가져옵니다.
             user = credentialOpt.get().getUser();
             log.info("기존 소셜 연동 유저: {}", user.getEmail());
         } else {
+            if (!hasVerifiedEmail(attributes, email)) {
+                throw new OAuth2AuthenticationException("Kakao verified email is required");
+            }
+
             // 신규 사용자인 경우, 임시 User 객체를 생성합니다.
             // 아직 우리 서비스의 회원은 아니므로, DB에 저장하지는 않습니다.
             // 성공 핸들러에서 isNewUser 플래그로 분기 처리합니다.
@@ -54,6 +61,42 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         // CustomOAuth2User 객체를 생성하여 반환
-        return new CustomOAuth2User(oAuth2User, provider, providerId, user);
+        return new CustomOAuth2User(
+                oAuth2User,
+                provider,
+                providerId,
+                user,
+                email,
+                nickname
+        );
+    }
+
+    private boolean hasVerifiedEmail(Map<String, Object> attributes, String email) {
+        return email != null
+                && !email.isBlank()
+                && Boolean.TRUE.equals(nestedBoolean(attributes, "kakao_account", "is_email_valid"))
+                && Boolean.TRUE.equals(nestedBoolean(attributes, "kakao_account", "is_email_verified"));
+    }
+
+    private Boolean nestedBoolean(Map<String, Object> root, String... keys) {
+        Object value = nestedValue(root, keys);
+        return value instanceof Boolean booleanValue ? booleanValue : null;
+    }
+
+    private String nestedString(Map<String, Object> root, String... keys) {
+        Object value = nestedValue(root, keys);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object nestedValue(Map<String, Object> root, String... keys) {
+        Object current = root;
+        for (String key : keys) {
+            if (!(current instanceof Map<?, ?> currentMap)) {
+                return null;
+            }
+            current = ((Map<String, Object>) currentMap).get(key);
+        }
+        return current;
     }
 }

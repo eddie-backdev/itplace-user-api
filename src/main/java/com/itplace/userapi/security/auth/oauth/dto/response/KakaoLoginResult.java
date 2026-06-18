@@ -14,4 +14,8 @@ public class KakaoLoginResult {
 
     // 신규 회원일 경우, 다음 단계를 위한 임시 토큰
     private final String tempToken;
+
+    // 신규 회원 추가 정보 입력 화면에 미리 채울 카카오 검증 정보
+    private final String email;
+    private final String nickname;
 }

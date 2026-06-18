@@ -54,10 +54,17 @@ public class OAuthServiceImpl implements OAuthService {
                         .isExistingUser(true)
                         .authResult(createAuthResultForUser(credential.getUser()))
                         .build())
-                .orElseGet(() -> KakaoLoginResult.builder()
-                        .isExistingUser(false)
-                        .tempToken(jwtUtil.createTempJwt("kakao", profile.providerId()))
-                        .build());
+                .orElseGet(() -> {
+                    if (!profile.hasVerifiedEmail()) {
+                        throw new InvalidCredentialsException(SecurityCode.INVALID_INPUT_VALUE);
+                    }
+                    return KakaoLoginResult.builder()
+                            .isExistingUser(false)
+                            .tempToken(jwtUtil.createTempJwt("kakao", profile.providerId(), profile.email(), profile.nickname()))
+                            .email(profile.email())
+                            .nickname(profile.nickname())
+                            .build();
+                });
     }
 
     @Override
@@ -67,11 +74,12 @@ public class OAuthServiceImpl implements OAuthService {
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        String verifiedEmail = requireVerifiedEmail(claims);
+        if (userRepository.findByEmail(verifiedEmail).isPresent()) {
             throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
         }
 
-        User user = createNewSocialUser(request, provider, providerId);
+        User user = createNewSocialUser(request, provider, providerId, verifiedEmail);
 
         return createAuthResultForUser(user);
     }
@@ -83,7 +91,7 @@ public class OAuthServiceImpl implements OAuthService {
         String provider = claims.get("provider", String.class);
         String providerId = claims.get("providerId", String.class);
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(requireVerifiedEmail(claims))
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
         AuthCredential localCredential = authCredentialRepository.findByUser_IdAndType(user.getId(), AuthCredentialType.LOCAL_PASSWORD)
@@ -113,14 +121,22 @@ public class OAuthServiceImpl implements OAuthService {
         return jwtUtil.getClaims(tempToken);
     }
 
-    private User createNewSocialUser(OAuthSignUpRequest request, String provider, String providerId) {
+    private String requireVerifiedEmail(Claims claims) {
+        String email = claims.get("email", String.class);
+        if (email == null || email.isBlank()) {
+            throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+        }
+        return email;
+    }
+
+    private User createNewSocialUser(OAuthSignUpRequest request, String provider, String providerId, String email) {
         if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
 
         User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
+                .nickname(request.getNickname())
+                .email(email)
                 .gender(request.getGender())
                 .birthday(request.getBirthday())
                 .carrier(request.getCarrier())
@@ -166,7 +182,7 @@ public class OAuthServiceImpl implements OAuthService {
 
     private LoginResponse buildLoginResponse(User user) {
         return LoginResponse.builder()
-                .name(user.getName())
+                .nickname(user.getNickname())
                 .carrier(user.getCarrier())
                 .membershipGradeCode(user.getMembershipGradeCode())
                 .membershipGrade(user.getMembershipGradeCode())

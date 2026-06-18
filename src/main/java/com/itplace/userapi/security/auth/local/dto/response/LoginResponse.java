@@ -9,7 +9,7 @@ import lombok.Getter;
 @Builder
 public class LoginResponse {
 
-    String name;
+    String nickname;
     Carrier carrier;
     Grade membershipGradeCode;
     Boolean membershipVerified;

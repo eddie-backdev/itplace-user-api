@@ -51,7 +51,7 @@ class OAuthControllerTest {
     @Test
     void kakaoLoginSetsSessionCookiesForExistingUser() throws Exception {
         LoginResponse loginResponse = LoginResponse.builder()
-                .name("홍길동")
+                .nickname("홍길동")
                 .carrier(Carrier.LGU)
                 .membershipGradeCode(Grade.VIP)
                 .membershipGrade(Grade.VIP)
@@ -73,7 +73,7 @@ class OAuthControllerTest {
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("LOGIN_SUCCESS"))
-                .andExpect(jsonPath("$.data.name").value("홍길동"));
+                .andExpect(jsonPath("$.data.nickname").value("홍길동"));
 
         verify(cookieUtil).setTokensToCookie(any(HttpServletResponse.class), eq("access-token"), eq("refresh-token"));
     }
@@ -81,14 +81,20 @@ class OAuthControllerTest {
     @Test
     void kakaoLoginSetsTempCookieForNewUser() throws Exception {
         when(oAuthService.processKakaoLogin(any()))
-                .thenReturn(KakaoLoginResult.builder().isExistingUser(false).tempToken("temp-token").build());
+                .thenReturn(KakaoLoginResult.builder()
+                        .isExistingUser(false)
+                        .tempToken("temp-token")
+                        .email("kakao@example.com")
+                        .nickname("카카오닉")
+                        .build());
 
         mockMvc.perform(post("/api/v1/auth/oauth/kakao")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(new ObjectMapper().writeValueAsString(Map.of("code", "auth-code"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("PRE_AUTHENTICATION_SUCCESS"))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data.email").value("kakao@example.com"))
+                .andExpect(jsonPath("$.data.nickname").value("카카오닉"));
 
         verify(cookieUtil).setTempTokenCookie(any(HttpServletResponse.class), eq("temp-token"), eq(TimeUnit.MINUTES.toSeconds(10)));
     }
@@ -96,7 +102,7 @@ class OAuthControllerTest {
     @Test
     void linkVerifiesLocalPasswordAndSetsSessionCookies() throws Exception {
         LoginResponse loginResponse = LoginResponse.builder()
-                .name("기존회원")
+                .nickname("기존회원")
                 .carrier(Carrier.KT)
                 .membershipGradeCode(Grade.KT_GOLD)
                 .membershipGrade(Grade.KT_GOLD)
@@ -119,7 +125,7 @@ class OAuthControllerTest {
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("LOGIN_SUCCESS"))
-                .andExpect(jsonPath("$.data.name").value("기존회원"));
+                .andExpect(jsonPath("$.data.nickname").value("기존회원"));
 
         verify(oAuthService).linkOAuthAccount(eq("temp-token"), any());
         verify(cookieUtil).setTokensToCookie(any(HttpServletResponse.class), eq("access-token"), eq("refresh-token"));

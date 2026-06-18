@@ -20,6 +20,10 @@ public class CustomOAuth2User implements OAuth2User, PrincipalDetails {
     private final String providerId;
     @Getter
     private final User user;
+    @Getter
+    private final String email;
+    @Getter
+    private final String nickname;
 
     @Override
     public Long getUserId() {
