@@ -8,4 +8,8 @@ public interface EmailService {
     void send(EmailVerificationRequest request);
 
     void confirm(EmailConfirmRequest request);
+
+    boolean hasVerified(String email);
+
+    boolean consumeVerified(String email);
 }
