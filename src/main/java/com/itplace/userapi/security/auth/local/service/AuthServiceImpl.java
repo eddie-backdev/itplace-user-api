@@ -7,9 +7,11 @@ import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.local.dto.request.SignUpRequest;
 import com.itplace.userapi.security.exception.DuplicateEmailException;
 import com.itplace.userapi.security.exception.DuplicatePhoneNumberException;
+import com.itplace.userapi.security.exception.EmailVerificationException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
 import com.itplace.userapi.security.exception.SmsVerificationException;
+import com.itplace.userapi.security.verification.email.service.EmailService;
 import com.itplace.userapi.security.verification.sms.service.SmsVerificationService;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
@@ -43,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
     private final SmsVerificationService smsVerificationService;
+    private final EmailService emailService;
 
     @Override
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -133,9 +136,19 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
 
+        if (!emailService.hasVerified(request.getEmail())) {
+            log.info("이메일 인증 미완료");
+            throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
+        }
+
         if (!smsVerificationService.consumeVerified(request.getPhoneNumber())) {
             log.info("휴대폰 번호 인증 미완료");
             throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
+        }
+
+        if (!emailService.consumeVerified(request.getEmail())) {
+            log.info("이메일 인증 소모 실패");
+            throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
         }
 
         User user = User.builder()

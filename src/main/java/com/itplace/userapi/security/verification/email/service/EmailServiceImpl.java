@@ -10,6 +10,7 @@ import com.itplace.userapi.user.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.TimeUnit;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -24,7 +25,7 @@ public class EmailServiceImpl implements EmailService {
     private final UserRepository userRepository;
     private final OtpUtil otpUtil;
 
-    private static final long KEY_TTL_SECONDS = 300;
+    private static final String VERIFIED_PREFIX = "email:verified:";
     private static final long VERIFIED_TTL_SECONDS = 1800;
 
     @Override
@@ -114,9 +115,29 @@ public class EmailServiceImpl implements EmailService {
             if (userRepository.findByEmail(request.getEmail()).isPresent()) {
                 throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
             }
+            redisTemplate.opsForValue().set(verifiedKey(request.getEmail()), "true", VERIFIED_TTL_SECONDS, TimeUnit.SECONDS);
         } else {
             log.info("이메일 인증 실패");
             throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
         }
+    }
+
+    @Override
+    public boolean hasVerified(String email) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(verifiedKey(email)));
+    }
+
+    @Override
+    public boolean consumeVerified(String email) {
+        String key = verifiedKey(email);
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
+            redisTemplate.delete(key);
+            return true;
+        }
+        return false;
+    }
+
+    private String verifiedKey(String email) {
+        return VERIFIED_PREFIX + email;
     }
 }
