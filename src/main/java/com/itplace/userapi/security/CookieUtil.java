@@ -2,7 +2,11 @@ package com.itplace.userapi.security;
 
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
@@ -45,6 +49,23 @@ public class CookieUtil {
                 .maxAge(maxAgeSeconds)
                 .build();
         response.addHeader("Set-Cookie", tempTokenCookie.toString());
+    }
+
+    public Optional<String> getCookieValue(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return Optional.empty();
+        }
+
+        return Arrays.stream(cookies)
+                .filter(cookie -> name.equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst();
+    }
+
+    public void expireAuthCookies(HttpServletResponse response) {
+        expireCookie(response, JWTConstants.CATEGORY_ACCESS);
+        expireCookie(response, JWTConstants.CATEGORY_REFRESH);
     }
 
     public void expireCookie(HttpServletResponse response, String category) {

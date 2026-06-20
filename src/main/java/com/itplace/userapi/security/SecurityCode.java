@@ -50,6 +50,7 @@ public enum SecurityCode implements BaseCode {
     REFRESH_TOKEN_REQUIRE("REFRESH_TOKEN_REQUIRE", HttpStatus.UNAUTHORIZED, "리프레시 토큰이 필요합니다."),
     REFRESH_TOKEN_EXPIRED("REFRESH_TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다."),
     INVALID_TOKEN_TYPE("INVALID_TOKEN_TYPE", HttpStatus.UNAUTHORIZED, "잘못된 토큰 타입입니다."),
+    CSRF_TOKEN_ISSUED("CSRF_TOKEN_ISSUED", HttpStatus.OK, "CSRF 토큰이 발급되었습니다."),
 
     // OAuth2, 추가 정보 입력 전 임시 인증 성공
     OAUTH_INFO_FOUND("OAUTH_INFO_FOUND", HttpStatus.OK, "OAuth 유저 정보를 찾았습니다."),
