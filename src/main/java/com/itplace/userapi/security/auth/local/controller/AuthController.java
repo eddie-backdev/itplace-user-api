@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +26,16 @@ public class AuthController {
 
     private final AuthService authService;
     private final CookieUtil cookieUtil;
+
+    @GetMapping("/csrf")
+    public ResponseEntity<ApiResponse<CsrfTokenResponse>> csrf(CsrfToken csrfToken, HttpServletResponse response) {
+        response.setHeader(csrfToken.getHeaderName(), csrfToken.getToken());
+        ApiResponse<CsrfTokenResponse> body = ApiResponse.of(
+                SecurityCode.CSRF_TOKEN_ISSUED,
+                new CsrfTokenResponse(csrfToken.getHeaderName(), csrfToken.getToken())
+        );
+        return body.toResponseEntity();
+    }
 
     @PostMapping("/reissue")
     public ResponseEntity<ApiResponse<Void>> reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -39,5 +51,8 @@ public class AuthController {
         cookieUtil.expireCookie(response, JWTConstants.CATEGORY_REFRESH);
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.LOGOUT_SUCCESS);
         return body.toResponseEntity();
+    }
+
+    public record CsrfTokenResponse(String headerName, String token) {
     }
 }

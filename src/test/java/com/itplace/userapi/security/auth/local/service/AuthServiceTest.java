@@ -35,7 +35,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceImplTest {
+class AuthServiceTest {
 
     @Mock
     private RedisTemplate<String, String> redisTemplate;
@@ -60,24 +60,25 @@ class AuthServiceImplTest {
 
     @Test
     void reissueConvertsRefreshTokenSignatureMismatchToInvalidTokenAndExpiresCookies() {
-        AuthServiceImpl authService = authService();
+        AuthService authService = authService();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         request.setCookies(new Cookie(JWTConstants.CATEGORY_REFRESH, "stale-refresh-token"));
-        when(jwtUtil.isExpired("stale-refresh-token"))
+        when(cookieUtil.getCookieValue(request, JWTConstants.CATEGORY_REFRESH))
+                .thenReturn(Optional.of("stale-refresh-token"));
+        when(jwtUtil.getClaims("stale-refresh-token"))
                 .thenThrow(new SignatureException("JWT signature does not match"));
 
         assertThatThrownBy(() -> authService.reissue(request, response))
                 .isInstanceOfSatisfying(InvalidCredentialsException.class, exception ->
                         assertThat(exception.getCode()).isEqualTo(SecurityCode.INVALID_TOKEN));
 
-        verify(cookieUtil).expireCookie(response, JWTConstants.CATEGORY_ACCESS);
-        verify(cookieUtil).expireCookie(response, JWTConstants.CATEGORY_REFRESH);
+        verify(cookieUtil).expireAuthCookies(response);
     }
 
     @Test
     void signUpRejectsWhenEmailIsNotVerifiedOnServer() {
-        AuthServiceImpl authService = authService();
+        AuthService authService = authService();
         SignUpRequest request = signUpRequest();
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
         when(userRepository.findByPhoneNumber("01012345678")).thenReturn(Optional.empty());
@@ -94,7 +95,7 @@ class AuthServiceImplTest {
 
     @Test
     void signUpConsumesVerifiedEmailAfterSmsVerification() {
-        AuthServiceImpl authService = authService();
+        AuthService authService = authService();
         SignUpRequest request = signUpRequest();
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
         when(userRepository.findByPhoneNumber("01012345678")).thenReturn(Optional.empty());
@@ -109,8 +110,8 @@ class AuthServiceImplTest {
         verify(userRepository).save(any(User.class));
     }
 
-    private AuthServiceImpl authService() {
-        return new AuthServiceImpl(
+    private AuthService authService() {
+        return new AuthService(
                 redisTemplate,
                 passwordEncoder,
                 userRepository,
