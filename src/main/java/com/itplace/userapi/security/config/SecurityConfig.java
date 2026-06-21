@@ -12,7 +12,6 @@ import com.itplace.userapi.security.jwt.JWTFilter;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
-import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -78,12 +77,16 @@ public class SecurityConfig {
                                 "https://userapi.itplace.click"
                         ));
 
-                        configuration.setAllowedMethods(Collections.singletonList("*"));
+                        configuration.setAllowedMethods(Arrays.asList(
+                                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+                        ));
                         configuration.setAllowCredentials(true);
-                        configuration.setAllowedHeaders(Collections.singletonList("*"));
+                        configuration.setAllowedHeaders(Arrays.asList(
+                                "Accept", "Authorization", "Content-Type", "X-XSRF-TOKEN"
+                        ));
                         configuration.setMaxAge(3600L);
 
-                        configuration.setExposedHeaders(Arrays.asList("Authorization", "X-XSRF-TOKEN"));
+                        configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN"));
                         return configuration;
                     }
                 })));
@@ -99,27 +102,16 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable());
 
-        // 경로별 인가 작업
+        // 경로별 인가 작업: 공개 API를 명시하고 나머지는 인증 필요로 닫는다.
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/inquiries").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users").authenticated()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(publicEndpoints()).permitAll()
+                        .requestMatchers(HttpMethod.GET, publicReadEndpoints()).permitAll()
+                        .requestMatchers(HttpMethod.POST, publicPostEndpoints()).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers(
-                                "/api/v1/questions/search",
-                                "/api/v1/questions/recommend",
-                                "/api/v1/questions/save",
-                                "/api/v1/recommendations",
-                                "/api/v1/auth/logout",
-                                "/api/v1/auth/oauth/result",
-                                "/api/v1/users/changePassword",
-                                "/api/v1/users/membership-profile",
-                                "/api/v1/favorites/**"
-                        ).authenticated()
-
-                        .anyRequest().permitAll());
+                        .requestMatchers(authenticatedEndpoints()).authenticated()
+                        .anyRequest().authenticated());
 
         http
                 .oauth2Login(oauth2 -> oauth2
@@ -146,6 +138,73 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
+    }
+
+    static String[] publicEndpoints() {
+        return new String[]{
+                "/hc",
+                "/env",
+                "/api-docs",
+                "/swagger.yml",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+                "/v3/api-docs/**",
+                "/actuator/health",
+                "/error",
+                "/oauth2/**",
+                "/login/oauth2/**"
+        };
+    }
+
+    static String[] publicReadEndpoints() {
+        return new String[]{
+                "/api/v1/auth/csrf",
+                "/api/v1/benefits",
+                "/api/v1/benefits/**",
+                "/api/v1/benefit",
+                "/api/v1/benefit/**",
+                "/api/v1/maps/**",
+                "/api/v1/mobile/map/**",
+                "/api/v1/partners/search-ranking"
+        };
+    }
+
+    static String[] publicPostEndpoints() {
+        return new String[]{
+                "/api/v1/auth/login",
+                "/api/v1/auth/reissue",
+                "/api/v1/auth/signUp",
+                "/api/v1/auth/recaptcha",
+                "/api/v1/auth/oauth/kakao",
+                "/api/v1/auth/oauth/signUp",
+                "/api/v1/auth/oauth/link",
+                "/api/v1/verification/email",
+                "/api/v1/verification/email/confirm",
+                "/api/v1/verification/sms",
+                "/api/v1/verification/sms/confirm",
+                "/api/v1/users/findPassword",
+                "/api/v1/users/findPassword/confirm",
+                "/api/v1/users/resetPassword",
+                "/api/v1/inquiries",
+                "/api/v1/filter",
+                "/api/v1/internal/benefits/**",
+                "/internal/benefits/**"
+        };
+    }
+
+    static String[] authenticatedEndpoints() {
+        return new String[]{
+                "/api/v1/users",
+                "/api/v1/users/**",
+                "/api/v1/favorites",
+                "/api/v1/favorites/**",
+                "/api/v1/auth/logout",
+                "/api/v1/auth/oauth/result",
+                "/api/v1/questions/search",
+                "/api/v1/questions/recommend",
+                "/api/v1/questions/save",
+                "/api/v1/recommendations"
+        };
     }
 
     private CookieCsrfTokenRepository csrfTokenRepository() {
