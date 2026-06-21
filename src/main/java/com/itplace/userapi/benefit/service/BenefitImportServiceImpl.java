@@ -14,6 +14,8 @@ import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import com.itplace.userapi.partner.service.PartnerImagePolicy;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -108,9 +110,15 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     }
 
     private void validateInternalKey(String apiKey) {
-        if (!StringUtils.hasText(expectedApiKey) || !expectedApiKey.equals(apiKey)) {
+        if (!StringUtils.hasText(expectedApiKey) || !StringUtils.hasText(apiKey) || !constantTimeEquals(expectedApiKey, apiKey)) {
             throw new BenefitImportUnauthorizedException(BenefitCode.BENEFIT_IMPORT_UNAUTHORIZED);
         }
+    }
+
+    private boolean constantTimeEquals(String expected, String actual) {
+        byte[] expectedBytes = expected.getBytes(StandardCharsets.UTF_8);
+        byte[] actualBytes = actual.getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(expectedBytes, actualBytes);
     }
 
     private Map<String, Partner> upsertPartners(List<BenefitSnapshotImportRequest.BenefitSnapshotItem> items) {

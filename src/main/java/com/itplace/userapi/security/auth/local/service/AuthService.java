@@ -51,15 +51,22 @@ public class AuthService {
         log.info("Access 토큰 재발급 시작");
 
         try {
-            String refreshToken = cookieUtil.getCookieValue(request, JWTConstants.CATEGORY_REFRESH)
-                    .orElseThrow(() -> invalidCredentials(SecurityCode.REFRESH_TOKEN_REQUIRE, "리프레시 토큰이 없습니다."));
-            RefreshTokenClaims claims = validateRefreshToken(refreshToken);
-            String newAccessToken = createAccessToken(claims);
+            String newAccessToken = reissueAccessToken(readRefreshToken(request));
             cookieUtil.setAccessTokenCookie(response, newAccessToken);
         } catch (InvalidCredentialsException e) {
             cookieUtil.expireAuthCookies(response);
             throw e;
         }
+    }
+
+    private String readRefreshToken(HttpServletRequest request) {
+        return cookieUtil.getCookieValue(request, JWTConstants.CATEGORY_REFRESH)
+                .orElseThrow(() -> invalidCredentials(SecurityCode.REFRESH_TOKEN_REQUIRE, "리프레시 토큰이 없습니다."));
+    }
+
+    private String reissueAccessToken(String refreshToken) {
+        RefreshTokenClaims claims = validateRefreshToken(refreshToken);
+        return createAccessToken(claims);
     }
 
     private RefreshTokenClaims validateRefreshToken(String refreshToken) {
@@ -114,30 +121,55 @@ public class AuthService {
     public void signUp(SignUpRequest request) {
         log.info("회원가입 시작");
 
+        validateSignUpRequest(request);
+        consumeSignUpVerifications(request);
+        userRepository.save(createLocalUser(request));
+        log.info("USER 저장됨");
+    }
+
+    private void validateSignUpRequest(SignUpRequest request) {
+        validatePasswordConfirmation(request);
+        validateUniqueEmail(request.getEmail());
+        validateUniquePhoneNumber(request.getPhoneNumber());
+        validateMembershipProfile(request);
+        validateVerifiedEmail(request.getEmail());
+    }
+
+    private void validatePasswordConfirmation(SignUpRequest request) {
         if (!request.getPassword().equals(request.getPasswordConfirm())) {
             log.info("비밀번호가 일치하지 않음");
             throw new PasswordMismatchException(SecurityCode.PASSWORD_MISMATCH);
         }
+    }
 
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+    private void validateUniqueEmail(String email) {
+        if (userRepository.findByEmail(email).isPresent()) {
             log.info("이메일 중복");
             throw new DuplicateEmailException(SecurityCode.DUPLICATE_EMAIL);
         }
+    }
 
-        if (userRepository.findByPhoneNumber(request.getPhoneNumber()).isPresent()) {
+    private void validateUniquePhoneNumber(String phoneNumber) {
+        if (userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
             log.info("휴대폰 번호 중복");
             throw new DuplicatePhoneNumberException(SecurityCode.DUPLICATE_PHONE_NUMBER);
         }
+    }
 
+    private void validateMembershipProfile(SignUpRequest request) {
         if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
+    }
 
-        if (!emailService.hasVerified(request.getEmail())) {
+    private void validateVerifiedEmail(String email) {
+        if (!emailService.hasVerified(email)) {
             log.info("이메일 인증 미완료");
             throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
         }
+    }
 
+    private void consumeSignUpVerifications(SignUpRequest request) {
         if (!smsVerificationService.consumeVerified(request.getPhoneNumber())) {
             log.info("휴대폰 번호 인증 미완료");
             throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
@@ -147,7 +179,9 @@ public class AuthService {
             log.info("이메일 인증 소모 실패");
             throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
         }
+    }
 
+    private User createLocalUser(SignUpRequest request) {
         User user = User.builder()
                 .email(request.getEmail())
                 .nickname(request.getNickname())
@@ -161,7 +195,6 @@ public class AuthService {
                 .build();
 
         user.getAuthCredentials().add(AuthCredential.localPassword(user, passwordEncoder.encode(request.getPassword())));
-        userRepository.save(user);
-        log.info("USER 저장됨");
+        return user;
     }
 }
