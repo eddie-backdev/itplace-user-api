@@ -109,16 +109,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    SELECT s.*,
-                           CASE
-                               WHEN LOWER(COALESCE(s.storeName, '')) = LOWER(:keyword)
-                                    OR LOWER(COALESCE(p.partnerName, '')) = LOWER(:keyword)
-                               THEN 1 ELSE 0
-                           END AS is_exact,
-                           ST_DistanceSphere(
-                               s.location::geometry,
-                               ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
-                           ) AS distance
+                    SELECT s.storeId
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE s.location IS NOT NULL
@@ -130,14 +121,21 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         OR LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
                     )
                     ORDER BY
-                        is_exact DESC,
-                        distance ASC
+                           CASE
+                               WHEN LOWER(COALESCE(s.storeName, '')) = LOWER(:keyword)
+                                    OR LOWER(COALESCE(p.partnerName, '')) = LOWER(:keyword)
+                               THEN 1 ELSE 0
+                           END DESC,
+                           ST_DistanceSphere(
+                               s.location::geometry,
+                               ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
+                           ) ASC
                     LIMIT 30
                     """,
             nativeQuery = true
     )
-    List<Store> searchNearbyStores(@Param("lng") double lng, @Param("lat") double lat,
-                                   @Param("category") String category, @Param("keyword") String keyword);
+    List<Long> searchNearbyStoreIds(@Param("lng") double lng, @Param("lat") double lat,
+                                    @Param("category") String category, @Param("keyword") String keyword);
 
     @Query("SELECT s FROM Store s JOIN FETCH s.partner")
     List<Store> findAllWithPartner();
@@ -146,7 +144,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    SELECT s.*
+                    SELECT s.storeId
                     FROM store s
                     WHERE s.location IS NOT NULL
                       AND s.partnerId = :partnerId
@@ -155,7 +153,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     """,
             nativeQuery = true
     )
-    List<Store> searchNearbyStoresByPartnerId(
+    List<Long> searchNearbyStoreIdsByPartnerId(
             @Param("lng") double lng,
             @Param("lat") double lat,
             @Param("partnerId") Long partnerId
