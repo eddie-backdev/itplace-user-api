@@ -122,7 +122,9 @@ class StoreServiceImplTest {
 
         when(storeSearchService.searchByKeyword("카페", null))
                 .thenThrow(new RuntimeException("elasticsearch unavailable"));
-        when(storeRepository.searchNearbyStores(127.00, 37.50, null, "카페"))
+        when(storeRepository.searchNearbyStoreIds(127.00, 37.50, null, "카페"))
+                .thenReturn(List.of(3L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(3L)))
                 .thenReturn(List.of(store));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
                 .thenReturn(Map.<Long, List<BenefitCacheDto>>of());
@@ -142,12 +144,15 @@ class StoreServiceImplTest {
                 .partnerName("더벤티")
                 .category("카페")
                 .build();
-        Store store = store(5L, "더벤티 강남점", partner, point(127.01, 37.50));
+        Store nearestStore = store(5L, "더벤티 강남점", partner, point(127.01, 37.50));
+        Store fartherStore = store(4L, "더벤티 역삼점", partner, point(127.02, 37.50));
 
         when(storeSearchService.searchByKeyword("더벤티", null))
                 .thenReturn(new StoreSearchResult(List.of(), List.of()));
-        when(storeRepository.searchNearbyStores(127.00, 37.50, null, "더벤티"))
-                .thenReturn(List.of(store));
+        when(storeRepository.searchNearbyStoreIds(127.00, 37.50, null, "더벤티"))
+                .thenReturn(List.of(5L, 4L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(5L, 4L)))
+                .thenReturn(List.of(fartherStore, nearestStore));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
                 .thenReturn(Map.<Long, List<BenefitCacheDto>>of());
 
@@ -156,7 +161,7 @@ class StoreServiceImplTest {
 
         assertThat(result)
                 .extracting(response -> response.getStore().getStoreId())
-                .containsExactly(5L);
+                .containsExactly(5L, 4L);
     }
 
     @Test
@@ -172,7 +177,9 @@ class StoreServiceImplTest {
                 .thenReturn(new StoreSearchResult(List.of(999L), List.of()));
         when(storeRepository.findAllByStoreIdInWithPartner(List.of(999L)))
                 .thenReturn(List.of());
-        when(storeRepository.searchNearbyStores(127.00, 37.50, "카페", "스타벅스"))
+        when(storeRepository.searchNearbyStoreIds(127.00, 37.50, "카페", "스타벅스"))
+                .thenReturn(List.of(6L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(6L)))
                 .thenReturn(List.of(store));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
                 .thenReturn(Map.<Long, List<BenefitCacheDto>>of());
@@ -237,7 +244,9 @@ class StoreServiceImplTest {
                 .thenReturn(new StoreSearchResult(List.of(21L), List.of()));
         when(storeRepository.findAllByStoreIdInWithPartner(List.of(21L)))
                 .thenReturn(List.of(seoulLandStore));
-        when(storeRepository.searchNearbyStores(127.00, 37.50, null, "팬시랜드"))
+        when(storeRepository.searchNearbyStoreIds(127.00, 37.50, null, "팬시랜드"))
+                .thenReturn(List.of(22L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(22L)))
                 .thenReturn(List.of(fancyLandStore));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
                 .thenReturn(Map.of(22L, List.of(new BenefitCacheDto(22L, "팬시랜드 문구 할인", List.of()))));
@@ -262,7 +271,9 @@ class StoreServiceImplTest {
 
         when(storeSearchService.searchByKeyword("팬시랜드", null))
                 .thenReturn(new StoreSearchResult(List.of(), List.of()));
-        when(storeRepository.searchNearbyStores(127.00, 37.50, null, "팬시랜드"))
+        when(storeRepository.searchNearbyStoreIds(127.00, 37.50, null, "팬시랜드"))
+                .thenReturn(List.of(22L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(22L)))
                 .thenReturn(List.of(staleFancyLandStore));
 
         List<StoreDetailResponse> result = storeService.findNearbyByKeyword(
@@ -288,8 +299,10 @@ class StoreServiceImplTest {
                 .build();
 
         when(partnerRepository.findByPartnerName("서울스카이")).thenReturn(java.util.Optional.of(seoulSky));
-        when(storeRepository.searchNearbyStoresByPartnerId(127.00, 37.50, 31L))
-                .thenReturn(List.of(staleSkyStore, validSkyStore));
+        when(storeRepository.searchNearbyStoreIdsByPartnerId(127.00, 37.50, 31L))
+                .thenReturn(List.of(31L, 32L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(31L, 32L)))
+                .thenReturn(List.of(validSkyStore, staleSkyStore));
         when(partnerBenefitCacheService.getBenefits(31L))
                 .thenReturn(List.of(new BenefitCacheDto(31L, "서울스카이 혜택", List.of(benefit))));
 

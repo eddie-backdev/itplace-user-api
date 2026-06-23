@@ -442,8 +442,28 @@ public class StoreServiceImpl implements StoreService {
 
     private List<StoreDetailResponse> searchNearbyStoresInDatabase(double lat, double lng, String category,
                                                                    String keyword, double userLat, double userLng) {
-        List<Store> fallbackStores = storeRepository.searchNearbyStores(lng, lat, category, keyword);
+        List<Long> fallbackStoreIds = storeRepository.searchNearbyStoreIds(lng, lat, category, keyword);
+        List<Store> fallbackStores = findStoresWithPartnerInRequestedOrder(fallbackStoreIds);
         return toStoreDetailResponses(fallbackStores, userLat, userLng);
+    }
+
+    private List<Store> findStoresWithPartnerInRequestedOrder(List<Long> storeIds) {
+        if (storeIds == null || storeIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, Store> storesById = storeRepository.findAllByStoreIdInWithPartner(storeIds).stream()
+                .collect(Collectors.toMap(
+                        Store::getStoreId,
+                        store -> store,
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+
+        return storeIds.stream()
+                .map(storesById::get)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private List<StoreDetailResponse> toStoreDetailResponses(List<Store> stores, double userLat, double userLng) {
@@ -486,7 +506,8 @@ public class StoreServiceImpl implements StoreService {
         Partner partner = partnerRepository.findByPartnerName(partnerName)
                 .orElseThrow(() -> new PartnerNotFoundException(PartnerCode.PARTNER_NOT_FOUND));
 
-        List<Store> stores = storeRepository.searchNearbyStoresByPartnerId(lng, lat, partner.getPartnerId());
+        List<Long> storeIds = storeRepository.searchNearbyStoreIdsByPartnerId(lng, lat, partner.getPartnerId());
+        List<Store> stores = findStoresWithPartnerInRequestedOrder(storeIds);
 
         // [변경] 기존: 루프 내부에서 매 매장(store)마다 benefitRepository.findAllByPartner_PartnerId()와
         //        tierBenefitRepository.findAllByBenefit_BenefitId()를 반복 호출 → 매장 수만큼 DB 쿼리 발생(N+1).
