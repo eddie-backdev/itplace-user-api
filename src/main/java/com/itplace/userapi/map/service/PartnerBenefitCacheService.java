@@ -6,6 +6,7 @@ import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import java.util.ArrayList;
@@ -131,12 +132,7 @@ public class PartnerBenefitCacheService {
         List<TierBenefitDto> normalizedTiers = policies.stream()
                 .flatMap(policy -> carrierTierMap
                         .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
-                        .map(tier -> TierBenefitDto.builder()
-                                .benefitId(benefit.getBenefitId())
-                                .carrier(policy.getCarrier())
-                                .grade(tier.getGrade())
-                                .context(tier.getContext())
-                                .build()))
+                        .map(tier -> toTierBenefitDto(benefit, policy, tier)))
                 .collect(Collectors.toList());
         return new BenefitCacheDto(
                 benefit.getBenefitId(),
@@ -145,6 +141,18 @@ public class PartnerBenefitCacheService {
                 benefit.getMainCategory(),
                 normalizedTiers
         );
+    }
+
+    private TierBenefitDto toTierBenefitDto(Benefit benefit, BenefitCarrierPolicy policy, CarrierTierBenefit tier) {
+        BenefitContextSplitter.SplitContext splitContext = BenefitContextSplitter.split(tier.getContext());
+        return TierBenefitDto.builder()
+                .benefitId(benefit.getBenefitId())
+                .carrier(policy.getCarrier())
+                .grade(tier.getGrade())
+                .context(tier.getContext())
+                .onlineContext(splitContext.onlineContext())
+                .offlineContext(splitContext.offlineContext())
+                .build();
     }
 
     private com.itplace.userapi.benefit.entity.enums.UsageType representativeUsageType(
