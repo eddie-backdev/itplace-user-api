@@ -18,4 +18,6 @@ public class TierBenefitDto {
     private Carrier carrier;
     private Grade grade;
     private String context;
+    private String onlineContext;
+    private String offlineContext;
 }

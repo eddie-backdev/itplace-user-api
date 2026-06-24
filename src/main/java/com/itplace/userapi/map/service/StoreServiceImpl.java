@@ -557,6 +557,8 @@ public class StoreServiceImpl implements StoreService {
                 .carrier(tier.getCarrier())
                 .grade(tier.getGrade())
                 .context(tier.getContext())
+                .onlineContext(tier.getOnlineContext())
+                .offlineContext(tier.getOfflineContext())
                 .build();
     }
 

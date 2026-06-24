@@ -17,6 +17,7 @@ import com.itplace.userapi.benefit.exception.BenefitOfflineNotFoundException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.entity.Store;
@@ -619,10 +620,13 @@ public class BenefitServiceImpl implements BenefitService {
             if (policy == null) {
                 return;
             }
+            BenefitContextSplitter.SplitContext splitContext = BenefitContextSplitter.split(tierBenefit.getContext());
             TierBenefitInfo info = new TierBenefitInfo(
                     policy.getCarrier(),
                     tierBenefit.getGrade(),
                     tierBenefit.getContext(),
+                    splitContext.onlineContext(),
+                    splitContext.offlineContext(),
                     tierBenefit.getIsAll()
             );
             String key = String.join("|",

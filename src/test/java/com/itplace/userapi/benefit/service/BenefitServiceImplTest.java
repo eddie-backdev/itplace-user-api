@@ -522,6 +522,41 @@ class BenefitServiceImplTest {
     }
 
     @Test
+    void getMapBenefitDetail_splitsOnlineAndOfflineContextsWithoutChangingStoredContext() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("미스터피자")
+                .image("image")
+                .build();
+        Store store = Store.builder()
+                .storeId(20L)
+                .partner(partner)
+                .build();
+        Benefit skt = benefit(
+                1L,
+                partner,
+                Carrier.SKT,
+                "미스터피자 할인형",
+                Grade.SKT_VIP,
+                "온라인: 25% 할인 / 오프라인: 25% 할인"
+        );
+
+        when(storeRepository.findByIdAndPartnerId(20L, 10L)).thenReturn(Optional.of(store));
+        when(benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(10L, MainCategory.BASIC_BENEFIT))
+                .thenReturn(List.of(skt));
+
+        MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(
+                20L, 10L, MainCategory.BASIC_BENEFIT, Carrier.SKT, null);
+
+        assertThat(response.getTierBenefits()).singleElement()
+                .satisfies(tier -> {
+                    assertThat(tier.getContext()).isEqualTo("온라인: 25% 할인 / 오프라인: 25% 할인");
+                    assertThat(tier.getOnlineContext()).isEqualTo("25% 할인");
+                    assertThat(tier.getOfflineContext()).isEqualTo("25% 할인");
+                });
+    }
+
+    @Test
     void getMapBenefitDetail_withoutMainCategoryReturnsOfflineBenefitsAcrossCategories() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
