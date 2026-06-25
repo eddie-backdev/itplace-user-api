@@ -1,6 +1,8 @@
 package com.itplace.userapi.ai.rag.index;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
@@ -31,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BenefitRagSyncService {
     static final String INDEX_NAME = "benefit";
     static final String SYNC_STATUS_TOMBSTONED = "TOMBSTONED";
+    private static final int RECONCILIATION_PAGE_SIZE = 1000;
 
     private final ElasticsearchClient esClient;
     private final BenefitRepository benefitRepository;
@@ -126,33 +129,50 @@ public class BenefitRagSyncService {
         int failedDocuments = 0;
 
         try {
-            SearchResponse<JsonData> response = esClient.search(s -> s
-                            .index(INDEX_NAME)
-                            .size(1000)
-                            .query(q -> q.matchAll(m -> m)),
-                    JsonData.class
-            );
-            if (response == null || response.hits() == null) {
-                return new ReconciliationResult(0, 0, 0);
-            }
-
-            for (Hit<JsonData> hit : response.hits().hits()) {
-                Optional<ExistingDocumentSnapshot> snapshot = toExistingDocumentSnapshot(hit);
-                if (snapshot.isEmpty()) {
-                    continue;
-                }
-                ExistingDocumentSnapshot existing = snapshot.get();
-                if (currentDocumentIds.contains(existing.documentId()) || !existing.active()) {
-                    continue;
-                }
-
-                BenefitDocument tombstone = tombstoneDocument(existing);
-                esClient.index(i -> i
-                        .index(INDEX_NAME)
-                        .id(tombstone.getDocumentId())
-                        .document(tombstone)
+            List<FieldValue> searchAfter = null;
+            while (true) {
+                List<FieldValue> pageSearchAfter = searchAfter;
+                SearchResponse<JsonData> response = esClient.search(s -> {
+                            var builder = s
+                                    .index(INDEX_NAME)
+                                    .size(RECONCILIATION_PAGE_SIZE)
+                                    .query(q -> q.matchAll(m -> m))
+                                    .sort(sort -> sort.field(f -> f.field("documentId").order(SortOrder.Asc)));
+                            if (pageSearchAfter != null && !pageSearchAfter.isEmpty()) {
+                                builder.searchAfter(pageSearchAfter);
+                            }
+                            return builder;
+                        },
+                        JsonData.class
                 );
-                tombstonedDocuments++;
+                if (response == null || response.hits() == null || response.hits().hits().isEmpty()) {
+                    break;
+                }
+
+                List<Hit<JsonData>> hits = response.hits().hits();
+                for (Hit<JsonData> hit : hits) {
+                    Optional<ExistingDocumentSnapshot> snapshot = toExistingDocumentSnapshot(hit);
+                    if (snapshot.isEmpty()) {
+                        continue;
+                    }
+                    ExistingDocumentSnapshot existing = snapshot.get();
+                    if (currentDocumentIds.contains(existing.documentId()) || !existing.active()) {
+                        continue;
+                    }
+
+                    BenefitDocument tombstone = tombstoneDocument(existing);
+                    esClient.index(i -> i
+                            .index(INDEX_NAME)
+                            .id(tombstone.getDocumentId())
+                            .document(tombstone)
+                    );
+                    tombstonedDocuments++;
+                }
+
+                if (hits.size() < RECONCILIATION_PAGE_SIZE || hits.get(hits.size() - 1).sort().isEmpty()) {
+                    break;
+                }
+                searchAfter = hits.get(hits.size() - 1).sort();
             }
         } catch (Exception e) {
             failedDocuments++;
@@ -215,6 +235,8 @@ public class BenefitRagSyncService {
                 .manual(textOrBlank(node, "manual"))
                 .context(textOrBlank(node, "context"))
                 .tierContext(textOrBlank(node, "tierContext"))
+                .onlineContext(blankToNull(textOrBlank(node, "onlineContext")))
+                .offlineContext(blankToNull(textOrBlank(node, "offlineContext")))
                 .discountValue(integerOrNull(node, "discountValue"))
                 .businessType(textOrBlank(node, "businessType"))
                 .useCases(textList(node, "useCases"))

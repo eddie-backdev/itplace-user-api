@@ -104,4 +104,57 @@ class BenefitRagDocumentBuilderTest {
                     assertThat(document.getTags()).contains("MOVIE_THEATER", "영화");
                 });
     }
+
+    @Test
+    void buildPendingDocumentsStoresOnlineAndOfflineContextsSeparately() {
+        Benefit benefit = Benefit.builder()
+                .benefitId(101L)
+                .benefitName("피자 할인")
+                .mainCategory(MainCategory.BASIC_BENEFIT)
+                .partner(Partner.builder()
+                        .partnerId(11L)
+                        .partnerName("미스터피자")
+                        .category("피자")
+                        .build())
+                .active(true)
+                .build();
+        BenefitCarrierPolicy policy = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(201L)
+                .benefit(benefit)
+                .carrier(Carrier.SKT)
+                .active(true)
+                .carrierBenefitName("T멤버십 피자 할인")
+                .description("피자 할인")
+                .manual("멤버십 제시")
+                .usageType(UsageType.BOTH)
+                .type(BenefitType.DISCOUNT)
+                .build();
+        CarrierTierBenefit tier = CarrierTierBenefit.builder()
+                .carrierTierBenefitId(301L)
+                .benefitCarrierPolicy(policy)
+                .grade(Grade.SKT_VIP)
+                .context("온라인: 방문포장 25% 할인 / 오프라인: 매장 25% 할인")
+                .isAll(false)
+                .build();
+
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of(tier));
+
+        BenefitRagDocumentBuilder builder = new BenefitRagDocumentBuilder(
+                benefitCarrierPolicyRepository,
+                carrierTierBenefitRepository,
+                new BenefitRagMetadataClassifier()
+        );
+
+        List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = builder.buildPendingDocuments(benefit);
+
+        assertThat(pendingDocuments)
+                .singleElement()
+                .satisfies(pending -> {
+                    assertThat(pending.searchableText()).contains("온라인 방문포장 25% 할인", "오프라인 매장 25% 할인");
+                    BenefitDocument document = pending.document();
+                    assertThat(document.getOnlineContext()).isEqualTo("방문포장 25% 할인");
+                    assertThat(document.getOfflineContext()).isEqualTo("매장 25% 할인");
+                });
+    }
 }

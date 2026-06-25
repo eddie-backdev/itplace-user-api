@@ -18,6 +18,7 @@ import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import com.itplace.userapi.recommend.dto.Candidate;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -216,6 +217,8 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .sourceUrl(textOrDefault(node, "sourceUrl", ""))
                 .description(textOrDefault(node, "description", policyContext.descriptionFor(benefitId)))
                 .context(textOrDefault(node, "tierContext", textOrDefault(node, "context", policyContext.contextFor(benefitId))))
+                .onlineContext(blankToNull(textOrDefault(node, "onlineContext", policyContext.onlineContextFor(benefitId))))
+                .offlineContext(blankToNull(textOrDefault(node, "offlineContext", policyContext.offlineContextFor(benefitId))))
                 .businessType(textOrDefault(node, "businessType", "OTHER"))
                 .useCases(textList(node, "useCases"))
                 .negativeUseCases(textList(node, "negativeUseCases"))
@@ -232,7 +235,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
 
     private HydratedPolicyContext hydratePolicyContext(Carrier carrier, Grade grade, List<Benefit> benefits) {
         if (benefits.isEmpty()) {
-            return new HydratedPolicyContext(Map.of(), Map.of());
+            return new HydratedPolicyContext(Map.of(), Map.of(), Map.of(), Map.of());
         }
 
         List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
@@ -261,7 +264,21 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
             }
         }
 
-        return new HydratedPolicyContext(descriptions, contexts);
+        Map<Long, String> onlineContexts = new LinkedHashMap<>();
+        Map<Long, String> offlineContexts = new LinkedHashMap<>();
+        for (CarrierTierBenefit tierBenefit : tierBenefits) {
+            BenefitCarrierPolicy policy = tierBenefit.getBenefitCarrierPolicy();
+            Long benefitId = policy.getBenefit().getBenefitId();
+            BenefitContextSplitter.SplitContext splitContext = BenefitContextSplitter.split(tierBenefit.getContext());
+            if (splitContext.onlineContext() != null && !splitContext.onlineContext().isBlank()) {
+                onlineContexts.putIfAbsent(benefitId, splitContext.onlineContext());
+            }
+            if (splitContext.offlineContext() != null && !splitContext.offlineContext().isBlank()) {
+                offlineContexts.putIfAbsent(benefitId, splitContext.offlineContext());
+            }
+        }
+
+        return new HydratedPolicyContext(descriptions, contexts, onlineContexts, offlineContexts);
     }
 
     private List<Candidate> fallbackCandidates(Carrier carrier, Grade grade, int candidateSize, BenefitSearchCondition condition) {
@@ -333,6 +350,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 policy.getManual(),
                 tierBenefit == null ? "" : tierBenefit.getContext()
         );
+        BenefitContextSplitter.SplitContext splitContext = BenefitContextSplitter.split(tierBenefit == null ? null : tierBenefit.getContext());
         return Candidate.builder()
                 .benefitId(benefit.getBenefitId())
                 .policyId(policy.getBenefitCarrierPolicyId())
@@ -352,6 +370,8 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .sourceUrl(firstNonBlank(policy.getSourceUrl(), policy.getUrl()))
                 .description(textOrDefault(policy.getDescription(), "설명 없음"))
                 .context(tierBenefit == null ? "등급별 혜택 정보 없음" : textOrDefault(tierBenefit.getContext(), "등급별 혜택 정보 없음"))
+                .onlineContext(splitContext.onlineContext())
+                .offlineContext(splitContext.offlineContext())
                 .businessType(metadata.businessType())
                 .useCases(metadata.useCases())
                 .negativeUseCases(metadata.negativeUseCases())
@@ -465,16 +485,31 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         return right;
     }
 
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
     private record SearchHitSnapshot(Long benefitId, Long policyId, Long tierBenefitId, JsonNode node, Double score) {
     }
 
-    private record HydratedPolicyContext(Map<Long, String> descriptions, Map<Long, String> contexts) {
+    private record HydratedPolicyContext(Map<Long, String> descriptions,
+                                         Map<Long, String> contexts,
+                                         Map<Long, String> onlineContexts,
+                                         Map<Long, String> offlineContexts) {
         String descriptionFor(Long benefitId) {
             return descriptions.getOrDefault(benefitId, "설명 없음");
         }
 
         String contextFor(Long benefitId) {
             return contexts.getOrDefault(benefitId, "등급별 혜택 정보 없음");
+        }
+
+        String onlineContextFor(Long benefitId) {
+            return onlineContexts.get(benefitId);
+        }
+
+        String offlineContextFor(Long benefitId) {
+            return offlineContexts.get(benefitId);
         }
     }
 }

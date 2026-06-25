@@ -56,6 +56,8 @@ public class ElasticServiceImpl implements ElasticService {
                                 .properties("manual", p -> p.text(t -> t))
                                 .properties("context", p -> p.text(t -> t))
                                 .properties("tierContext", p -> p.text(t -> t))
+                                .properties("onlineContext", p -> p.text(t -> t))
+                                .properties("offlineContext", p -> p.text(t -> t))
                                 .properties("discountValue", p -> p.integer(i -> i))
                                 .properties("imgUrl", p -> p.text(t -> t))
                         )
@@ -87,7 +89,10 @@ public class ElasticServiceImpl implements ElasticService {
                             .properties("syncStatus", prop -> prop.keyword(k -> k))
                             .properties("deletedAt", prop -> prop.date(d -> d))
                             .properties("manual", prop -> prop.text(t -> t))
+                            .properties("context", prop -> prop.text(t -> t))
                             .properties("tierContext", prop -> prop.text(t -> t))
+                            .properties("onlineContext", prop -> prop.text(t -> t))
+                            .properties("offlineContext", prop -> prop.text(t -> t))
                             .properties("discountValue", prop -> prop.integer(i -> i))
                     );
                     log.info("Updated benefit index mapping for carrier/grade RAG metadata: {}", indexName);
