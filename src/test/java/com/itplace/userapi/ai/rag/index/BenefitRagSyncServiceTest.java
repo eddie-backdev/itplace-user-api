@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -159,7 +160,7 @@ class BenefitRagSyncServiceTest {
     @Test
     void syncAllTombstonesExistingElasticsearchDocumentWhenSourceIsMissing() throws Exception {
         when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of());
-        when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(searchResponse(Map.of(
+        when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(searchResponse(mapOf(
                 "documentId", "benefit:9:policy:8:tier:7",
                 "benefitId", "9",
                 "policyId", "8",
@@ -168,7 +169,9 @@ class BenefitRagSyncServiceTest {
                 "active", true,
                 "carrier", "SKT",
                 "grade", "SKT_VIP",
-                "isAllGrade", false
+                "isAllGrade", false,
+                "onlineContext", "방문포장 25% 할인",
+                "offlineContext", "매장 25% 할인"
         )));
         when(esClient.index(anyIndexRequest())).thenReturn(indexResponse());
 
@@ -183,8 +186,26 @@ class BenefitRagSyncServiceTest {
         assertThat(result.deletedDocuments()).isZero();
         assertThat(tombstone.getDocumentId()).isEqualTo("benefit:9:policy:8:tier:7");
         assertThat(tombstone.getActive()).isFalse();
+        assertThat(tombstone.getOnlineContext()).isEqualTo("방문포장 25% 할인");
+        assertThat(tombstone.getOfflineContext()).isEqualTo("매장 25% 할인");
         assertThat(tombstone.getSyncStatus()).isEqualTo(BenefitRagSyncService.SYNC_STATUS_TOMBSTONED);
         assertThat(tombstone.getDeletedAt()).isNotBlank();
+    }
+
+    @Test
+    void syncAllReconcilesMissingSourceDocumentsAcrossSearchAfterPages() throws Exception {
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of());
+        when(esClient.search(anySearchRequest(), eq(JsonData.class)))
+                .thenReturn(searchResponseWithHits(documentSources(0, 1000)))
+                .thenReturn(searchResponseWithHits(documentSources(1000, 1001)));
+        when(esClient.index(anyIndexRequest())).thenReturn(indexResponse());
+
+        BenefitRagSyncService.SyncResult result = syncService.syncAll();
+
+        assertThat(result.tombstonedDocuments()).isEqualTo(1001);
+        assertThat(result.failedDocuments()).isZero();
+        verify(esClient, times(2)).search(anySearchRequest(), eq(JsonData.class));
+        verify(esClient, times(1001)).index(anyIndexRequest());
     }
 
     private Benefit benefit(Long id) {
@@ -237,20 +258,54 @@ class BenefitRagSyncServiceTest {
     }
 
     private SearchResponse<JsonData> searchResponse(Map<String, Object> source) {
+        return searchResponseWithHits(List.of(source));
+    }
+
+    private SearchResponse<JsonData> searchResponseWithHits(List<Map<String, Object>> sources) {
+        List<Hit<JsonData>> hits = sources.stream()
+                .map(source -> {
+                    String documentId = String.valueOf(source.get("documentId"));
+                    return Hit.<JsonData>of(hit -> hit
+                            .index(BenefitRagSyncService.INDEX_NAME)
+                            .id(documentId)
+                            .sort(documentId)
+                            .source(jsonData(source)));
+                })
+                .toList();
         return SearchResponse.of(s -> s
                 .took(1)
                 .timedOut(false)
                 .shards(ShardStatistics.of(sh -> sh.total(1).successful(1).failed(0)))
-                .hits(h -> h.hits(Hit.of(hit -> hit
-                        .index(BenefitRagSyncService.INDEX_NAME)
-                        .id(String.valueOf(source.get("documentId")))
-                        .source(jsonData(source))
-                )))
+                .hits(h -> h.hits(hits))
         );
+    }
+
+    private List<Map<String, Object>> documentSources(int startInclusive, int endExclusive) {
+        return java.util.stream.IntStream.range(startInclusive, endExclusive)
+                .mapToObj(index -> Map.<String, Object>of(
+                        "documentId", "benefit:%04d:policy:8:tier:7".formatted(index),
+                        "benefitId", String.valueOf(index),
+                        "policyId", "8",
+                        "tierBenefitId", "7",
+                        "partnerId", "6",
+                        "active", true,
+                        "carrier", "SKT",
+                        "grade", "SKT_VIP",
+                        "isAllGrade", false
+                ))
+                .toList();
     }
 
     private JsonData jsonData(Map<String, Object> source) {
         return JsonData.of(source, jsonpMapper);
+    }
+
+    private Map<String, Object> mapOf(Object... pairs) {
+        Map<String, Object> values = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            values.put(String.valueOf(pairs[i]), pairs[i + 1]);
+        }
+        return values;
     }
 
     private IndexResponse indexResponse() {

@@ -8,6 +8,7 @@ import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -72,6 +73,9 @@ public class BenefitRagDocumentBuilder {
         String description = nullToBlank(policy.getDescription());
         String manual = nullToBlank(policy.getManual());
         String tierContext = tierBenefit == null ? "" : nullToBlank(tierBenefit.getContext());
+        BenefitContextSplitter.SplitContext splitContext = BenefitContextSplitter.split(tierContext);
+        String onlineContext = nullToBlank(splitContext.onlineContext());
+        String offlineContext = nullToBlank(splitContext.offlineContext());
         BenefitRagMetadata metadata = metadataClassifier.classify(
                 benefit.getPartner().getPartnerName(),
                 benefit.getPartner().getCategory(),
@@ -95,7 +99,9 @@ public class BenefitRagDocumentBuilder {
                 enumName(policy.getType()),
                 description,
                 manual,
-                tierContext
+                tierContext,
+                prefixedContext("온라인", onlineContext),
+                prefixedContext("오프라인", offlineContext)
         ).trim();
 
         if (searchableText.isBlank()) {
@@ -135,6 +141,8 @@ public class BenefitRagDocumentBuilder {
                 .manual(manual)
                 .context(tierContext)
                 .tierContext(tierContext)
+                .onlineContext(blankToNull(onlineContext))
+                .offlineContext(blankToNull(offlineContext))
                 .discountValue(tierBenefit == null ? null : tierBenefit.getDiscountValue())
                 .businessType(metadata.businessType())
                 .useCases(metadata.useCases())
@@ -192,6 +200,10 @@ public class BenefitRagDocumentBuilder {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private String prefixedContext(String channel, String context) {
+        return context == null || context.isBlank() ? "" : channel + " " + context;
     }
 
     public record PendingBenefitDocument(BenefitDocument document, String searchableText) {

@@ -7,8 +7,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ShardStatistics;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonData;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
@@ -24,6 +28,7 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.recommend.dto.Candidate;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class BenefitSearchServiceImplTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final JacksonJsonpMapper jsonpMapper = new JacksonJsonpMapper();
 
     @Mock
     private ElasticsearchClient esClient;
@@ -100,6 +106,53 @@ class BenefitSearchServiceImplTest {
                     assertThat(candidate.getGrade()).isEqualTo("VIP");
                     assertThat(candidate.getDescription()).isEqualTo("커피 할인");
                     assertThat(candidate.getContext()).isEqualTo("VIP 20% 할인");
+                    assertThat(candidate.getOnlineContext()).isNull();
+                    assertThat(candidate.getOfflineContext()).isNull();
+                });
+    }
+
+    @Test
+    void queryVector_hydratesChannelContextsFromElasticsearchDocument() throws IOException {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("피자집")
+                .category("피자")
+                .build();
+        Benefit benefit = Benefit.builder()
+                .benefitId(20L)
+                .benefitName("피자 할인")
+                .partner(partner)
+                .active(true)
+                .build();
+
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenReturn(searchResponse(mapOf(
+                        "benefitId", "20",
+                        "policyId", "30",
+                        "tierBenefitId", "40",
+                        "partnerName", "피자집",
+                        "benefitName", "피자 할인",
+                        "category", "피자",
+                        "active", true,
+                        "carrier", "SKT",
+                        "grade", "SKT_VIP",
+                        "isAllGrade", false,
+                        "tierContext", "온라인: 방문포장 25% 할인 / 오프라인: 매장 25% 할인",
+                        "onlineContext", "방문포장 25% 할인",
+                        "offlineContext", "매장 25% 할인",
+                        "score", 0.91
+                )));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of());
+
+        List<Candidate> candidates = benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, List.of(0.1f), 5);
+
+        assertThat(candidates)
+                .singleElement()
+                .satisfies(candidate -> {
+                    assertThat(candidate.getContext()).isEqualTo("온라인: 방문포장 25% 할인 / 오프라인: 매장 25% 할인");
+                    assertThat(candidate.getOnlineContext()).isEqualTo("방문포장 25% 할인");
+                    assertThat(candidate.getOfflineContext()).isEqualTo("매장 25% 할인");
                 });
     }
 
@@ -256,6 +309,49 @@ class BenefitSearchServiceImplTest {
     }
 
     @Test
+    void queryVector_dbFallbackSplitsChannelContexts() throws IOException {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("피자집")
+                .category("피자")
+                .build();
+        Benefit benefit = Benefit.builder()
+                .benefitId(20L)
+                .benefitName("피자 할인")
+                .partner(partner)
+                .active(true)
+                .build();
+        BenefitCarrierPolicy policy = BenefitCarrierPolicy.builder()
+                .benefit(benefit)
+                .benefitCarrierPolicyId(30L)
+                .carrier(Carrier.SKT)
+                .active(true)
+                .description("피자 할인")
+                .build();
+        CarrierTierBenefit tierBenefit = CarrierTierBenefit.builder()
+                .carrierTierBenefitId(40L)
+                .benefitCarrierPolicy(policy)
+                .grade(Grade.SKT_VIP)
+                .context("온라인: 방문포장 25% 할인 / 오프라인: 매장 25% 할인")
+                .build();
+
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenThrow(new IOException("benefit index unavailable"));
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of(tierBenefit));
+
+        List<Candidate> candidates = benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, List.of(0.1f), 5);
+
+        assertThat(candidates)
+                .singleElement()
+                .satisfies(candidate -> {
+                    assertThat(candidate.getOnlineContext()).isEqualTo("방문포장 25% 할인");
+                    assertThat(candidate.getOfflineContext()).isEqualTo("매장 25% 할인");
+                });
+    }
+
+    @Test
     void textOrDefault_returnsDefaultWhenElasticsearchFieldIsMissingOrNull() throws IOException {
         JsonNode node = objectMapper.readTree("""
                 {
@@ -270,5 +366,30 @@ class BenefitSearchServiceImplTest {
                 .isEmpty();
         assertThat(BenefitSearchServiceImpl.textOrDefault(node, "description", "설명 없음"))
                 .isEqualTo("설명 없음");
+    }
+
+    private SearchResponse<JsonData> searchResponse(Map<String, Object> source) {
+        return SearchResponse.of(s -> s
+                .took(1)
+                .timedOut(false)
+                .shards(ShardStatistics.of(sh -> sh.total(1).successful(1).failed(0)))
+                .hits(h -> h.hits(Hit.<JsonData>of(hit -> hit
+                        .index("benefit")
+                        .id(String.valueOf(source.get("benefitId")))
+                        .score(((Number) source.get("score")).doubleValue())
+                        .source(jsonData(source)))))
+        );
+    }
+
+    private JsonData jsonData(Map<String, Object> source) {
+        return JsonData.of(source, jsonpMapper);
+    }
+
+    private Map<String, Object> mapOf(Object... pairs) {
+        Map<String, Object> values = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            values.put(String.valueOf(pairs[i]), pairs[i + 1]);
+        }
+        return values;
     }
 }

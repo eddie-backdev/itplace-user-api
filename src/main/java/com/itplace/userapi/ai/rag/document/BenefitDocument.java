@@ -45,6 +45,8 @@ public class BenefitDocument {
     private String manual;
     private String context;
     private String tierContext;
+    private String onlineContext;
+    private String offlineContext;
     private Integer discountValue;
     private String businessType;
     private List<String> useCases;

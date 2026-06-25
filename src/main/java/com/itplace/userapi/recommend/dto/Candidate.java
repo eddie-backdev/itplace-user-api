@@ -24,6 +24,8 @@ public class Candidate {
     private String sourceUrl;
     private String description;
     private String context;
+    private String onlineContext;
+    private String offlineContext;
     private String candidateSource;
     private Double semanticScore;
     private Double rankScore;

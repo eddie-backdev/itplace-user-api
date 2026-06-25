@@ -43,6 +43,8 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
             "manual",
             "context^1.2",
             "tierContext^1.2",
+            "onlineContext^1.3",
+            "offlineContext^1.3",
             "businessType^1.2",
             "useCases^1.2",
             "tags"
