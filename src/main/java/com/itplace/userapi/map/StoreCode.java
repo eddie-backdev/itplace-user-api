@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum StoreCode implements BaseCode {
     STORE_LIST_SUCCESS("STORE_LIST_SUCCESS", HttpStatus.OK, "사용자 위치 기반 매장 조회에 성공했습니다."),
+    ADDRESS_LOOKUP_SUCCESS("ADDRESS_LOOKUP_SUCCESS", HttpStatus.OK, "좌표 기반 주소 조회에 성공했습니다."),
     PARAMETER_CHECK("PARAMETER_CHECK", HttpStatus.BAD_REQUEST, "잘못된 요청입니다."),
     KEYWORD_REQUEST("KEYWORD_REQUEST", HttpStatus.BAD_REQUEST, "키워드를 입력해주세요"),
 

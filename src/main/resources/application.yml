@@ -115,3 +115,8 @@ octomo:
     base-url: ${OCTOMO_API_BASE_URL:https://api.octoverse.kr/octomo/v1}
     key: ${OCTOMO_API_KEY:}
   receiver-phone: ${OCTOMO_RECEIVER_PHONE:1666-3538}
+
+kakao:
+  local:
+    base-url: ${KAKAO_LOCAL_BASE_URL:https://dapi.kakao.com}
+    rest-api-key: ${KAKAO_REST_API_KEY:}
