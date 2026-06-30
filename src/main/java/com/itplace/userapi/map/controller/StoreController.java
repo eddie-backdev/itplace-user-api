@@ -2,7 +2,9 @@ package com.itplace.userapi.map.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.map.StoreCode;
+import com.itplace.userapi.map.dto.response.ReverseGeocodeResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.service.ReverseGeocodeService;
 import com.itplace.userapi.map.service.StoreService;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -22,6 +24,19 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class StoreController {
     private final StoreService storeService;
+    private final ReverseGeocodeService reverseGeocodeService;
+
+    // 좌표 기반 주소 조회
+    @GetMapping("/address")
+    public ResponseEntity<ApiResponse<ReverseGeocodeResponse>> getAddress(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng
+    ) {
+        ReverseGeocodeResponse address = reverseGeocodeService.resolveAddress(lat, lng);
+        ApiResponse<ReverseGeocodeResponse> body = ApiResponse.of(StoreCode.ADDRESS_LOOKUP_SUCCESS, address);
+
+        return body.toResponseEntity();
+    }
 
     // 사용자 위치 기반 전체 지점 목록
     @GetMapping("/nearby")

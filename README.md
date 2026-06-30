@@ -49,6 +49,7 @@ ITPLACE 사용자 서비스 백엔드입니다.
 - Elasticsearch
 - OpenAI API key
 - Kakao OAuth app
+- Kakao Local REST API key (좌표→주소 변환)
 - Google reCAPTCHA secret
 
 ### 2. 환경 변수 설정
@@ -66,6 +67,7 @@ JWT_SECRET=
 OPENAI_API_KEY=
 KAKAO_CLIENT_ID=
 KAKAO_CLIENT_SECRET=
+KAKAO_REST_API_KEY=
 ```
 
 로컬 프로필은 `src/main/resources/application-local.yml`의 placeholder 값을 포함합니다. 실제 외부 연동이 필요한 기능은 개인 환경 값으로 교체해야 합니다.
