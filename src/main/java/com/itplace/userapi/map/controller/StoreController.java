@@ -2,6 +2,7 @@ package com.itplace.userapi.map.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.map.StoreCode;
+import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.ReverseGeocodeResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.service.ReverseGeocodeService;
@@ -38,6 +39,22 @@ public class StoreController {
         return body.toResponseEntity();
     }
 
+
+    // 사용자 위치 기반 전체 지점 목록 - 지도 카드 표시용 경량 응답
+    @GetMapping("/nearby/previews")
+    public ResponseEntity<ApiResponse<List<MapStorePreviewResponse>>> getNearbyPreviews(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
+            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
+    ) {
+        List<MapStorePreviewResponse> stores = storeService.findNearbyPreviews(lat, lng, radiusMeters, userLat, userLng);
+        ApiResponse<List<MapStorePreviewResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+
+        return body.toResponseEntity();
+    }
+
     // 사용자 위치 기반 전체 지점 목록
     @GetMapping("/nearby")
     public ResponseEntity<ApiResponse<List<StoreDetailResponse>>> getNearby(
@@ -49,6 +66,24 @@ public class StoreController {
     ) {
         List<StoreDetailResponse> stores = storeService.findNearby(lat, lng, radiusMeters, userLat, userLng);
         ApiResponse<List<StoreDetailResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+
+        return body.toResponseEntity();
+    }
+
+
+    // 사용자 위치 기반 특정 카테고리 지점 목록 - 지도 카드 표시용 경량 응답
+    @GetMapping("/nearby/category/previews")
+    public ResponseEntity<ApiResponse<List<MapStorePreviewResponse>>> getNearbyCategoryPreviews(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
+            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
+    ) {
+        List<MapStorePreviewResponse> stores = storeService.findNearbyByCategoryPreviews(
+                lat, lng, radiusMeters, category, userLat, userLng);
+        ApiResponse<List<MapStorePreviewResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
         return body.toResponseEntity();
     }
@@ -66,6 +101,24 @@ public class StoreController {
         List<StoreDetailResponse> stores = storeService.findNearbyByCategory(lat, lng, radiusMeters, category, userLat,
                 userLng);
         ApiResponse<List<StoreDetailResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+
+        return body.toResponseEntity();
+    }
+
+
+    // 사용자 위치 기반 키워드 검색한 지점 목록 - 지도 카드 표시용 경량 응답
+    @GetMapping("/nearby/search/previews")
+    public ResponseEntity<ApiResponse<List<MapStorePreviewResponse>>> getNearbySearchPreviews(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam("keyword") String keyword,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
+    ) {
+        List<MapStorePreviewResponse> stores = storeService.findNearbyByKeywordPreviews(
+                lat, lng, category, keyword, userLat, userLng);
+        ApiResponse<List<MapStorePreviewResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
         return body.toResponseEntity();
     }

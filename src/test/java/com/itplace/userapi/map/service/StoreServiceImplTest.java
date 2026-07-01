@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.map.dto.BenefitCacheDto;
+import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
@@ -48,6 +49,49 @@ class StoreServiceImplTest {
 
     @InjectMocks
     private StoreServiceImpl storeService;
+
+
+    @Test
+    void findNearbyPreviews_returnsFlatBenefitPreviewPayload() {
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("GS25")
+                .image("https://example.com/gs25.png")
+                .category("생활/편의")
+                .build();
+        Store store = store(1L, "GS25 강남점", partner, point(127.01, 37.50));
+        store.setRoadAddress("서울 강남구 테헤란로 1");
+        TierBenefitDto benefit = TierBenefitDto.builder()
+                .benefitId(100L)
+                .carrier(Carrier.SKT)
+                .grade(Grade.SKT_VIP)
+                .context("1천원 할인")
+                .build();
+
+        when(storeRepository.findStoreIdsInRadius(37.50, 127.00, 1_000, 900))
+                .thenReturn(List.of(1L));
+        when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
+                .thenReturn(List.of(store));
+        when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
+                .thenReturn(Map.of(10L, List.of(new BenefitCacheDto(100L, "GS25 할인", List.of(benefit)))));
+
+        List<MapStorePreviewResponse> result = storeService.findNearbyPreviews(
+                37.50, 127.00, 1_000, 37.50, 127.00);
+
+        assertThat(result).singleElement()
+                .satisfies(preview -> {
+                    assertThat(preview.getStoreId()).isEqualTo(1L);
+                    assertThat(preview.getPartnerId()).isEqualTo(10L);
+                    assertThat(preview.getStoreName()).isEqualTo("GS25 강남점");
+                    assertThat(preview.getCategory()).isEqualTo("생활/편의");
+                    assertThat(preview.getImage()).isEqualTo("https://example.com/gs25.png");
+                    assertThat(preview.getRoadAddress()).isEqualTo("서울 강남구 테헤란로 1");
+                    assertThat(preview.getTierBenefit()).containsExactly(benefit);
+                });
+        assertThat(MapStorePreviewResponse.class.getDeclaredFields())
+                .extracting(java.lang.reflect.Field::getName)
+                .doesNotContain("store", "partner", "business", "city", "town", "legalDong");
+    }
 
     @Test
     void findNearbyByCategory_returnsStoresSortedByDistance() {
