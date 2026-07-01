@@ -2,6 +2,7 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
+import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
@@ -59,6 +60,31 @@ public class StoreServiceImpl implements StoreService {
     @PreDestroy
     public void shutdownExecutor() {
         GRID_EXECUTOR.shutdown();
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MapStorePreviewResponse> findNearbyPreviews(double lat, double lng, double radiusMeters, double userLat,
+                                                            double userLng) {
+        List<Long> allStoreIds;
+
+        if (radiusMeters <= WIDE_RADIUS_THRESHOLD) {
+            allStoreIds = findNearbyWithSingleQuery(lat, lng, radiusMeters);
+        } else {
+            allStoreIds = findNearbyWithGridSampling(lat, lng, radiusMeters);
+        }
+
+        if (allStoreIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> sampledStoreIds = sampleStoreIds(allStoreIds);
+        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds);
+
+        return toMapStorePreviewResponses(stores, userLat, userLng).stream()
+                .sorted(Comparator.comparing(MapStorePreviewResponse::getDistance))
+                .toList();
     }
 
     @Override
@@ -247,6 +273,30 @@ public class StoreServiceImpl implements StoreService {
                 .toList();
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MapStorePreviewResponse> findNearbyByCategoryPreviews(double lat, double lng, double radiusMeters,
+                                                                      String category, double userLat, double userLng) {
+        if (category == null || category.isBlank() || category.equalsIgnoreCase("전체")) {
+            return findNearbyPreviews(lat, lng, radiusMeters, userLat, userLng);
+        }
+
+        String normalizedCategory = category.trim();
+        List<Long> storeIds = storeRepository.findStoreIdsByCategoryWithinRadius(
+                normalizedCategory, lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
+        if (storeIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> sampledStoreIds = sampleStoreIds(storeIds);
+        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds);
+
+        return toMapStorePreviewResponses(stores, userLat, userLng).stream()
+                .sorted(Comparator.comparing(MapStorePreviewResponse::getDistance))
+                .toList();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<StoreDetailResponse> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
@@ -291,6 +341,16 @@ public class StoreServiceImpl implements StoreService {
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
                 .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
+                .toList();
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MapStorePreviewResponse> findNearbyByKeywordPreviews(double lat, double lng, String category,
+                                                                     String keyword, double userLat, double userLng) {
+        return findNearbyByKeyword(lat, lng, category, keyword, userLat, userLng).stream()
+                .map(MapStorePreviewResponse::fromDetail)
                 .toList();
     }
 
@@ -463,6 +523,36 @@ public class StoreServiceImpl implements StoreService {
         return storeIds.stream()
                 .map(storesById::get)
                 .filter(Objects::nonNull)
+                .toList();
+    }
+
+
+    private List<MapStorePreviewResponse> toMapStorePreviewResponses(List<Store> stores, double userLat, double userLng) {
+        List<Store> matchedStores = filterStoresMatchedToPartner(stores);
+        if (matchedStores.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> partnerIds = matchedStores.stream()
+                .map(store -> store.getPartner().getPartnerId())
+                .distinct()
+                .toList();
+
+        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
+
+        return matchedStores.stream()
+                .map(store -> {
+                    Partner partner = store.getPartner();
+                    double distance = userLat == 0 || userLng == 0
+                            ? 0 : calculateDistance(userLat, userLng,
+                            store.getLocation().getY(), store.getLocation().getX());
+                    List<BenefitCacheDto> finalBenefits = selectBenefits(
+                            partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
+                            store.getStoreName()
+                    );
+                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
+                    return MapStorePreviewResponse.of(store, partner, tierBenefitDtos, distance);
+                })
                 .toList();
     }
 
