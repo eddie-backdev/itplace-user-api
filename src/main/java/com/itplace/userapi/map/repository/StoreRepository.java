@@ -104,6 +104,33 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("limit") int limit
     );
 
+    @Query(
+            value = """
+                    SELECT s.storeId
+                    FROM store s
+                    JOIN partner p ON s.partnerId = p.partnerId
+                    WHERE s.location IS NOT NULL
+                      AND (:category IS NULL OR p.category = :category)
+                      AND s.longitude BETWEEN :minLng AND :maxLng
+                      AND s.latitude BETWEEN :minLat AND :maxLat
+                    ORDER BY
+                      ABS(s.latitude - :centerLat) + ABS(s.longitude - :centerLng) ASC,
+                      s.storeId ASC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<Long> findStoreIdsInView(
+            @Param("minLat") double minLat,
+            @Param("maxLat") double maxLat,
+            @Param("minLng") double minLng,
+            @Param("maxLng") double maxLng,
+            @Param("centerLat") double centerLat,
+            @Param("centerLng") double centerLng,
+            @Param("category") String category,
+            @Param("limit") int limit
+    );
+
     @Query("SELECT s FROM Store s JOIN FETCH s.partner WHERE s.storeId IN :storeIds")
     List<Store> findAllByStoreIdInWithPartner(@Param("storeIds") List<Long> storeIds);
 

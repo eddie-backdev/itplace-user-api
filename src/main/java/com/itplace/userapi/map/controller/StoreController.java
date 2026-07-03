@@ -40,6 +40,24 @@ public class StoreController {
     }
 
 
+    // 현재 지도 화면 영역 기반 지점 목록 - 지도 카드 표시용 경량 응답
+    @GetMapping("/stores/in-view/previews")
+    public ResponseEntity<ApiResponse<List<MapStorePreviewResponse>>> getStoresInViewPreviews(
+            @RequestParam("minLat") @DecimalMin("-90.0") @DecimalMax("90.0") double minLat,
+            @RequestParam("minLng") @DecimalMin("-180.0") @DecimalMax("180.0") double minLng,
+            @RequestParam("maxLat") @DecimalMin("-90.0") @DecimalMax("90.0") double maxLat,
+            @RequestParam("maxLng") @DecimalMin("-180.0") @DecimalMax("180.0") double maxLng,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
+    ) {
+        List<MapStorePreviewResponse> stores = storeService.findStoresInViewPreviews(
+                minLat, minLng, maxLat, maxLng, category, userLat, userLng);
+        ApiResponse<List<MapStorePreviewResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
+
+        return body.toResponseEntity();
+    }
+
     // 사용자 위치 기반 전체 지점 목록 - 지도 카드 표시용 경량 응답
     @GetMapping("/nearby/previews")
     public ResponseEntity<ApiResponse<List<MapStorePreviewResponse>>> getNearbyPreviews(

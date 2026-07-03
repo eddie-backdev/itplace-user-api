@@ -55,6 +55,7 @@ public class StoreServiceImpl implements StoreService {
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
     private static final int MAP_DISTRIBUTION_THRESHOLD = 1000;
     private static final int MAP_STORES_PER_CELL = 12;
+    private static final int MAP_IN_VIEW_PREVIEW_LIMIT = 100;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @PreDestroy
@@ -62,6 +63,39 @@ public class StoreServiceImpl implements StoreService {
         GRID_EXECUTOR.shutdown();
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MapStorePreviewResponse> findStoresInViewPreviews(double minLat, double minLng, double maxLat,
+                                                                  double maxLng, String category, double userLat,
+                                                                  double userLng) {
+        double normalizedMinLat = Math.min(minLat, maxLat);
+        double normalizedMaxLat = Math.max(minLat, maxLat);
+        double normalizedMinLng = Math.min(minLng, maxLng);
+        double normalizedMaxLng = Math.max(minLng, maxLng);
+        double centerLat = (normalizedMinLat + normalizedMaxLat) / 2;
+        double centerLng = (normalizedMinLng + normalizedMaxLng) / 2;
+        String normalizedCategory = normalizeCategory(category);
+
+        List<Long> storeIds = storeRepository.findStoreIdsInView(
+                normalizedMinLat,
+                normalizedMaxLat,
+                normalizedMinLng,
+                normalizedMaxLng,
+                centerLat,
+                centerLng,
+                normalizedCategory,
+                MAP_IN_VIEW_PREVIEW_LIMIT
+        );
+        if (storeIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Store> stores = findStoresWithPartnerInRequestedOrder(storeIds);
+        return toMapStorePreviewResponses(stores, userLat, userLng).stream()
+                .sorted(Comparator.comparing(MapStorePreviewResponse::getDistance))
+                .toList();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -147,6 +181,12 @@ public class StoreServiceImpl implements StoreService {
             lng - Math.toDegrees(dLng),
             lng + Math.toDegrees(dLng)
         };
+    }
+
+    private String normalizeCategory(String category) {
+        return category == null || category.isBlank() || category.equalsIgnoreCase("전체")
+                ? null
+                : category.trim();
     }
 
     private List<Long> findNearbyWithSingleQuery(double lat, double lng, double radiusMeters) {
@@ -251,9 +291,7 @@ public class StoreServiceImpl implements StoreService {
     @Transactional(readOnly = true)
     public List<StoreDetailResponse> findNearbyDistributedForMap(double lat, double lng, double radiusMeters,
                                                                  String category, double userLat, double userLng) {
-        String normalizedCategory = category == null || category.isBlank() || category.equalsIgnoreCase("전체")
-                ? null
-                : category.trim();
+        String normalizedCategory = normalizeCategory(category);
 
         if (radiusMeters <= MAP_DISTRIBUTION_THRESHOLD) {
             return normalizedCategory == null
