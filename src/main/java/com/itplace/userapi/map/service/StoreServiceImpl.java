@@ -8,6 +8,7 @@ import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.exception.StoreKeywordException;
 import com.itplace.userapi.map.repository.StoreRepository;
+import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import com.itplace.userapi.partner.PartnerCode;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
@@ -77,7 +78,7 @@ public class StoreServiceImpl implements StoreService {
         double centerLng = (normalizedMinLng + normalizedMaxLng) / 2;
         String normalizedCategory = normalizeCategory(category);
 
-        List<Long> storeIds = storeRepository.findStoreIdsInView(
+        List<StorePreviewProjection> previews = storeRepository.findStorePreviewsInView(
                 normalizedMinLat,
                 normalizedMaxLat,
                 normalizedMinLng,
@@ -87,12 +88,11 @@ public class StoreServiceImpl implements StoreService {
                 normalizedCategory,
                 MAP_IN_VIEW_PREVIEW_LIMIT
         );
-        if (storeIds.isEmpty()) {
+        if (previews.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<Store> stores = findStoresWithPartnerInRequestedOrder(storeIds);
-        return toMapStorePreviewResponses(stores, userLat, userLng).stream()
+        return toMapStorePreviewResponsesFromProjection(previews, userLat, userLng).stream()
                 .sorted(Comparator.comparing(MapStorePreviewResponse::getDistance))
                 .toList();
     }
@@ -497,11 +497,22 @@ public class StoreServiceImpl implements StoreService {
         if (store == null || store.getPartner() == null) {
             return false;
         }
-        String storeName = normalizeSearchText(store.getStoreName());
-        return aliasesForPartner(store.getPartner().getPartnerName()).stream()
+        return isStoreMatchedToPartner(store.getStoreName(), store.getPartner().getPartnerName());
+    }
+
+    private boolean isStoreMatchedToPartner(StorePreviewProjection preview) {
+        if (preview == null) {
+            return false;
+        }
+        return isStoreMatchedToPartner(preview.getStoreName(), preview.getPartnerName());
+    }
+
+    private boolean isStoreMatchedToPartner(String storeName, String partnerName) {
+        String normalizedStoreName = normalizeSearchText(storeName);
+        return aliasesForPartner(partnerName).stream()
                 .map(this::normalizeSearchText)
                 .filter(alias -> !alias.isBlank())
-                .anyMatch(storeName::contains);
+                .anyMatch(normalizedStoreName::contains);
     }
 
     private List<String> aliasesForPartner(String partnerName) {
@@ -564,6 +575,59 @@ public class StoreServiceImpl implements StoreService {
                 .toList();
     }
 
+
+    private List<MapStorePreviewResponse> toMapStorePreviewResponsesFromProjection(List<StorePreviewProjection> previews,
+                                                                                   double userLat, double userLng) {
+        List<StorePreviewProjection> matchedPreviews = previews.stream()
+                .filter(this::isStoreMatchedToPartner)
+                .toList();
+        if (matchedPreviews.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> partnerIds = matchedPreviews.stream()
+                .map(StorePreviewProjection::getPartnerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
+
+        return matchedPreviews.stream()
+                .map(preview -> {
+                    double distance = userLat == 0 || userLng == 0
+                            ? 0 : calculateDistance(userLat, userLng, preview.getLatitude(), preview.getLongitude());
+                    List<BenefitCacheDto> finalBenefits = selectBenefits(
+                            partnerToBenefitsMap.getOrDefault(preview.getPartnerId(), List.of()),
+                            preview.getStoreName()
+                    );
+                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
+                    return toMapStorePreviewResponse(preview, tierBenefitDtos, distance);
+                })
+                .toList();
+    }
+
+    private MapStorePreviewResponse toMapStorePreviewResponse(StorePreviewProjection preview,
+                                                              List<TierBenefitDto> tierBenefitDtos,
+                                                              double distance) {
+        return MapStorePreviewResponse.builder()
+                .storeId(preview.getStoreId())
+                .partnerId(preview.getPartnerId())
+                .storeName(preview.getStoreName())
+                .partnerName(preview.getPartnerName())
+                .category(preview.getCategory() != null ? preview.getCategory().trim() : null)
+                .image(preview.getImage())
+                .latitude(preview.getLatitude())
+                .longitude(preview.getLongitude())
+                .address(preview.getAddress())
+                .roadName(preview.getRoadName())
+                .roadAddress(preview.getRoadAddress())
+                .postCode(preview.getPostCode())
+                .hasCoupon(Boolean.TRUE.equals(preview.getHasCoupon()))
+                .tierBenefit(tierBenefitDtos)
+                .distance(distance)
+                .build();
+    }
 
     private List<MapStorePreviewResponse> toMapStorePreviewResponses(List<Store> stores, double userLat, double userLng) {
         List<Store> matchedStores = filterStoresMatchedToPartner(stores);

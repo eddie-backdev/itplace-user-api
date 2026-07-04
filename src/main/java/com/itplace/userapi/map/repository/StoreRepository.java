@@ -1,6 +1,7 @@
 package com.itplace.userapi.map.repository;
 
 import com.itplace.userapi.map.entity.Store;
+import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import io.lettuce.core.dynamic.annotation.Param;
 import java.util.List;
 import java.util.Optional;
@@ -106,7 +107,20 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    SELECT s.storeId
+                    SELECT
+                        s.storeId AS "storeId",
+                        p.partnerId AS "partnerId",
+                        s.storeName AS "storeName",
+                        p.partnerName AS "partnerName",
+                        p.category AS "category",
+                        p.image AS "image",
+                        ST_Y(s.location::geometry) AS "latitude",
+                        ST_X(s.location::geometry) AS "longitude",
+                        s.address AS "address",
+                        s.roadName AS "roadName",
+                        s.roadAddress AS "roadAddress",
+                        s.postCode AS "postCode",
+                        s.hasCoupon AS "hasCoupon"
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE s.location IS NOT NULL
@@ -120,7 +134,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     """,
             nativeQuery = true
     )
-    List<Long> findStoreIdsInView(
+    List<StorePreviewProjection> findStorePreviewsInView(
             @Param("minLat") double minLat,
             @Param("maxLat") double maxLat,
             @Param("minLng") double minLng,

@@ -2,7 +2,7 @@ package com.itplace.userapi.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +12,7 @@ import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.repository.StoreRepository;
+import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.partner.entity.Partner;
@@ -91,6 +92,82 @@ class StoreServiceImplTest {
         assertThat(MapStorePreviewResponse.class.getDeclaredFields())
                 .extracting(java.lang.reflect.Field::getName)
                 .doesNotContain("store", "partner", "business", "city", "town", "legalDong");
+    }
+
+    @Test
+    void findStoresInViewPreviews_usesProjectionRowsWithoutReloadingStoreEntities() {
+        TierBenefitDto benefit = TierBenefitDto.builder()
+                .benefitId(100L)
+                .carrier(Carrier.SKT)
+                .grade(Grade.SKT_VIP)
+                .context("1천원 할인")
+                .build();
+        StorePreviewProjection farPreview = preview(
+                1L,
+                10L,
+                "GS25 강남점",
+                "GS25",
+                "생활/편의",
+                "https://example.com/gs25.png",
+                37.510,
+                127.010,
+                "서울 강남구 역삼동",
+                "테헤란로",
+                "서울 강남구 테헤란로 1",
+                "06234",
+                true
+        );
+        StorePreviewProjection nearPreview = preview(
+                2L,
+                10L,
+                "GS25 역삼점",
+                "GS25",
+                "생활/편의",
+                "https://example.com/gs25.png",
+                37.501,
+                127.001,
+                "서울 강남구 역삼동",
+                "테헤란로",
+                "서울 강남구 테헤란로 2",
+                "06235",
+                false
+        );
+        StorePreviewProjection stalePreview = preview(
+                3L,
+                10L,
+                "스타벅스 역삼점",
+                "GS25",
+                "생활/편의",
+                "https://example.com/gs25.png",
+                37.500,
+                127.000,
+                "서울 강남구 역삼동",
+                "테헤란로",
+                "서울 강남구 테헤란로 3",
+                "06236",
+                true
+        );
+
+        when(storeRepository.findStorePreviewsInView(
+                37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 100))
+                .thenReturn(List.of(farPreview, stalePreview, nearPreview));
+        when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
+                .thenReturn(Map.of(10L, List.of(new BenefitCacheDto(100L, "GS25 오프라인 혜택", List.of(benefit)))));
+
+        List<MapStorePreviewResponse> result = storeService.findStoresInViewPreviews(
+                37.49, 126.99, 37.52, 127.02, null, 37.50, 127.00);
+
+        assertThat(result)
+                .extracting(MapStorePreviewResponse::getStoreId)
+                .containsExactly(2L, 1L);
+        assertThat(result).first()
+                .satisfies(preview -> {
+                    assertThat(preview.getPartnerId()).isEqualTo(10L);
+                    assertThat(preview.getPartnerName()).isEqualTo("GS25");
+                    assertThat(preview.getRoadAddress()).isEqualTo("서울 강남구 테헤란로 2");
+                    assertThat(preview.getTierBenefit()).containsExactly(benefit);
+                });
+        verify(storeRepository, never()).findAllByStoreIdInWithPartner(anyList());
     }
 
     @Test
@@ -501,6 +578,89 @@ class StoreServiceImplTest {
                         org.mockito.ArgumentMatchers.anyDouble(),
                         org.mockito.ArgumentMatchers.anyInt()
                 );
+    }
+
+    private static StorePreviewProjection preview(
+            Long storeId,
+            Long partnerId,
+            String storeName,
+            String partnerName,
+            String category,
+            String image,
+            Double latitude,
+            Double longitude,
+            String address,
+            String roadName,
+            String roadAddress,
+            String postCode,
+            Boolean hasCoupon
+    ) {
+        return new StorePreviewProjection() {
+            @Override
+            public Long getStoreId() {
+                return storeId;
+            }
+
+            @Override
+            public Long getPartnerId() {
+                return partnerId;
+            }
+
+            @Override
+            public String getStoreName() {
+                return storeName;
+            }
+
+            @Override
+            public String getPartnerName() {
+                return partnerName;
+            }
+
+            @Override
+            public String getCategory() {
+                return category;
+            }
+
+            @Override
+            public String getImage() {
+                return image;
+            }
+
+            @Override
+            public Double getLatitude() {
+                return latitude;
+            }
+
+            @Override
+            public Double getLongitude() {
+                return longitude;
+            }
+
+            @Override
+            public String getAddress() {
+                return address;
+            }
+
+            @Override
+            public String getRoadName() {
+                return roadName;
+            }
+
+            @Override
+            public String getRoadAddress() {
+                return roadAddress;
+            }
+
+            @Override
+            public String getPostCode() {
+                return postCode;
+            }
+
+            @Override
+            public Boolean getHasCoupon() {
+                return hasCoupon;
+            }
+        };
     }
 
     private static Store store(long id, String name, Partner partner, Point location) {
