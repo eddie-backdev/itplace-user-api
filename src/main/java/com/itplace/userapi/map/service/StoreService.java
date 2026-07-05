@@ -1,12 +1,17 @@
 package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
+import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import java.util.List;
 
 public interface StoreService {
+    List<MapStoreClusterResponse> findStoreClustersInView(double minLat, double minLng, double maxLat, double maxLng,
+                                                          String category, int mapLevel);
+
     List<MapStorePreviewResponse> findStoresInViewPreviews(double minLat, double minLng, double maxLat, double maxLng,
-                                                           String category, double userLat, double userLng);
+                                                           String category, double userLat, double userLng, int limit,
+                                                           boolean includeBenefits);
 
     List<MapStorePreviewResponse> findNearbyPreviews(double lat, double lng, double radiusMeters, double userLat, double userLng);
 
