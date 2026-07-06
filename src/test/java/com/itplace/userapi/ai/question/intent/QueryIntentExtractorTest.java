@@ -15,8 +15,10 @@ class QueryIntentExtractorTest {
         QueryIntent intent = extractor.extract("날씨가 더운데 시원하게 갈만한 곳 추천해줘", null, null, 37.5, 127.0);
 
         assertThat(intent.purposeKeywords()).contains("더위", "시원한 장소");
-        assertThat(intent.categoryHints()).contains("카페", "빙수", "실내");
-        assertThat(intent.exclusions()).contains("상담", "결혼", "육아");
+        assertThat(intent.categoryHints())
+                .contains("카페", "빙수", "영화")
+                .doesNotContain("쇼핑", "실내");
+        assertThat(intent.exclusions()).contains("상담", "결혼", "육아", "면세점", "오피스디포", "쇼핑");
         assertThat(intent.confidence()).isGreaterThanOrEqualTo(0.6);
         assertThat(intent.locationContext()).isEqualTo("KNOWN");
     }

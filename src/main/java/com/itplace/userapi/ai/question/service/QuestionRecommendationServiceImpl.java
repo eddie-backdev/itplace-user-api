@@ -33,6 +33,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 public class QuestionRecommendationServiceImpl implements QuestionRecommendationService {
     private static final int MAX_PARTNER_CANDIDATES = 5;
     private static final int BENEFIT_RETRIEVAL_CANDIDATES = 30;
+    private static final int MAX_LLM_SELECTED_BENEFITS = 8;
     private final EmbeddingService embeddingService;
     private final StoreService storeService;
     private final OpenAIService openAIService;
@@ -89,7 +90,8 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 searchCondition(intent)
         );
         GuardResult guardResult = benefitCandidateGuard.filter(intent, retrievedCandidates);
-        StoreCandidateResult storeCandidateResult = findStoresForBenefitCandidates(guardResult.accepted(), lat, lng);
+        List<Candidate> selectedCandidates = selectCandidatesWithLlm(question, intent, guardResult.accepted());
+        StoreCandidateResult storeCandidateResult = findStoresForBenefitCandidates(selectedCandidates, lat, lng);
         if (storeCandidateResult.stores().isEmpty()) {
             log.debug("질문형 추천 후보 없음: traceId={}, intentConfidence={}, carrier={}, grade={}, retrieved={}, guarded={}, rejected={}, locationContext={}",
                     intent.traceId(),
@@ -113,6 +115,46 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 guardResult.rejectedCount(),
                 storeCandidateResult.source());
         return buildRecommendationResponse(question, intent, storeCandidateResult);
+    }
+
+    private List<Candidate> selectCandidatesWithLlm(String question, QueryIntent intent, List<Candidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            List<Long> selectedBenefitIds = openAIService.selectBenefitIds(
+                    question,
+                    intent,
+                    candidates,
+                    Math.min(MAX_LLM_SELECTED_BENEFITS, candidates.size())
+            );
+            List<Candidate> selectedCandidates = candidatesBySelectedBenefitIds(candidates, selectedBenefitIds);
+            if (!selectedCandidates.isEmpty()) {
+                return selectedCandidates;
+            }
+        } catch (RuntimeException e) {
+            log.warn("질문형 추천 LLM 후보 선택 실패로 RAG 순서를 사용합니다. traceId={}, reason={}",
+                    intent == null ? "" : intent.traceId(),
+                    e.getMessage());
+        }
+
+        return candidates;
+    }
+
+    private List<Candidate> candidatesBySelectedBenefitIds(List<Candidate> candidates, List<Long> selectedBenefitIds) {
+        if (selectedBenefitIds == null || selectedBenefitIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Candidate> selectedCandidates = new ArrayList<>();
+        for (Long selectedBenefitId : selectedBenefitIds) {
+            candidates.stream()
+                    .filter(candidate -> selectedBenefitId != null && selectedBenefitId.equals(candidate.getBenefitId()))
+                    .findFirst()
+                    .ifPresent(selectedCandidates::add);
+        }
+        return selectedCandidates;
     }
 
     private RecommendationResponse buildRecommendationResponse(String question,
@@ -229,8 +271,8 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
             excludedUseCases.addAll(List.of("아이동반", "공부", "스터디", "학습공간"));
         }
         if (intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("더위") || keyword.contains("시원"))) {
-            requiredBusinessTypes.addAll(List.of("BEVERAGE_CAFE", "DESSERT", "MOVIE_THEATER", "SHOPPING", "WATER_PARK"));
-            excludedBusinessTypes.addAll(List.of("COUNSELING", "AUTO_SERVICE", "STUDY_SPACE"));
+            requiredBusinessTypes.addAll(List.of("BEVERAGE_CAFE", "DESSERT", "MOVIE_THEATER", "WATER_PARK"));
+            excludedBusinessTypes.addAll(List.of("SHOPPING", "COUNSELING", "AUTO_SERVICE", "STUDY_SPACE"));
             preferredUseCases.addAll(List.of("음료", "디저트", "실내", "시원함", "휴식"));
         }
         if (intent.purposeKeywords().stream().anyMatch(keyword -> keyword.contains("데이트"))) {

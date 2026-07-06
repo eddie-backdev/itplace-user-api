@@ -199,6 +199,73 @@ class QuestionRecommendationServiceImplTest {
     }
 
     @Test
+    void recommendByQuestion_usesLlmSelectedBenefitIdsWithinRagCandidates() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "날씨가 더운데 시원하게 갈만한 곳 추천해줘";
+        List<Float> embedding = List.of(0.1f, 0.2f);
+        Candidate movie = Candidate.builder()
+                .benefitId(100L)
+                .partnerName("영화관")
+                .category("영화")
+                .description("영화 예매 할인")
+                .businessType("MOVIE_THEATER")
+                .useCases(List.of("영화", "실내"))
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_hybrid")
+                .semanticScore(0.95)
+                .build();
+        Candidate cafe = Candidate.builder()
+                .benefitId(200L)
+                .partnerName("빙수카페")
+                .category("카페")
+                .description("시원한 디저트 할인")
+                .businessType("BEVERAGE_CAFE")
+                .useCases(List.of("음료", "디저트", "휴식"))
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_hybrid")
+                .semanticScore(0.8)
+                .build();
+        StoreDetailResponse store = StoreDetailResponse.builder()
+                .partner(PartnerDto.builder()
+                        .partnerName("빙수카페")
+                        .image("bingsu.png")
+                        .category("카페")
+                        .build())
+                .tierBenefit(List.of(TierBenefitDto.builder()
+                        .context("시원한 디저트 20% 할인")
+                        .build()))
+                .build();
+
+        when(forbiddenWordService.censor(question)).thenReturn(question);
+        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
+        when(benefitSearchService.queryHybrid(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
+                .thenReturn(List.of(movie, cafe));
+        when(openAIService.selectBenefitIds(
+                        org.mockito.ArgumentMatchers.eq(question),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyList(),
+                        org.mockito.ArgumentMatchers.eq(2)))
+                .thenReturn(List.of(200L));
+        when(storeService.findNearbyByPartnerName(37.5, 127.0, "빙수카페", 37.5, 127.0)).thenReturn(List.of(store));
+
+        RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
+
+        assertThat(response.getReason()).contains("빙수카페").contains("시원한 디저트 20% 할인");
+        assertThat(response.getPartners())
+                .singleElement()
+                .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("빙수카페"));
+        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "영화관", 37.5, 127.0);
+    }
+
+    @Test
     void recommendByQuestion_rejectsHotWeatherFalseRouteAndDoesNotFallbackToCounselingCategory() {
         QuestionRecommendationServiceImpl service = service();
         String question = "날씨가 더운데 시원하게 갈만한 곳 추천해줘";
@@ -255,6 +322,83 @@ class QuestionRecommendationServiceImplTest {
         verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "상담센터", 37.5, 127.0);
         verify(storeService, never()).findNearbyByKeyword(37.5, 127.0, null, "상담", 0, 0);
         verify(openAIService, never()).categorize(question);
+    }
+
+    @Test
+    void recommendByQuestion_rejectsShoppingAndOfficeCandidatesForHotWeatherIntent() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "날씨가 더운데 시원하게 갈만한 곳 추천해줘";
+        List<Float> embedding = List.of(0.1f, 0.2f);
+        Candidate officeDepot = Candidate.builder()
+                .partnerName("오피스디포")
+                .category("쇼핑")
+                .benefitName("문구 사무용품 할인")
+                .description("사무용품 구매 혜택")
+                .businessType("SHOPPING")
+                .useCases(List.of("쇼핑", "실내"))
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_vector")
+                .semanticScore(0.99)
+                .build();
+        Candidate dutyFree = Candidate.builder()
+                .partnerName("현대면세점")
+                .category("쇼핑")
+                .benefitName("면세점 쇼핑 혜택")
+                .description("면세점 할인")
+                .businessType("SHOPPING")
+                .useCases(List.of("쇼핑", "실내", "휴식"))
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_vector")
+                .semanticScore(0.98)
+                .build();
+        Candidate cafe = Candidate.builder()
+                .partnerName("메가커피")
+                .category("카페")
+                .description("아이스 음료 할인")
+                .businessType("BEVERAGE_CAFE")
+                .useCases(List.of("음료", "커피", "휴식"))
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_vector")
+                .semanticScore(0.7)
+                .build();
+        StoreDetailResponse store = StoreDetailResponse.builder()
+                .partner(PartnerDto.builder()
+                        .partnerName("메가커피")
+                        .image("mega.png")
+                        .category("카페")
+                        .build())
+                .tierBenefit(List.of(TierBenefitDto.builder()
+                        .context("아이스 음료 10% 할인")
+                        .build()))
+                .build();
+
+        when(forbiddenWordService.censor(question)).thenReturn(question);
+        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
+        when(benefitSearchService.queryHybrid(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
+                .thenReturn(List.of(officeDepot, dutyFree, cafe));
+        when(storeService.findNearbyByPartnerName(37.5, 127.0, "메가커피", 37.5, 127.0)).thenReturn(List.of(store));
+
+        RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
+
+        assertThat(response.getReason())
+                .contains("더운 날 시원하게 쉬어가기 좋은 제휴처")
+                .contains("• 메가커피 — 아이스 음료 10% 할인")
+                .doesNotContain("오피스디포")
+                .doesNotContain("현대면세점");
+        assertThat(response.getPartners())
+                .singleElement()
+                .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("메가커피"));
+        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "오피스디포", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "현대면세점", 37.5, 127.0);
     }
 
     @Test
