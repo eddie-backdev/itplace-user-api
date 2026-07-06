@@ -103,7 +103,7 @@ class StoreServiceImplTest {
         StoreClusterProjection secondCluster = cluster("3:2", "전체", 37.502, 127.002, 27L);
 
         when(storeRepository.findStoreClustersInView(
-                37.49, 37.52, 126.99, 127.02, null, 750.0, 100, 64, 220))
+                37.49, 37.52, 126.99, 127.02, null, 750.0, 300, 32, 220))
                 .thenReturn(List.of(firstCluster, secondCluster));
 
         List<MapStoreClusterResponse> result = storeService.findStoreClustersInView(
