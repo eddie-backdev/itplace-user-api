@@ -79,7 +79,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                             userId, latestRecommendation.getCacheBatchId());
             if (!saved.isEmpty()) {
                 List<Recommendations> cached = RecommendationMapper.toDtoList(saved);
-                attachRequestAttribution(cached, requestId, ALGORITHM_VERSION, List.of("cached_recommendation"));
+                attachRequestAttribution(userId, cached, requestId, ALGORITHM_VERSION, List.of("cached_recommendation"));
                 traceRecorder.recordCached(
                         userId,
                         requestId,
@@ -99,7 +99,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         List<Candidate> candidates = aiService.vectorSearch(uf, candidateSize(topK));
         // 재랭킹 및 이유 생성
         List<Recommendations> recommendations = aiService.rerankAndExplain(uf, candidates, topK);
-        attachRequestAttribution(recommendations, requestId, ALGORITHM_VERSION, List.of());
+        attachRequestAttribution(userId, recommendations, requestId, ALGORITHM_VERSION, List.of());
 
         // 저장
         User user = userRepository.findById(userId)
@@ -176,13 +176,14 @@ public class RecommendationServiceImpl implements RecommendationService {
         return Math.min(Math.max(topK * 3, MIN_CANDIDATE_SIZE), MAX_CANDIDATE_SIZE);
     }
 
-    private void attachRequestAttribution(List<Recommendations> recommendations,
+    private void attachRequestAttribution(Long userId,
+                                          List<Recommendations> recommendations,
                                           String requestId,
                                           String algorithmVersion,
                                           List<String> additionalFallbackFlags) {
         for (Recommendations recommendation : recommendations) {
             recommendation.setRequestId(requestId);
-            recommendation.setImpressionId(newImpressionId(requestId, recommendation.getRank()));
+            recommendation.setImpressionId(newImpressionId(userId, recommendation.getRank()));
             recommendation.setAlgorithmVersion(algorithmVersion);
             if (recommendation.getCandidateSource() == null || recommendation.getCandidateSource().isBlank()) {
                 recommendation.setCandidateSource(additionalFallbackFlags.contains("cached_recommendation")
@@ -209,8 +210,8 @@ public class RecommendationServiceImpl implements RecommendationService {
         return "rec-req-" + userId + "-" + UUID.randomUUID();
     }
 
-    private String newImpressionId(String requestId, int rank) {
-        return requestId + "-imp-" + rank + "-" + UUID.randomUUID();
+    private String newImpressionId(Long userId, int rank) {
+        return "rec-imp-" + userId + "-" + rank + "-" + UUID.randomUUID();
     }
 
 }
