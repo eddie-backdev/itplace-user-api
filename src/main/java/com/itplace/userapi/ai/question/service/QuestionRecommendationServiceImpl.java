@@ -48,13 +48,24 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
 
     @Override
     public RecommendationResponse recommendByQuestion(String question, double lat, double lng, Carrier carrier, Grade grade) {
+        return recommendByQuestion(question, lat, lng, carrier, grade, null, null);
+    }
+
+    @Override
+    public RecommendationResponse recommendByQuestion(String question,
+                                                      double lat,
+                                                      double lng,
+                                                      Carrier carrier,
+                                                      Grade grade,
+                                                      Carrier fallbackCarrier,
+                                                      Grade fallbackGrade) {
         // 0. 금칙어 필터링
         String result = forbiddenWordService.censor(question);
         if (result.contains("입력할 수 없는 단어")) {
             throw new ForbiddenWordException();
         }
 
-        QueryIntent intent = queryIntentExtractor.extract(question, carrier, grade, lat, lng);
+        QueryIntent intent = queryIntentExtractor.extract(question, carrier, grade, fallbackCarrier, fallbackGrade, lat, lng);
 
         // 1. 사용자 질문 + 의도 키워드 임베딩
         List<Float> embedding;
@@ -69,10 +80,11 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
         }
 
         // 2. 운영 추천 경로는 questions 인덱스/CSV memory를 사용하지 않고 Benefit RAG 후보만 조회한다.
-        List<Candidate> retrievedCandidates = benefitSearchService.queryVector(
+        List<Candidate> retrievedCandidates = benefitSearchService.queryHybrid(
                 intent.carrier(),
                 intent.grade(),
                 embedding,
+                intent.retrievalText(),
                 BENEFIT_RETRIEVAL_CANDIDATES,
                 searchCondition(intent)
         );

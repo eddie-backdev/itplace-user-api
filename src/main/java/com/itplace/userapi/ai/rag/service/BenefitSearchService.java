@@ -15,4 +15,13 @@ public interface BenefitSearchService {
                                         BenefitSearchCondition condition) {
         return queryVector(carrier, grade, userEmbedding, topK);
     }
+
+    default List<Candidate> queryHybrid(Carrier carrier,
+                                        Grade grade,
+                                        List<Float> userEmbedding,
+                                        String queryText,
+                                        int topK,
+                                        BenefitSearchCondition condition) {
+        return queryVector(carrier, grade, userEmbedding, topK, condition);
+    }
 }

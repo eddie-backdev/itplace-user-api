@@ -8,4 +8,7 @@ public interface QuestionRecommendationService {
     RecommendationResponse recommendByQuestion(String question, double lat, double lng);
 
     RecommendationResponse recommendByQuestion(String question, double lat, double lng, Carrier carrier, Grade grade);
+
+    RecommendationResponse recommendByQuestion(String question, double lat, double lng, Carrier carrier, Grade grade,
+                                               Carrier fallbackCarrier, Grade fallbackGrade);
 }

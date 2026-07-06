@@ -59,6 +59,10 @@ public class ElasticServiceImpl implements ElasticService {
                                 .properties("onlineContext", p -> p.text(t -> t))
                                 .properties("offlineContext", p -> p.text(t -> t))
                                 .properties("discountValue", p -> p.integer(i -> i))
+                                .properties("businessType", p -> p.keyword(k -> k))
+                                .properties("useCases", p -> p.keyword(k -> k))
+                                .properties("negativeUseCases", p -> p.keyword(k -> k))
+                                .properties("tags", p -> p.keyword(k -> k))
                                 .properties("imgUrl", p -> p.text(t -> t))
                         )
                 );
@@ -94,6 +98,10 @@ public class ElasticServiceImpl implements ElasticService {
                             .properties("onlineContext", prop -> prop.text(t -> t))
                             .properties("offlineContext", prop -> prop.text(t -> t))
                             .properties("discountValue", prop -> prop.integer(i -> i))
+                            .properties("businessType", prop -> prop.keyword(k -> k))
+                            .properties("useCases", prop -> prop.keyword(k -> k))
+                            .properties("negativeUseCases", prop -> prop.keyword(k -> k))
+                            .properties("tags", prop -> prop.keyword(k -> k))
                     );
                     log.info("Updated benefit index mapping for carrier/grade RAG metadata: {}", indexName);
                 }

@@ -22,6 +22,7 @@ import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import com.itplace.userapi.recommend.dto.Candidate;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,26 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
 
     private static final String BENEFIT_INDEX = "benefit";
     private static final int DEFAULT_NUM_CANDIDATES = 100;
+    private static final int HYBRID_CANDIDATE_MULTIPLIER = 4;
+    private static final int HYBRID_MAX_CANDIDATES = 200;
+    private static final int RRF_K = 60;
+    private static final double VECTOR_WEIGHT = 1.0;
+    private static final double LEXICAL_WEIGHT = 1.25;
+    private static final List<String> LEXICAL_FIELDS = List.of(
+            "partnerName^4",
+            "benefitName^3.5",
+            "carrierBenefitName^3",
+            "category^2",
+            "description^1.4",
+            "manual",
+            "context^1.2",
+            "tierContext^1.2",
+            "onlineContext^1.3",
+            "offlineContext^1.3",
+            "businessType^1.2",
+            "useCases^1.2",
+            "tags"
+    );
 
     private final ElasticsearchClient esClient;
     private final BenefitRepository benefitRepository;
@@ -58,28 +79,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         BenefitSearchCondition safeCondition = condition == null ? BenefitSearchCondition.none() : condition;
         try {
             List<Query> filters = metadataFilters(carrier, grade, safeCondition);
-            KnnQuery knnQuery = KnnQuery.of(k -> {
-                KnnQuery.Builder builder = k
-                        .field("embedding")
-                        .k(candidateSize)
-                        .numCandidates(Math.max(DEFAULT_NUM_CANDIDATES, candidateSize))
-                        .queryVector(userEmbedding);
-                if (!filters.isEmpty()) {
-                    builder.filter(filters);
-                }
-                return builder;
-            });
-
-            SearchRequest request = SearchRequest.of(s -> s
-                    .index(BENEFIT_INDEX)
-                    .knn(knnQuery)
-                    .size(candidateSize)
-            );
-
-            SearchResponse<JsonData> response = esClient.search(request, JsonData.class);
-            List<SearchHitSnapshot> hits = response.hits().hits().stream()
-                    .map(BenefitSearchServiceImpl::toSnapshot)
-                    .flatMap(Optional::stream)
+            List<SearchHitSnapshot> hits = vectorSearch(userEmbedding, filters, candidateSize).stream()
                     .filter(hit -> matchesHitMetadata(hit.node(), carrier, grade, safeCondition))
                     .toList();
             List<Candidate> candidates = hydrateCandidates(carrier, grade, hits, "es_vector");
@@ -96,6 +96,107 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         }
 
         return fallbackCandidates(carrier, grade, candidateSize, safeCondition);
+    }
+
+    @Override
+    public List<Candidate> queryHybrid(Carrier carrier,
+                                       Grade grade,
+                                       List<Float> userEmbedding,
+                                       String queryText,
+                                       int candidateSize,
+                                       BenefitSearchCondition condition) {
+        String normalizedQuery = normalizeQuery(queryText);
+        if (normalizedQuery.isBlank()) {
+            return queryVector(carrier, grade, userEmbedding, candidateSize, condition);
+        }
+
+        BenefitSearchCondition safeCondition = condition == null ? BenefitSearchCondition.none() : condition;
+        List<Query> filters = metadataFilters(carrier, grade, safeCondition);
+        int searchSize = hybridCandidateSize(candidateSize);
+        Map<String, HybridRankAccumulator> ranks = new LinkedHashMap<>();
+        boolean searchSucceeded = false;
+
+        try {
+            mergeHybridHits(ranks, vectorSearch(userEmbedding, filters, searchSize), VECTOR_WEIGHT);
+            searchSucceeded = true;
+        } catch (IOException | RuntimeException e) {
+            log.warn("혜택 RAG vector 검색 실패: carrier={}, grade={}, query={}, reason={}",
+                    carrier, grade, normalizedQuery, e.getMessage());
+        }
+
+        try {
+            mergeHybridHits(ranks, lexicalSearch(normalizedQuery, filters, searchSize), LEXICAL_WEIGHT);
+            searchSucceeded = true;
+        } catch (IOException | RuntimeException e) {
+            log.warn("혜택 RAG lexical 검색 실패: carrier={}, grade={}, query={}, reason={}",
+                    carrier, grade, normalizedQuery, e.getMessage());
+        }
+
+        if (searchSucceeded) {
+            List<SearchHitSnapshot> hits = ranks.values().stream()
+                    .sorted(Comparator
+                            .comparingDouble(HybridRankAccumulator::score).reversed()
+                            .thenComparing(HybridRankAccumulator::bestRank)
+                            .thenComparing(HybridRankAccumulator::key))
+                    .map(HybridRankAccumulator::toSnapshot)
+                    .filter(hit -> matchesHitMetadata(hit.node(), carrier, grade, safeCondition))
+                    .limit(candidateSize)
+                    .toList();
+            List<Candidate> candidates = filterCandidates(hydrateCandidates(carrier, grade, hits, "es_hybrid"), safeCondition);
+            if (!candidates.isEmpty()) {
+                return candidates;
+            }
+            log.warn("혜택 RAG hybrid 검색 결과가 비어 DB 후보로 대체합니다. carrier={}, grade={}, query={}",
+                    carrier, grade, normalizedQuery);
+        }
+
+        return fallbackCandidates(carrier, grade, candidateSize, safeCondition);
+    }
+
+
+    private List<SearchHitSnapshot> vectorSearch(List<Float> userEmbedding, List<Query> filters, int candidateSize) throws IOException {
+        KnnQuery knnQuery = KnnQuery.of(k -> {
+            KnnQuery.Builder builder = k
+                    .field("embedding")
+                    .k(candidateSize)
+                    .numCandidates(Math.max(DEFAULT_NUM_CANDIDATES, candidateSize))
+                    .queryVector(userEmbedding);
+            if (!filters.isEmpty()) {
+                builder.filter(filters);
+            }
+            return builder;
+        });
+
+        SearchRequest request = SearchRequest.of(s -> s
+                .index(BENEFIT_INDEX)
+                .knn(knnQuery)
+                .size(candidateSize)
+        );
+        return execute(request);
+    }
+
+    private List<SearchHitSnapshot> lexicalSearch(String queryText, List<Query> filters, int candidateSize) throws IOException {
+        SearchRequest request = SearchRequest.of(s -> s
+                .index(BENEFIT_INDEX)
+                .query(q -> q.bool(b -> {
+                    filters.forEach(b::filter);
+                    return b.must(m -> m.multiMatch(mm -> mm
+                            .query(queryText)
+                            .fields(LEXICAL_FIELDS)
+                            .fuzziness("AUTO")
+                    ));
+                }))
+                .size(candidateSize)
+        );
+        return execute(request);
+    }
+
+    private List<SearchHitSnapshot> execute(SearchRequest request) throws IOException {
+        SearchResponse<JsonData> response = esClient.search(request, JsonData.class);
+        return response.hits().hits().stream()
+                .map(BenefitSearchServiceImpl::toSnapshot)
+                .flatMap(Optional::stream)
+                .toList();
     }
 
     private List<Query> metadataFilters(Carrier carrier, Grade grade, BenefitSearchCondition condition) {
@@ -228,6 +329,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .scoreComponents(Map.of(
                         "semantic_similarity", hit.score(),
                         "source_es_vector", "es_vector".equals(source) ? 1.0 : 0.0,
+                        "source_es_hybrid", "es_hybrid".equals(source) ? 1.0 : 0.0,
                         "source_db_fallback", "db_fallback".equals(source) ? 1.0 : 0.0
                 ))
                 .build();
@@ -489,7 +591,84 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         return value == null || value.isBlank() ? null : value;
     }
 
+    private void mergeHybridHits(Map<String, HybridRankAccumulator> ranks,
+                                 List<SearchHitSnapshot> hits,
+                                 double weight) {
+        for (int index = 0; index < hits.size(); index++) {
+            SearchHitSnapshot hit = hits.get(index);
+            String key = hitKey(hit);
+            int rank = index + 1;
+            double rrfScore = weight / (RRF_K + rank);
+            ranks.computeIfAbsent(key, ignored -> new HybridRankAccumulator(key, hit))
+                    .add(rank, rrfScore, hit.score());
+        }
+    }
+
+    private static String hitKey(SearchHitSnapshot hit) {
+        String documentId = textOrDefault(hit.node(), "documentId", "");
+        if (!documentId.isBlank()) {
+            return documentId;
+        }
+        return String.join(":",
+                String.valueOf(hit.benefitId()),
+                String.valueOf(hit.policyId()),
+                String.valueOf(hit.tierBenefitId())
+        );
+    }
+
+    private static int hybridCandidateSize(int candidateSize) {
+        int safeCandidateSize = Math.max(candidateSize, 1);
+        return Math.min(Math.max(DEFAULT_NUM_CANDIDATES, safeCandidateSize * HYBRID_CANDIDATE_MULTIPLIER), HYBRID_MAX_CANDIDATES);
+    }
+
+    private static String normalizeQuery(String queryText) {
+        return queryText == null ? "" : queryText.replaceAll("\\s+", " ").trim();
+    }
+
     private record SearchHitSnapshot(Long benefitId, Long policyId, Long tierBenefitId, JsonNode node, Double score) {
+    }
+
+
+    private static final class HybridRankAccumulator {
+        private final String key;
+        private final SearchHitSnapshot representative;
+        private double score;
+        private int bestRank = Integer.MAX_VALUE;
+        private double bestRawScore;
+
+        private HybridRankAccumulator(String key, SearchHitSnapshot representative) {
+            this.key = key;
+            this.representative = representative;
+        }
+
+        private HybridRankAccumulator add(int rank, double score, double rawScore) {
+            this.score += score;
+            this.bestRank = Math.min(this.bestRank, rank);
+            this.bestRawScore = Math.max(this.bestRawScore, rawScore);
+            return this;
+        }
+
+        private String key() {
+            return key;
+        }
+
+        private double score() {
+            return score;
+        }
+
+        private int bestRank() {
+            return bestRank;
+        }
+
+        private SearchHitSnapshot toSnapshot() {
+            return new SearchHitSnapshot(
+                    representative.benefitId(),
+                    representative.policyId(),
+                    representative.tierBenefitId(),
+                    representative.node(),
+                    Math.max(score, bestRawScore)
+            );
+        }
     }
 
     private record HydratedPolicyContext(Map<Long, String> descriptions,

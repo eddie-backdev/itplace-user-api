@@ -308,6 +308,88 @@ class BenefitSearchServiceImplTest {
                 });
     }
 
+
+    @Test
+    void queryHybridMergesVectorAndLexicalHitsAndBoostsExplicitKeywordMatch() throws IOException {
+        Partner vectorPartner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("상담센터")
+                .category("상담")
+                .build();
+        Benefit vectorBenefit = Benefit.builder()
+                .benefitId(20L)
+                .benefitName("상담 할인")
+                .partner(vectorPartner)
+                .active(true)
+                .build();
+        Partner lexicalPartner = Partner.builder()
+                .partnerId(11L)
+                .partnerName("미스터피자")
+                .category("피자")
+                .build();
+        Benefit lexicalBenefit = Benefit.builder()
+                .benefitId(21L)
+                .benefitName("피자 할인")
+                .partner(lexicalPartner)
+                .active(true)
+                .build();
+
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenReturn(searchResponse(List.of(mapOf(
+                        "documentId", "benefit:20:policy:30:tier:40",
+                        "benefitId", "20",
+                        "policyId", "30",
+                        "tierBenefitId", "40",
+                        "partnerName", "상담센터",
+                        "benefitName", "상담 할인",
+                        "category", "상담",
+                        "active", true,
+                        "carrier", "SKT",
+                        "grade", "SKT_VIP",
+                        "isAllGrade", false,
+                        "businessType", "COUNSELING",
+                        "tierContext", "상담 20% 할인",
+                        "score", 0.99
+                ))))
+                .thenReturn(searchResponse(List.of(mapOf(
+                        "documentId", "benefit:21:policy:31:tier:41",
+                        "benefitId", "21",
+                        "policyId", "31",
+                        "tierBenefitId", "41",
+                        "partnerName", "미스터피자",
+                        "benefitName", "피자 할인",
+                        "category", "피자",
+                        "active", true,
+                        "carrier", "SKT",
+                        "grade", "SKT_VIP",
+                        "isAllGrade", false,
+                        "businessType", "FOOD_RESTAURANT",
+                        "tierContext", "온라인 방문포장 25% 할인",
+                        "score", 0.5
+                ))));
+        when(benefitRepository.findAllByIdWithPartner(anyList()))
+                .thenReturn(List.of(lexicalBenefit, vectorBenefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of());
+
+        List<Candidate> candidates = benefitSearchService.queryHybrid(
+                Carrier.SKT,
+                Grade.SKT_VIP,
+                List.of(0.1f),
+                "미스터피자 온라인 할인",
+                2,
+                BenefitSearchCondition.none()
+        );
+
+        assertThat(candidates)
+                .hasSize(2)
+                .first()
+                .satisfies(candidate -> {
+                    assertThat(candidate.getPartnerName()).isEqualTo("미스터피자");
+                    assertThat(candidate.getCandidateSource()).isEqualTo("es_hybrid");
+                    assertThat(candidate.getScoreComponents()).containsEntry("source_es_hybrid", 1.0);
+                });
+    }
+
     @Test
     void queryVector_dbFallbackSplitsChannelContexts() throws IOException {
         Partner partner = Partner.builder()
@@ -369,15 +451,21 @@ class BenefitSearchServiceImplTest {
     }
 
     private SearchResponse<JsonData> searchResponse(Map<String, Object> source) {
+        return searchResponse(List.of(source));
+    }
+
+    private SearchResponse<JsonData> searchResponse(List<Map<String, Object>> sources) {
         return SearchResponse.of(s -> s
                 .took(1)
                 .timedOut(false)
                 .shards(ShardStatistics.of(sh -> sh.total(1).successful(1).failed(0)))
-                .hits(h -> h.hits(Hit.<JsonData>of(hit -> hit
-                        .index("benefit")
-                        .id(String.valueOf(source.get("benefitId")))
-                        .score(((Number) source.get("score")).doubleValue())
-                        .source(jsonData(source)))))
+                .hits(h -> h.hits(sources.stream()
+                        .map(source -> Hit.<JsonData>of(hit -> hit
+                                .index("benefit")
+                                .id(String.valueOf(source.get("benefitId")))
+                                .score(((Number) source.get("score")).doubleValue())
+                                .source(jsonData(source))))
+                        .toList()))
         );
     }
 
