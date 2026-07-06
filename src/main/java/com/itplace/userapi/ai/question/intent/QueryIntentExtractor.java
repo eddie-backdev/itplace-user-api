@@ -13,9 +13,25 @@ import org.springframework.stereotype.Component;
 public class QueryIntentExtractor {
 
     public QueryIntent extract(String question, Carrier requestCarrier, Grade requestGrade, double lat, double lng) {
+        return extract(question, requestCarrier, requestGrade, null, null, lat, lng);
+    }
+
+    public QueryIntent extract(String question,
+                               Carrier requestCarrier,
+                               Grade requestGrade,
+                               Carrier fallbackCarrier,
+                               Grade fallbackGrade,
+                               double lat,
+                               double lng) {
         String normalized = normalize(question);
-        Carrier carrier = requestCarrier == null ? inferCarrier(normalized) : requestCarrier;
-        Grade grade = requestGrade == null ? inferGrade(normalized, carrier) : requestGrade;
+        Carrier inferredCarrier = inferCarrier(normalized);
+        Carrier carrier = requestCarrier != null
+                ? requestCarrier
+                : firstNonNull(inferredCarrier, fallbackCarrier);
+        Grade inferredGrade = inferGrade(normalized, carrier);
+        Grade grade = requestGrade != null
+                ? requestGrade
+                : firstCompatibleGrade(inferredGrade, fallbackGrade, carrier);
 
         Set<String> purposeKeywords = new LinkedHashSet<>();
         Set<String> categoryHints = new LinkedHashSet<>();
@@ -134,6 +150,32 @@ public class QueryIntentExtractor {
             }
         }
         return null;
+    }
+
+
+    private static <T> T firstNonNull(T first, T second) {
+        return first != null ? first : second;
+    }
+
+    private static Grade firstCompatibleGrade(Grade inferredGrade, Grade fallbackGrade, Carrier carrier) {
+        if (inferredGrade != null) {
+            return inferredGrade;
+        }
+        return isCompatibleGrade(fallbackGrade, carrier) ? fallbackGrade : null;
+    }
+
+    private static boolean isCompatibleGrade(Grade grade, Carrier carrier) {
+        if (grade == null) {
+            return false;
+        }
+        if (carrier == null) {
+            return true;
+        }
+        return switch (carrier) {
+            case SKT -> grade.name().startsWith("SKT_");
+            case KT -> grade.name().startsWith("KT_");
+            case LGU -> !grade.name().startsWith("SKT_") && !grade.name().startsWith("KT_");
+        };
     }
 
     private static boolean containsAny(String value, String... needles) {

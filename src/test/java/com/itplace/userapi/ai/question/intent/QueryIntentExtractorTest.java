@@ -32,6 +32,40 @@ class QueryIntentExtractorTest {
         assertThat(intent.locationContext()).isEqualTo("UNKNOWN");
     }
 
+
+    @Test
+    void extract_usesFallbackMembershipWhenQuestionDoesNotSpecifyCarrierOrGrade() {
+        QueryIntent intent = extractor.extract(
+                "근처에서 할인되는 카페 알려줘",
+                null,
+                null,
+                Carrier.KT,
+                Grade.KT_VVIP,
+                37.5,
+                127.0
+        );
+
+        assertThat(intent.carrier()).isEqualTo(Carrier.KT);
+        assertThat(intent.grade()).isEqualTo(Grade.KT_VVIP);
+        assertThat(intent.categoryHints()).contains("카페", "커피");
+    }
+
+    @Test
+    void extract_prefersQuestionCarrierOverFallbackMembership() {
+        QueryIntent intent = extractor.extract(
+                "SKT VIP가 카페에서 쓸 혜택 추천해줘",
+                null,
+                null,
+                Carrier.KT,
+                Grade.KT_VVIP,
+                37.5,
+                127.0
+        );
+
+        assertThat(intent.carrier()).isEqualTo(Carrier.SKT);
+        assertThat(intent.grade()).isEqualTo(Grade.SKT_VIP);
+    }
+
     @Test
     void extract_prefersRequestCarrierAndGradeOverTextInference() {
         QueryIntent intent = extractor.extract("VIP 영화 혜택", Carrier.KT, Grade.KT_VVIP, 37.5, 127.0);

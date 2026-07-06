@@ -10,6 +10,8 @@ import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.common.ApiResponse;
+import com.itplace.userapi.security.auth.common.PrincipalDetails;
+import com.itplace.userapi.user.repository.UserRepository;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,6 +40,7 @@ public class QuestionSearchController {
     private final EmbeddingService embeddingService;
     private final ElasticsearchClient elasticsearchClient;
     private final QuestionRecommendationService questionRecommendationService;
+    private final UserRepository userRepository;
 
     @GetMapping("/search")
     @Deprecated(forRemoval = false)
@@ -79,10 +83,35 @@ public class QuestionSearchController {
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam(required = false) Carrier carrier,
-            @RequestParam(required = false) Grade grade) {
+            @RequestParam(required = false) Grade grade,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
 
-        RecommendationResponse result = questionRecommendationService.recommendByQuestion(question, lat, lng, carrier, grade);
+        UserMembershipProfile profile = resolveUserMembershipProfile(principalDetails);
+        RecommendationResponse result = questionRecommendationService.recommendByQuestion(
+                question,
+                lat,
+                lng,
+                carrier,
+                grade,
+                profile.carrier(),
+                profile.grade()
+        );
         ApiResponse<RecommendationResponse> body = ApiResponse.of(QuestionCode.QUESTION_SUCCESS, result);
         return body.toResponseEntity();
+    }
+
+    private UserMembershipProfile resolveUserMembershipProfile(PrincipalDetails principalDetails) {
+        if (principalDetails == null || principalDetails.getUserId() == null) {
+            return UserMembershipProfile.empty();
+        }
+        return userRepository.findById(principalDetails.getUserId())
+                .map(user -> new UserMembershipProfile(user.getCarrier(), user.getMembershipGradeCode()))
+                .orElseGet(UserMembershipProfile::empty);
+    }
+
+    private record UserMembershipProfile(Carrier carrier, Grade grade) {
+        static UserMembershipProfile empty() {
+            return new UserMembershipProfile(null, null);
+        }
     }
 }
