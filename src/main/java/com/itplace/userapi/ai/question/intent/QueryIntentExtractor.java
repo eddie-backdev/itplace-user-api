@@ -39,8 +39,12 @@ public class QueryIntentExtractor {
 
         if (containsAny(normalized, "더운", "더워", "더운데", "시원", "폭염", "날씨")) {
             purposeKeywords.addAll(List.of("더위", "시원한 장소"));
-            categoryHints.addAll(List.of("카페", "디저트", "빙수", "아이스크림", "영화", "쇼핑", "워터", "실내"));
-            exclusions.addAll(List.of("상담", "결혼", "육아", "심리"));
+            categoryHints.addAll(List.of("카페", "디저트", "빙수", "아이스크림", "음료", "영화", "극장", "워터"));
+            exclusions.addAll(List.of(
+                    "상담", "결혼", "육아", "심리",
+                    "쇼핑", "면세점", "백화점", "아울렛", "몰", "라운지",
+                    "문구", "사무", "오피스", "오피스디포"
+            ));
         }
         if (containsAny(normalized, "카페", "커피", "디저트", "빙수", "아이스크림", "음료", "음료수", "마실", "주스", "에이드", "스무디", "차갑", "아이스")) {
             purposeKeywords.add("카페/디저트/음료");
