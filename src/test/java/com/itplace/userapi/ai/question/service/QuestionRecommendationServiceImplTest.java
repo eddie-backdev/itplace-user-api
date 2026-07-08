@@ -79,7 +79,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
                 .thenReturn(List.of(candidate));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "할리스", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "할리스", "카페", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(
                 question,
@@ -127,7 +127,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
                 .thenReturn(List.of(candidate));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "투썸플레이스", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "투썸플레이스", "카페", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(
                 question,
@@ -173,7 +173,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(candidate));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "영화관", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "영화관", "영화", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
@@ -254,7 +254,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.anyList(),
                         org.mockito.ArgumentMatchers.eq(2)))
                 .thenReturn(List.of(200L));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "빙수카페", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "빙수카페", "카페", 200L, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
@@ -262,7 +262,63 @@ class QuestionRecommendationServiceImplTest {
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("빙수카페"));
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "영화관", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "영화관", "영화", 100L, 37.5, 127.0);
+    }
+
+    @Test
+    void recommendByQuestion_passesSelectedBenefitIdentityToStoreLookup() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "카페 스와로브스키 혜택 알려줘";
+        List<Float> embedding = List.of(0.1f, 0.2f);
+        Candidate cafeSwarovski = Candidate.builder()
+                .partnerId(410L)
+                .benefitId(910L)
+                .partnerName("스와로브스키")
+                .category("카페")
+                .benefitName("카페 스와로브스키 음료 할인")
+                .description("카페 스와로브스키 전용 혜택")
+                .carrier("SKT")
+                .grade("SKT_VIP")
+                .candidateSource("es_hybrid")
+                .build();
+        StoreDetailResponse store = StoreDetailResponse.builder()
+                .partner(PartnerDto.builder()
+                        .partnerName("스와로브스키")
+                        .image("cafe-swarovski.png")
+                        .category("카페")
+                        .build())
+                .tierBenefit(List.of(TierBenefitDto.builder()
+                        .benefitId(910L)
+                        .context("카페 스와로브스키 음료 할인")
+                        .build()))
+                .build();
+
+        when(forbiddenWordService.censor(question)).thenReturn(question);
+        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("카페"))).thenReturn(embedding);
+        when(benefitSearchService.queryHybrid(
+                        org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                        org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
+                        org.mockito.ArgumentMatchers.eq(embedding),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.eq(30),
+                        org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
+                .thenReturn(List.of(cafeSwarovski));
+        when(openAIService.selectBenefitIds(
+                        org.mockito.ArgumentMatchers.eq(question),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyList(),
+                        org.mockito.ArgumentMatchers.eq(1)))
+                .thenReturn(List.of(910L));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, 410L, "스와로브스키", "카페", 910L, 37.5, 127.0))
+                .thenReturn(List.of(store));
+
+        RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
+
+        assertThat(response.getReason()).contains("스와로브스키").contains("카페 스와로브스키 음료 할인");
+        assertThat(response.getPartners())
+                .singleElement()
+                .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("스와로브스키"));
+        verify(storeService).findNearbyByBenefitCandidate(37.5, 127.0, 410L, "스와로브스키", "카페", 910L, 37.5, 127.0);
     }
 
     @Test
@@ -306,7 +362,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(falseRoute, coolPlace));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "빙수카페", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "빙수카페", "카페", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
@@ -319,7 +375,7 @@ class QuestionRecommendationServiceImplTest {
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("빙수카페"));
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "상담센터", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "상담센터", "상담", null, 37.5, 127.0);
         verify(storeService, never()).findNearbyByKeyword(37.5, 127.0, null, "상담", 0, 0);
         verify(openAIService, never()).categorize(question);
     }
@@ -385,7 +441,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
                 .thenReturn(List.of(officeDepot, dutyFree, cafe));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "메가커피", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "메가커피", "카페", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
@@ -397,8 +453,8 @@ class QuestionRecommendationServiceImplTest {
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("메가커피"));
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "오피스디포", 37.5, 127.0);
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "현대면세점", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "오피스디포", "쇼핑", null, 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "현대면세점", "쇼핑", null, 37.5, 127.0);
     }
 
     @Test
@@ -428,7 +484,7 @@ class QuestionRecommendationServiceImplTest {
         assertThatThrownBy(() -> service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP))
                 .isInstanceOf(QuestionException.class);
 
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "상담센터", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "상담센터", "상담", null, 37.5, 127.0);
         verify(storeService, never()).findNearbyByKeyword(
                 org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble(),
@@ -510,7 +566,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
                 .thenReturn(List.of(kidsCafe, studyCafe, restaurant, pizza, cafe));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "카페베네", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "카페베네", "카페", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 
@@ -523,10 +579,10 @@ class QuestionRecommendationServiceImplTest {
         assertThat(response.getPartners())
                 .singleElement()
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("카페베네"));
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "서울형 키즈카페", 37.5, 127.0);
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "초심스터디카페", 37.5, 127.0);
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "삼산회관", 37.5, 127.0);
-        verify(storeService, never()).findNearbyByPartnerName(37.5, 127.0, "피자헛", 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "서울형 키즈카페", "키즈카페, 실내놀이터", null, 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "초심스터디카페", "독서실", null, 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "삼산회관", "식당", null, 37.5, 127.0);
+        verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "피자헛", "피자", null, 37.5, 127.0);
         verify(openAIService, never()).generateReasons(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
@@ -567,7 +623,7 @@ class QuestionRecommendationServiceImplTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.eq(30),
                         org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class))).thenReturn(List.of(movie));
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "CGV", 37.5, 127.0)).thenReturn(List.of(store));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, null, "CGV", "영화", null, 37.5, 127.0)).thenReturn(List.of(store));
 
         RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
 

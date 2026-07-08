@@ -35,4 +35,8 @@ public interface StoreService {
 
     List<StoreDetailResponse> findNearbyByPartnerName(double lat, double lng, String partnerName, double userLat,
                                                  double userLng);
+
+    List<StoreDetailResponse> findNearbyByBenefitCandidate(double lat, double lng, Long partnerId, String partnerName,
+                                                           String category, Long benefitId, double userLat,
+                                                           double userLng);
 }

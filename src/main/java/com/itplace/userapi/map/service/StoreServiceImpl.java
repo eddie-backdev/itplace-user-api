@@ -818,6 +818,57 @@ public class StoreServiceImpl implements StoreService {
         Partner partner = partnerRepository.findByPartnerName(partnerName)
                 .orElseThrow(() -> new PartnerNotFoundException(PartnerCode.PARTNER_NOT_FOUND));
 
+        return findNearbyByPartner(lat, lng, partner, null, userLat, userLng);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StoreDetailResponse> findNearbyByBenefitCandidate(double lat,
+                                                                  double lng,
+                                                                  Long partnerId,
+                                                                  String partnerName,
+                                                                  String category,
+                                                                  Long benefitId,
+                                                                  double userLat,
+                                                                  double userLng) {
+        List<Partner> partners = resolveCandidatePartners(partnerId, partnerName, category);
+        if (partners.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return partners.stream()
+                .flatMap(partner -> findNearbyByPartner(lat, lng, partner, benefitId, userLat, userLng).stream())
+                .toList();
+    }
+
+    private List<Partner> resolveCandidatePartners(Long partnerId, String partnerName, String category) {
+        if (partnerId != null) {
+            return partnerRepository.findByPartnerId(partnerId)
+                    .filter(partner -> isCategoryMatched(partner.getCategory(), category))
+                    .map(List::of)
+                    .orElseGet(Collections::emptyList);
+        }
+
+        if (partnerName == null || partnerName.isBlank()) {
+            throw new StoreKeywordException(StoreCode.PARTNERNAME_REQUEST);
+        }
+
+        List<Partner> partners = partnerRepository.findAllByPartnerName(partnerName);
+        if (partners == null || partners.isEmpty()) {
+            throw new PartnerNotFoundException(PartnerCode.PARTNER_NOT_FOUND);
+        }
+
+        return partners.stream()
+                .filter(partner -> isCategoryMatched(partner.getCategory(), category))
+                .toList();
+    }
+
+    private List<StoreDetailResponse> findNearbyByPartner(double lat,
+                                                          double lng,
+                                                          Partner partner,
+                                                          Long benefitId,
+                                                          double userLat,
+                                                          double userLng) {
         List<Long> storeIds = storeRepository.searchNearbyStoreIdsByPartnerId(lng, lat, partner.getPartnerId());
         List<Store> stores = findStoresWithPartnerInRequestedOrder(storeIds);
 
@@ -825,7 +876,13 @@ public class StoreServiceImpl implements StoreService {
         //        tierBenefitRepository.findAllByBenefit_BenefitId()를 반복 호출 → 매장 수만큼 DB 쿼리 발생(N+1).
         // 변경 후: 루프 밖에서 캐시 서비스를 통해 해당 파트너의 혜택을 한 번만 조회.
         //         이후 루프에서는 DB 호출 없이 캐시 결과를 재사용.
-        List<BenefitCacheDto> partnerBenefits = partnerBenefitCacheService.getBenefits(partner.getPartnerId());
+        List<BenefitCacheDto> partnerBenefits = filterBenefitsById(
+                partnerBenefitCacheService.getBenefits(partner.getPartnerId()),
+                benefitId
+        );
+        if (benefitId != null && partnerBenefits.isEmpty()) {
+            return Collections.emptyList();
+        }
 
         return filterStoresMatchedToPartner(stores).stream()
                 .map(store -> {
@@ -838,6 +895,30 @@ public class StoreServiceImpl implements StoreService {
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
                 .toList();
+    }
+
+    private List<BenefitCacheDto> filterBenefitsById(List<BenefitCacheDto> benefits, Long benefitId) {
+        if (benefitId == null) {
+            return benefits == null ? Collections.emptyList() : benefits;
+        }
+        if (benefits == null || benefits.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return benefits.stream()
+                .filter(benefit -> benefitId.equals(benefit.getBenefitId()))
+                .toList();
+    }
+
+    private boolean isCategoryMatched(String partnerCategory, String expectedCategory) {
+        String normalizedExpected = normalizeSearchText(expectedCategory);
+        if (normalizedExpected.isBlank()) {
+            return true;
+        }
+
+        String normalizedPartnerCategory = normalizeSearchText(partnerCategory);
+        return !normalizedPartnerCategory.isBlank()
+                && (normalizedPartnerCategory.contains(normalizedExpected)
+                || normalizedExpected.contains(normalizedPartnerCategory));
     }
 
 
