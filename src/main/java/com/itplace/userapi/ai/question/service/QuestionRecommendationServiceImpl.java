@@ -302,20 +302,41 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 .filter(category -> category != null && !category.isBlank())
                 .findFirst()
                 .orElse("혜택");
-        LinkedHashSet<String> partnerNames = benefitCandidates.stream()
-                .map(Candidate::getPartnerName)
-                .filter(partnerName -> partnerName != null && !partnerName.isBlank())
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        LinkedHashSet<String> visitedCandidateKeys = new LinkedHashSet<>();
 
-        for (String partnerName : partnerNames) {
+        for (Candidate candidate : benefitCandidates) {
+            String partnerName = candidate.getPartnerName();
+            if (candidate.getPartnerId() == null && (partnerName == null || partnerName.isBlank())) {
+                continue;
+            }
+
+            String candidateKey = "%s|%s|%s|%s".formatted(
+                    candidate.getPartnerId(),
+                    partnerName,
+                    candidate.getCategory(),
+                    candidate.getBenefitId()
+            );
+            if (!visitedCandidateKeys.add(candidateKey)) {
+                continue;
+            }
+
             try {
-                List<StoreDetailResponse> stores = storeService.findNearbyByPartnerName(lat, lng, partnerName, lat, lng);
-                if (!stores.isEmpty()) {
+                List<StoreDetailResponse> stores = storeService.findNearbyByBenefitCandidate(
+                        lat,
+                        lng,
+                        candidate.getPartnerId(),
+                        partnerName,
+                        candidate.getCategory(),
+                        candidate.getBenefitId(),
+                        lat,
+                        lng
+                );
+                if (stores != null && !stores.isEmpty()) {
                     mergedStores.addAll(stores);
                 }
             } catch (RuntimeException e) {
-                log.debug("질문형 Benefit RAG 후보의 주변 매장 조회를 건너뜁니다. partnerName={}, reason={}",
-                        partnerName, e.getMessage());
+                log.debug("질문형 Benefit RAG 후보의 주변 매장 조회를 건너뜁니다. partnerId={}, partnerName={}, category={}, benefitId={}, reason={}",
+                        candidate.getPartnerId(), partnerName, candidate.getCategory(), candidate.getBenefitId(), e.getMessage());
             }
 
             if (mergedStores.stream().map(store -> store.getPartner().getPartnerName()).distinct().count() >= MAX_PARTNER_CANDIDATES) {

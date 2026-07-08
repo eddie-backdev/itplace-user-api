@@ -11,5 +11,7 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
     Optional<Partner> findByPartnerName(String partnerName);
 
+    List<Partner> findAllByPartnerName(String partnerName);
+
     List<Partner> findAllByPartnerNameIn(List<String> partnerNames);
 }

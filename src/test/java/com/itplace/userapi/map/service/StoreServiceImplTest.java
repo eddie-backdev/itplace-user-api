@@ -495,6 +495,51 @@ class StoreServiceImplTest {
     }
 
     @Test
+    void findNearbyByBenefitCandidate_filtersBenefitsBySelectedBenefitId() {
+        Partner cafeSwarovski = Partner.builder()
+                .partnerId(41L)
+                .partnerName("스와로브스키")
+                .category("카페")
+                .build();
+        Store cafeStore = store(41L, "카페 스와로브스키 코엑스점", cafeSwarovski, point(127.01, 37.50));
+        TierBenefitDto selectedBenefit = TierBenefitDto.builder()
+                .benefitId(410L)
+                .carrier(Carrier.SKT)
+                .grade(Grade.SKT_VIP)
+                .context("카페 스와로브스키 음료 할인")
+                .build();
+        TierBenefitDto otherBenefit = TierBenefitDto.builder()
+                .benefitId(411L)
+                .carrier(Carrier.SKT)
+                .grade(Grade.SKT_VIP)
+                .context("스와로브스키 다른 혜택")
+                .build();
+
+        when(partnerRepository.findByPartnerId(41L)).thenReturn(java.util.Optional.of(cafeSwarovski));
+        when(storeRepository.searchNearbyStoreIdsByPartnerId(127.00, 37.50, 41L))
+                .thenReturn(List.of(41L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(41L)))
+                .thenReturn(List.of(cafeStore));
+        when(partnerBenefitCacheService.getBenefits(41L))
+                .thenReturn(List.of(
+                        new BenefitCacheDto(410L, "카페 스와로브스키 혜택", List.of(selectedBenefit)),
+                        new BenefitCacheDto(411L, "스와로브스키 기타 혜택", List.of(otherBenefit))
+                ));
+
+        List<StoreDetailResponse> result = storeService.findNearbyByBenefitCandidate(
+                37.50, 127.00, 41L, "스와로브스키", "카페", 410L, 37.50, 127.00);
+
+        assertThat(result)
+                .singleElement()
+                .satisfies(response -> {
+                    assertThat(response.getStore().getStoreName()).isEqualTo("카페 스와로브스키 코엑스점");
+                    assertThat(response.getTierBenefit())
+                            .extracting(TierBenefitDto::getBenefitId)
+                            .containsExactly(410L);
+                });
+    }
+
+    @Test
     void findNearbyByCategory_removesDuplicateTierBenefitsFromMultipleBenefits() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
