@@ -18,6 +18,7 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.map.dto.PartnerDto;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.StoreDto;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.service.StoreService;
 import com.itplace.userapi.recommend.dto.Candidate;
@@ -282,7 +283,12 @@ class QuestionRecommendationServiceImplTest {
                 .candidateSource("es_hybrid")
                 .build();
         StoreDetailResponse store = StoreDetailResponse.builder()
+                .store(StoreDto.builder()
+                        .storeId(810L)
+                        .storeName("카페 스와로브스키 강남점")
+                        .build())
                 .partner(PartnerDto.builder()
+                        .partnerId(410L)
                         .partnerName("스와로브스키")
                         .image("cafe-swarovski.png")
                         .category("카페")
@@ -317,7 +323,18 @@ class QuestionRecommendationServiceImplTest {
         assertThat(response.getReason()).contains("스와로브스키").contains("카페 스와로브스키 음료 할인");
         assertThat(response.getPartners())
                 .singleElement()
-                .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("스와로브스키"));
+                .satisfies(partner -> {
+                    assertThat(partner.getPartnerId()).isEqualTo(410L);
+                    assertThat(partner.getBenefitId()).isEqualTo(910L);
+                    assertThat(partner.getPartnerName()).isEqualTo("스와로브스키");
+                    assertThat(partner.getBenefitName()).isEqualTo("카페 스와로브스키 음료 할인");
+                    assertThat(partner.getCategory()).isEqualTo("카페");
+                    assertThat(partner.getRepresentativeStoreId()).isEqualTo(810L);
+                    assertThat(partner.getRepresentativeStoreName()).isEqualTo("카페 스와로브스키 강남점");
+                    assertThat(partner.getStoreCount()).isEqualTo(1);
+                    assertThat(partner.getBenefitText()).isEqualTo("카페 스와로브스키 음료 할인");
+                    assertThat(partner.getImgUrl()).isEqualTo("cafe-swarovski.png");
+                });
         verify(storeService).findNearbyByBenefitCandidate(37.5, 127.0, 410L, "스와로브스키", "카페", 910L, 37.5, 127.0);
     }
 

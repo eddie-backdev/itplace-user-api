@@ -15,7 +15,9 @@ import com.itplace.userapi.ai.rag.service.BenefitSearchCondition;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
+import com.itplace.userapi.map.dto.PartnerDto;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.StoreDto;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.service.StoreService;
 import com.itplace.userapi.recommend.dto.Candidate;
@@ -114,7 +116,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 guardResult.accepted().size(),
                 guardResult.rejectedCount(),
                 storeCandidateResult.source());
-        return buildRecommendationResponse(question, intent, storeCandidateResult);
+        return buildRecommendationResponse(intent, storeCandidateResult);
     }
 
     private List<Candidate> selectCandidatesWithLlm(String question, QueryIntent intent, List<Candidate> candidates) {
@@ -157,34 +159,23 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
         return selectedCandidates;
     }
 
-    private RecommendationResponse buildRecommendationResponse(String question,
-                                                               QueryIntent intent,
+    private RecommendationResponse buildRecommendationResponse(QueryIntent intent,
                                                                StoreCandidateResult storeCandidateResult) {
         String category = storeCandidateResult.category();
-        List<StoreDetailResponse> stores = storeCandidateResult.stores();
-        List<String> partnerNames = stores.stream()
-                .map(s -> s.getPartner().getPartnerName())
-                .distinct()
+        List<RecommendedStoreCandidate> recommendations = storeCandidateResult.recommendations();
+        List<PartnerBenefitLine> benefitLines = recommendations.stream()
                 .limit(MAX_PARTNER_CANDIDATES)
+                .map(this::partnerBenefitLine)
                 .toList();
-
         // 5. 추천 이유 생성: 질문형 추천은 후보/의도를 벗어난 LLM 추론을 금지하고
         // 실제 반환 후보와 추출된 의도만으로 결정론적 근거를 만든다.
-        String reason = groundedReason(question, intent, category, stores, partnerNames);
+        String reason = groundedReason(intent, category, benefitLines);
 
-        // 6. partnerName + imgUrl 조립
-        List<RecommendationResponse.PartnerSummary> partners = partnerNames.stream()
-                .map(name -> {
-                    String imgUrl = stores.stream()
-                            .filter(s -> s.getPartner().getPartnerName().equals(name))
-                            .findFirst()
-                            .map(s -> s.getPartner().getImage())
-                            .orElse(null);
-                    return RecommendationResponse.PartnerSummary.builder()
-                            .partnerName(name)
-                            .imgUrl(imgUrl)
-                            .build();
-                }).toList();
+        // 6. 추천 후보를 실제 혜택 단위로 내려 프론트가 제휴처명만으로 재추론하지 않도록 한다.
+        List<RecommendationResponse.PartnerSummary> partners = recommendations.stream()
+                .limit(MAX_PARTNER_CANDIDATES)
+                .map(this::partnerSummary)
+                .toList();
 
         // 최종 응답 조립
         return RecommendationResponse.builder()
@@ -193,18 +184,16 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 .build();
     }
 
-    private String groundedReason(String question,
-                                  QueryIntent intent,
+    private String groundedReason(QueryIntent intent,
                                   String category,
-                                  List<StoreDetailResponse> stores,
-                                  List<String> partnerNames) {
-        if (partnerNames == null || partnerNames.isEmpty()) {
+                                  List<PartnerBenefitLine> benefitLines) {
+        if (benefitLines == null || benefitLines.isEmpty()) {
             String normalizedCategory = category == null || category.isBlank() ? "요청하신 조건" : category;
             return "%s에 맞는 주변 제휴처를 찾아봤어요.".formatted(normalizedCategory);
         }
 
         String intro = reasonIntro(intent, category);
-        String bulletLines = partnerBenefitLines(stores, partnerNames).stream()
+        String bulletLines = benefitLines.stream()
                 .map(line -> "• %s — %s".formatted(line.partnerName(), line.benefitText()))
                 .collect(java.util.stream.Collectors.joining("\n"));
 
@@ -226,32 +215,70 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
         return "%s 관련 제휴처를 골라봤어요.\n사용 가능한 혜택을 함께 확인해보세요.".formatted(normalizedCategory);
     }
 
-    private List<PartnerBenefitLine> partnerBenefitLines(List<StoreDetailResponse> stores, List<String> partnerNames) {
-        List<PartnerBenefitLine> lines = new ArrayList<>();
-        for (String partnerName : partnerNames) {
-            String benefitText = benefitTextForPartner(stores, partnerName);
-            lines.add(new PartnerBenefitLine(partnerName, benefitText));
-        }
-        return lines;
+    private PartnerBenefitLine partnerBenefitLine(RecommendedStoreCandidate recommendation) {
+        return new PartnerBenefitLine(partnerName(recommendation), benefitTextForRecommendation(recommendation));
     }
 
-    private String benefitTextForPartner(List<StoreDetailResponse> stores, String partnerName) {
-        if (stores == null || stores.isEmpty()) {
+    private RecommendationResponse.PartnerSummary partnerSummary(RecommendedStoreCandidate recommendation) {
+        Candidate candidate = recommendation.candidate();
+        StoreDetailResponse representative = recommendation.stores().isEmpty() ? null : recommendation.stores().get(0);
+        PartnerDto partner = representative == null ? null : representative.getPartner();
+        StoreDto store = representative == null ? null : representative.getStore();
+
+        return RecommendationResponse.PartnerSummary.builder()
+                .partnerId(candidate.getPartnerId() == null && partner != null ? partner.getPartnerId() : candidate.getPartnerId())
+                .benefitId(candidate.getBenefitId())
+                .partnerName(partnerName(recommendation))
+                .benefitName(firstText(candidate.getBenefitName(), candidate.getDescription(), benefitTextForRecommendation(recommendation)))
+                .category(firstText(candidate.getCategory(), partner == null ? null : partner.getCategory()))
+                .representativeStoreId(store == null ? null : store.getStoreId())
+                .representativeStoreName(store == null ? null : store.getStoreName())
+                .storeCount(recommendation.stores().size())
+                .benefitText(benefitTextForRecommendation(recommendation))
+                .imgUrl(partner == null ? null : partner.getImage())
+                .build();
+    }
+
+    private String partnerName(RecommendedStoreCandidate recommendation) {
+        StoreDetailResponse representative = recommendation.stores().isEmpty() ? null : recommendation.stores().get(0);
+        PartnerDto partner = representative == null ? null : representative.getPartner();
+        return firstText(recommendation.candidate().getPartnerName(), partner == null ? null : partner.getPartnerName());
+    }
+
+    private String benefitTextForRecommendation(RecommendedStoreCandidate recommendation) {
+        if (recommendation == null || recommendation.stores() == null || recommendation.stores().isEmpty()) {
             return "가까운 매장에서 이용 가능한 혜택을 확인해보세요.";
         }
 
-        return stores.stream()
-                .filter(store -> store.getPartner() != null && partnerName.equals(store.getPartner().getPartnerName()))
+        Long benefitId = recommendation.candidate().getBenefitId();
+        return recommendation.stores().stream()
                 .flatMap(store -> store.getTierBenefit() == null ? java.util.stream.Stream.<TierBenefitDto>empty() : store.getTierBenefit().stream())
+                .filter(tierBenefit -> benefitId == null || tierBenefit.getBenefitId() == null || benefitId.equals(tierBenefit.getBenefitId()))
                 .map(TierBenefitDto::getContext)
                 .filter(context -> context != null && !context.isBlank())
                 .map(this::normalizeBenefitText)
                 .findFirst()
-                .orElse("가까운 매장에서 이용 가능한 혜택을 확인해보세요.");
+                .orElse(firstText(
+                        recommendation.candidate().getDescription(),
+                        recommendation.candidate().getBenefitName(),
+                        "가까운 매장에서 이용 가능한 혜택을 확인해보세요."
+                ));
     }
 
     private String normalizeBenefitText(String benefitText) {
         return benefitText.replaceAll("\\s+", " ").trim();
+    }
+
+    private String firstText(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private BenefitSearchCondition searchCondition(QueryIntent intent) {
@@ -296,7 +323,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
             return new StoreCandidateResult(null, List.of(), "benefit_rag");
         }
 
-        List<StoreDetailResponse> mergedStores = new ArrayList<>();
+        List<RecommendedStoreCandidate> recommendations = new ArrayList<>();
         String selectedCategory = benefitCandidates.stream()
                 .map(Candidate::getCategory)
                 .filter(category -> category != null && !category.isBlank())
@@ -332,23 +359,31 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                         lng
                 );
                 if (stores != null && !stores.isEmpty()) {
-                    mergedStores.addAll(stores);
+                    recommendations.add(new RecommendedStoreCandidate(candidate, stores));
                 }
             } catch (RuntimeException e) {
                 log.debug("질문형 Benefit RAG 후보의 주변 매장 조회를 건너뜁니다. partnerId={}, partnerName={}, category={}, benefitId={}, reason={}",
                         candidate.getPartnerId(), partnerName, candidate.getCategory(), candidate.getBenefitId(), e.getMessage());
             }
 
-            if (mergedStores.stream().map(store -> store.getPartner().getPartnerName()).distinct().count() >= MAX_PARTNER_CANDIDATES) {
+            if (recommendations.size() >= MAX_PARTNER_CANDIDATES) {
                 break;
             }
         }
         String source = benefitCandidates.get(0).getCandidateSource();
-        return new StoreCandidateResult(selectedCategory, mergedStores,
+        return new StoreCandidateResult(selectedCategory, recommendations,
                 source == null || source.isBlank() ? "benefit_rag" : source);
     }
 
-    private record StoreCandidateResult(String category, List<StoreDetailResponse> stores, String source) {
+    private record StoreCandidateResult(String category, List<RecommendedStoreCandidate> recommendations, String source) {
+        private List<StoreDetailResponse> stores() {
+            return recommendations.stream()
+                    .flatMap(recommendation -> recommendation.stores().stream())
+                    .toList();
+        }
+    }
+
+    private record RecommendedStoreCandidate(Candidate candidate, List<StoreDetailResponse> stores) {
     }
 
     private record PartnerBenefitLine(String partnerName, String benefitText) {
