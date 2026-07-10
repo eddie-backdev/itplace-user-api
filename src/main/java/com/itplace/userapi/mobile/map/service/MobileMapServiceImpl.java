@@ -23,17 +23,29 @@ public class MobileMapServiceImpl implements MobileMapService {
     public MobileMapNearbyResponse findNearby(
             double lat,
             double lng,
+            double userLat,
+            double userLng,
             double radiusMeters,
             String carrier,
             String category,
             String keyword,
             String partnerName
     ) {
-        List<StoreDetailResponse> stores = findStores(lat, lng, radiusMeters, category, keyword, partnerName);
+        List<StoreDetailResponse> stores = findStores(
+                lat,
+                lng,
+                userLat,
+                userLng,
+                radiusMeters,
+                category,
+                keyword,
+                partnerName
+        );
         Carrier carrierFilter = parseCarrier(carrier);
         List<MobileMapMarkerResponse> markers = stores.stream()
+                .filter(store -> isWithinRadius(store, lat, lng, radiusMeters))
                 .filter(store -> matchesCarrier(store, carrierFilter))
-                .map(MobileMapMarkerResponse::from)
+                .map(store -> MobileMapMarkerResponse.from(store, carrierFilter))
                 .toList();
 
         return new MobileMapNearbyResponse(
@@ -46,18 +58,34 @@ public class MobileMapServiceImpl implements MobileMapService {
     private List<StoreDetailResponse> findStores(
             double lat,
             double lng,
+            double userLat,
+            double userLng,
             double radiusMeters,
             String category,
             String keyword,
             String partnerName
     ) {
         if (partnerName != null && !partnerName.isBlank()) {
-            return storeService.findNearbyByPartnerName(lat, lng, partnerName.trim(), lat, lng);
+            return storeService.findNearbyByPartnerName(lat, lng, partnerName.trim(), userLat, userLng);
         }
         if (keyword != null && !keyword.isBlank()) {
-            return storeService.findNearbyByKeyword(lat, lng, normalizeCategory(category), keyword.trim(), lat, lng);
+            return storeService.findNearbyByKeyword(
+                    lat,
+                    lng,
+                    normalizeCategory(category),
+                    keyword.trim(),
+                    userLat,
+                    userLng
+            );
         }
-        return storeService.findNearbyDistributedForMap(lat, lng, radiusMeters, normalizeCategory(category), lat, lng);
+        return storeService.findNearbyDistributedForMap(
+                lat,
+                lng,
+                radiusMeters,
+                normalizeCategory(category),
+                userLat,
+                userLng
+        );
     }
 
     private String normalizeCategory(String category) {
@@ -65,6 +93,29 @@ public class MobileMapServiceImpl implements MobileMapService {
             return null;
         }
         return category.trim();
+    }
+
+    private boolean isWithinRadius(
+            StoreDetailResponse store,
+            double centerLat,
+            double centerLng,
+            double radiusMeters
+    ) {
+        double storeLat = store.getStore().getLatitude();
+        double storeLng = store.getStore().getLongitude();
+        double latDistance = Math.toRadians(storeLat - centerLat);
+        double lngDistance = Math.toRadians(storeLng - centerLng);
+        double haversine = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(centerLat))
+                * Math.cos(Math.toRadians(storeLat))
+                * Math.sin(lngDistance / 2)
+                * Math.sin(lngDistance / 2);
+        double normalizedHaversine = Math.max(0, Math.min(1, haversine));
+        double distanceMeters = 6_378_137.0 * 2 * Math.atan2(
+                Math.sqrt(normalizedHaversine),
+                Math.sqrt(1 - normalizedHaversine)
+        );
+        return distanceMeters <= radiusMeters;
     }
 
     private Carrier parseCarrier(String carrier) {

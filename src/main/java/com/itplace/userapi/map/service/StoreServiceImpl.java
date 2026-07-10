@@ -16,7 +16,6 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import jakarta.annotation.PreDestroy;
-import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -50,7 +49,6 @@ public class StoreServiceImpl implements StoreService {
     //       Redis 캐시를 통해 조회하는 방식으로 전환하여 DB 부하 절감.
     private final PartnerBenefitCacheService partnerBenefitCacheService;
     private final StoreSearchService storeSearchService;
-    private final EntityManager entityManager;
 
     private static final int GRID_SIZE = 5;
     private static final int STORES_PER_CELL = 15;
@@ -58,7 +56,6 @@ public class StoreServiceImpl implements StoreService {
     private static final int CANDIDATE_FETCH_MULTIPLIER = 3;
     private static final int STORE_CANDIDATE_FETCH_LIMIT = FINAL_LIMIT * CANDIDATE_FETCH_MULTIPLIER;
     private static final int WIDE_RADIUS_THRESHOLD = 10000;
-    private static final int MAP_DISTRIBUTION_THRESHOLD = 1000;
     private static final int MAP_STORES_PER_CELL = 12;
     private static final int DEFAULT_MAP_IN_VIEW_PREVIEW_LIMIT = 500;
     private static final int MAX_MAP_IN_VIEW_PREVIEW_LIMIT = 2000;
@@ -81,33 +78,21 @@ public class StoreServiceImpl implements StoreService {
         double normalizedMaxLng = Math.max(minLng, maxLng);
         String normalizedCategory = normalizeCategory(category);
 
-        disablePostgresJitForCurrentTransaction();
-
         return storeRepository.findStoreClustersInView(
                         normalizedMinLat,
                         normalizedMaxLat,
                         normalizedMinLng,
                         normalizedMaxLng,
                         normalizedCategory,
-                        resolveClusterEpsMeters(mapLevel),
-                        resolveMaxClusterStoreCount(mapLevel),
-                        resolveMaxClusterSplits(mapLevel),
+                        mapLevel,
+                        resolveClusterGridSizeMeters(mapLevel),
                         resolveClusterLimit(mapLevel)
                 ).stream()
                 .map(this::toMapStoreClusterResponse)
                 .toList();
     }
 
-
-    private void disablePostgresJitForCurrentTransaction() {
-        try {
-            entityManager.createNativeQuery("SET LOCAL jit = off").executeUpdate();
-        } catch (RuntimeException exception) {
-            log.debug("클러스터 조회 JIT 비활성화 설정을 건너뜁니다.", exception);
-        }
-    }
-
-    private double resolveClusterEpsMeters(int mapLevel) {
+    private double resolveClusterGridSizeMeters(int mapLevel) {
         if (mapLevel >= 9) {
             return 1800;
         }
@@ -121,35 +106,6 @@ public class StoreServiceImpl implements StoreService {
             return 420;
         }
         return 240;
-    }
-
-    private int resolveMaxClusterStoreCount(int mapLevel) {
-        if (mapLevel >= 9) {
-            return 800;
-        }
-        if (mapLevel >= 8) {
-            return 500;
-        }
-        if (mapLevel >= 7) {
-            return 300;
-        }
-        if (mapLevel >= 6) {
-            return 120;
-        }
-        return 70;
-    }
-
-    private int resolveMaxClusterSplits(int mapLevel) {
-        if (mapLevel >= 9) {
-            return 12;
-        }
-        if (mapLevel >= 8) {
-            return 20;
-        }
-        if (mapLevel >= 7) {
-            return 32;
-        }
-        return 64;
     }
 
     private int resolveClusterLimit(int mapLevel) {
@@ -340,36 +296,23 @@ public class StoreServiceImpl implements StoreService {
     private List<Long> findDistributedStoreIdsForMap(double lat, double lng, double radiusMeters, String category) {
         double[] bbox = computeBoundingBox(lat, lng, radiusMeters);
         double minLat = bbox[0], maxLat = bbox[1], minLng = bbox[2], maxLng = bbox[3];
+        double cellLatDegrees = (maxLat - minLat) / GRID_SIZE;
+        double cellLngDegrees = (maxLng - minLng) / GRID_SIZE;
 
-        double latStep = (maxLat - minLat) / GRID_SIZE;
-        double lngStep = (maxLng - minLng) / GRID_SIZE;
-
-        List<CompletableFuture<List<Long>>> futures = new ArrayList<>();
-
-        for (int i = 0; i < GRID_SIZE; i++) {
-            for (int j = 0; j < GRID_SIZE; j++) {
-                double cellMinLat = minLat + i * latStep;
-                double cellMaxLat = cellMinLat + latStep;
-                double cellMinLng = minLng + j * lngStep;
-                double cellMaxLng = cellMinLng + lngStep;
-
-                futures.add(CompletableFuture.supplyAsync(() ->
-                                storeRepository.findStoreIdsInCellWithinRadius(
-                                        category,
-                                        lat,
-                                        lng,
-                                        radiusMeters,
-                                        cellMinLat,
-                                        cellMaxLat,
-                                        cellMinLng,
-                                        cellMaxLng,
-                                        MAP_STORES_PER_CELL),
-                        GRID_EXECUTOR
-                ));
-            }
-        }
-
-        return awaitGridResults(futures);
+        return storeRepository.findDistributedStoreIdsWithinRadius(
+                category,
+                lat,
+                lng,
+                radiusMeters,
+                minLat,
+                maxLat,
+                minLng,
+                maxLng,
+                cellLatDegrees,
+                cellLngDegrees,
+                MAP_STORES_PER_CELL,
+                FINAL_LIMIT
+        );
     }
 
     private List<Long> awaitGridResults(List<CompletableFuture<List<Long>>> futures) {
@@ -411,21 +354,15 @@ public class StoreServiceImpl implements StoreService {
                                                                  String category, double userLat, double userLng) {
         String normalizedCategory = normalizeCategory(category);
 
-        if (radiusMeters <= MAP_DISTRIBUTION_THRESHOLD) {
-            return normalizedCategory == null
-                    ? findNearby(lat, lng, radiusMeters, userLat, userLng)
-                    : findNearbyByCategory(lat, lng, radiusMeters, normalizedCategory, userLat, userLng);
-        }
-
         List<Long> distributedStoreIds = findDistributedStoreIdsForMap(lat, lng, radiusMeters, normalizedCategory);
         if (distributedStoreIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<Long> sampledStoreIds = sampleStoreIds(distributedStoreIds);
-        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds);
+        List<Store> stores = storeRepository.findAllByStoreIdInWithPartner(distributedStoreIds);
         return toStoreDetailResponses(stores, userLat, userLng).stream()
-                .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
+                .sorted(Comparator.comparing(StoreDetailResponse::getDistance)
+                        .thenComparing(response -> response.getStore().getStoreId()))
                 .toList();
     }
 
