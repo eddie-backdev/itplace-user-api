@@ -6,6 +6,8 @@ public interface MobileMapService {
     MobileMapNearbyResponse findNearby(
             double lat,
             double lng,
+            double userLat,
+            double userLng,
             double radiusMeters,
             String carrier,
             String category,

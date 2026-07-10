@@ -21,7 +21,6 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -103,7 +102,7 @@ class StoreServiceImplTest {
         StoreClusterProjection secondCluster = cluster("3:2", "전체", 37.502, 127.002, 27L);
 
         when(storeRepository.findStoreClustersInView(
-                37.49, 37.52, 126.99, 127.02, null, 750.0, 300, 32, 220))
+                37.49, 37.52, 126.99, 127.02, null, 7, 750.0, 220))
                 .thenReturn(List.of(firstCluster, secondCluster));
 
         List<MapStoreClusterResponse> result = storeService.findStoreClustersInView(
@@ -629,7 +628,7 @@ class StoreServiceImplTest {
 
 
     @Test
-    void findNearbyDistributedForMap_samplesStoresFromGridCells() {
+    void findNearbyDistributedForMap_usesSingleDeterministicGridQuery() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
                 .partnerName("GS25")
@@ -637,9 +636,7 @@ class StoreServiceImplTest {
                 .build();
         Store northWestStore = store(101L, "GS25 북서점", partner, point(126.98, 37.53));
         Store southEastStore = store(102L, "GS25 남동점", partner, point(127.04, 37.47));
-        AtomicInteger cellCalls = new AtomicInteger();
-
-        when(storeRepository.findStoreIdsInCellWithinRadius(
+        when(storeRepository.findDistributedStoreIdsWithinRadius(
                 org.mockito.ArgumentMatchers.<String>isNull(),
                 org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble(),
@@ -648,18 +645,12 @@ class StoreServiceImplTest {
                 org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble(),
-                org.mockito.ArgumentMatchers.anyInt()
-        )).thenAnswer(invocation -> {
-            int call = cellCalls.incrementAndGet();
-            if (call == 1) {
-                return List.of(101L);
-            }
-            if (call == 2) {
-                return List.of(102L);
-            }
-            return List.of();
-        });
-        when(storeRepository.findAllByStoreIdInWithPartner(anyList()))
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.eq(12),
+                org.mockito.ArgumentMatchers.eq(300)
+        )).thenReturn(List.of(101L, 102L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(101L, 102L)))
                 .thenReturn(List.of(northWestStore, southEastStore));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
                 .thenReturn(Map.<Long, List<BenefitCacheDto>>of());
@@ -670,8 +661,8 @@ class StoreServiceImplTest {
         assertThat(result)
                 .extracting(response -> response.getStore().getStoreId())
                 .containsExactlyInAnyOrder(101L, 102L);
-        org.mockito.Mockito.verify(storeRepository, org.mockito.Mockito.times(25))
-                .findStoreIdsInCellWithinRadius(
+        org.mockito.Mockito.verify(storeRepository)
+                .findDistributedStoreIdsWithinRadius(
                         org.mockito.ArgumentMatchers.<String>isNull(),
                         org.mockito.ArgumentMatchers.anyDouble(),
                         org.mockito.ArgumentMatchers.anyDouble(),
@@ -680,8 +671,12 @@ class StoreServiceImplTest {
                         org.mockito.ArgumentMatchers.anyDouble(),
                         org.mockito.ArgumentMatchers.anyDouble(),
                         org.mockito.ArgumentMatchers.anyDouble(),
-                        org.mockito.ArgumentMatchers.anyInt()
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.eq(12),
+                        org.mockito.ArgumentMatchers.eq(300)
                 );
+        verify(storeRepository).findAllByStoreIdInWithPartner(List.of(101L, 102L));
     }
 
 

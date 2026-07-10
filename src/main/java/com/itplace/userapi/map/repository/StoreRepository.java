@@ -71,30 +71,51 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("limit") int limit
     );
 
-
     @Query(
             value = """
-                    SELECT s.storeId
-                    FROM store s
-                    JOIN partner p ON s.partnerId = p.partnerId
-                    WHERE s.location IS NOT NULL
-                      AND (:category IS NULL OR p.category = :category)
-                      AND s.longitude BETWEEN :minLng AND :maxLng
-                      AND s.latitude BETWEEN :minLat AND :maxLat
-                      AND ST_DWithin(
-                          s.location::geography,
-                          ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
-                          :radiusMeters
-                      )
-                    ORDER BY ST_DistanceSphere(
-                        s.location::geometry,
-                        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
-                    ) ASC
+                    WITH candidate_store AS MATERIALIZED (
+                        SELECT
+                            s.storeId AS store_id,
+                            FLOOR((s.latitude::double precision + 90.0) / :cellLatDegrees)::bigint AS grid_y,
+                            FLOOR((s.longitude::double precision + 180.0) / :cellLngDegrees)::bigint AS grid_x,
+                            ST_DistanceSphere(
+                                s.location::geometry,
+                                ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
+                            ) AS distance_meters
+                        FROM store s
+                        JOIN partner p ON s.partnerId = p.partnerId
+                        WHERE s.location IS NOT NULL
+                          AND (:category IS NULL OR p.category = :category)
+                          AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
+                          AND s.longitude BETWEEN :minLng AND :maxLng
+                          AND s.latitude BETWEEN :minLat AND :maxLat
+                          AND ST_DWithin(
+                              s.location::geography,
+                              ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+                              :radiusMeters
+                          )
+                    ),
+                    ranked_store AS (
+                        SELECT
+                            store_id,
+                            grid_y,
+                            grid_x,
+                            distance_meters,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY grid_y, grid_x
+                                ORDER BY distance_meters ASC, store_id ASC
+                            ) AS cell_rank
+                        FROM candidate_store
+                    )
+                    SELECT store_id
+                    FROM ranked_store
+                    WHERE cell_rank <= :storesPerCell
+                    ORDER BY distance_meters ASC, store_id ASC
                     LIMIT :limit
                     """,
             nativeQuery = true
     )
-    List<Long> findStoreIdsInCellWithinRadius(
+    List<Long> findDistributedStoreIdsWithinRadius(
             @Param("category") String category,
             @Param("lat") double lat,
             @Param("lng") double lng,
@@ -103,6 +124,9 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("maxLat") double maxLat,
             @Param("minLng") double minLng,
             @Param("maxLng") double maxLng,
+            @Param("cellLatDegrees") double cellLatDegrees,
+            @Param("cellLngDegrees") double cellLngDegrees,
+            @Param("storesPerCell") int storesPerCell,
             @Param("limit") int limit
     );
 
@@ -150,118 +174,53 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    WITH filtered_store AS (
+                    WITH filtered_store AS MATERIALIZED (
                         SELECT
                             s.storeId AS store_id,
-                            ST_Y(s.location::geometry) AS latitude,
-                            ST_X(s.location::geometry) AS longitude,
-                            ST_X(ST_Transform(s.location::geometry, 3857)) AS map_x,
-                            ST_Y(ST_Transform(s.location::geometry, 3857)) AS map_y,
                             ST_Transform(s.location::geometry, 3857) AS geom
                         FROM store s
                         JOIN partner p ON s.partnerId = p.partnerId
                         WHERE s.location IS NOT NULL
                           AND (:category IS NULL OR p.category = :category)
+                          AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                           AND s.longitude BETWEEN :minLng AND :maxLng
                           AND s.latitude BETWEEN :minLat AND :maxLat
                     ),
-                    dbscan_store AS (
-                        SELECT
-                            fs.store_id,
-                            fs.latitude,
-                            fs.longitude,
-                            fs.map_x,
-                            fs.map_y,
-                            fs.geom,
-                            ST_ClusterDBSCAN(fs.geom, :clusterEpsMeters, 2) OVER () AS density_cluster_index
-                        FROM filtered_store fs
-                    ),
-                    density_clustered_store AS (
+                    gridded_store AS (
                         SELECT
                             store_id,
-                            latitude,
-                            longitude,
-                            map_x,
-                            map_y,
-                            geom,
-                            CASE
-                                WHEN density_cluster_index IS NULL THEN CONCAT('s:', store_id)
-                                ELSE CONCAT('d:', density_cluster_index)
-                            END AS density_cluster_id
-                        FROM dbscan_store
+                            FLOOR(ST_X(geom) / :gridSizeMeters)::bigint AS grid_x,
+                            FLOOR(ST_Y(geom) / :gridSizeMeters)::bigint AS grid_y
+                        FROM filtered_store
                     ),
-                    density_cluster_summary AS (
+                    grid_summary AS (
                         SELECT
-                            density_cluster_id,
-                            COUNT(*) AS store_count,
-                            GREATEST(
-                                1,
-                                LEAST(
-                                    :maxClusterSplits,
-                                    CEIL(COUNT(*)::numeric / :maxClusterStoreCount)::integer
-                                )
-                            ) AS split_count
-                        FROM density_clustered_store
-                        GROUP BY density_cluster_id
-                    ),
-                    clustered_store AS (
-                        SELECT
-                            dcs.store_id,
-                            dcs.latitude,
-                            dcs.longitude,
-                            dcs.map_x,
-                            dcs.map_y,
-                            CASE
-                                WHEN summary.split_count <= 1 THEN dcs.density_cluster_id
-                                ELSE CONCAT(
-                                    dcs.density_cluster_id,
-                                    ':',
-                                    ST_ClusterKMeans(dcs.geom, summary.split_count)
-                                        OVER (PARTITION BY dcs.density_cluster_id)
-                                )
-                            END AS cluster_id
-                        FROM density_clustered_store dcs
-                        JOIN density_cluster_summary summary
-                          ON summary.density_cluster_id = dcs.density_cluster_id
-                    ),
-                    cluster_summary AS (
-                        SELECT
-                            cluster_id,
-                            AVG(map_x) AS centroid_x,
-                            AVG(map_y) AS centroid_y,
+                            grid_x,
+                            grid_y,
                             COUNT(*) AS store_count
-                        FROM clustered_store
-                        GROUP BY cluster_id
-                    ),
-                    representative_store AS (
-                        SELECT
-                            cs.cluster_id,
-                            cs.latitude,
-                            cs.longitude,
-                            cs.map_x,
-                            cs.map_y,
-                            ROW_NUMBER() OVER (
-                                PARTITION BY cs.cluster_id
-                                ORDER BY
-                                    POWER(cs.map_x - summary.centroid_x, 2)
-                                    + POWER(cs.map_y - summary.centroid_y, 2),
-                                    cs.store_id
-                            ) AS row_number
-                        FROM clustered_store cs
-                        JOIN cluster_summary summary
-                          ON summary.cluster_id = cs.cluster_id
+                        FROM gridded_store
+                        GROUP BY grid_x, grid_y
                     )
                     SELECT
-                        summary.cluster_id AS "clusterId",
+                        CONCAT('g:', :mapLevel, ':', grid_x, ':', grid_y) AS "clusterId",
                         COALESCE(:category, '전체') AS "category",
-                        representative.latitude AS "latitude",
-                        representative.longitude AS "longitude",
-                        summary.store_count AS "count"
-                    FROM cluster_summary summary
-                    JOIN representative_store representative
-                      ON representative.cluster_id = summary.cluster_id
-                     AND representative.row_number = 1
-                    ORDER BY summary.store_count DESC, summary.cluster_id ASC
+                        ST_Y(ST_Transform(
+                            ST_SetSRID(ST_MakePoint(
+                                (grid_x + 0.5) * :gridSizeMeters,
+                                (grid_y + 0.5) * :gridSizeMeters
+                            ), 3857),
+                            4326
+                        )) AS "latitude",
+                        ST_X(ST_Transform(
+                            ST_SetSRID(ST_MakePoint(
+                                (grid_x + 0.5) * :gridSizeMeters,
+                                (grid_y + 0.5) * :gridSizeMeters
+                            ), 3857),
+                            4326
+                        )) AS "longitude",
+                        store_count AS "count"
+                    FROM grid_summary
+                    ORDER BY store_count DESC, grid_y ASC, grid_x ASC
                     LIMIT :clusterLimit
                     """,
             nativeQuery = true
@@ -272,9 +231,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("minLng") double minLng,
             @Param("maxLng") double maxLng,
             @Param("category") String category,
-            @Param("clusterEpsMeters") double clusterEpsMeters,
-            @Param("maxClusterStoreCount") int maxClusterStoreCount,
-            @Param("maxClusterSplits") int maxClusterSplits,
+            @Param("mapLevel") int mapLevel,
+            @Param("gridSizeMeters") double gridSizeMeters,
             @Param("clusterLimit") int clusterLimit
     );
 
