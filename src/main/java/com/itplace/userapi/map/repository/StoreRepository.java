@@ -177,6 +177,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     WITH filtered_store AS MATERIALIZED (
                         SELECT
                             s.storeId AS store_id,
+                            s.latitude::double precision AS latitude,
+                            s.longitude::double precision AS longitude,
                             ST_Transform(s.location::geometry, 3857) AS geom
                         FROM store s
                         JOIN partner p ON s.partnerId = p.partnerId
@@ -189,6 +191,10 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     gridded_store AS (
                         SELECT
                             store_id,
+                            latitude,
+                            longitude,
+                            ST_X(geom) AS map_x,
+                            ST_Y(geom) AS map_y,
                             FLOOR(ST_X(geom) / :gridSizeMeters)::bigint AS grid_x,
                             FLOOR(ST_Y(geom) / :gridSizeMeters)::bigint AS grid_y
                         FROM filtered_store
@@ -197,6 +203,10 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         SELECT
                             grid_x,
                             grid_y,
+                            MIN(latitude) AS singleton_latitude,
+                            MIN(longitude) AS singleton_longitude,
+                            AVG(map_x) AS centroid_x,
+                            AVG(map_y) AS centroid_y,
                             COUNT(*) AS store_count
                         FROM gridded_store
                         GROUP BY grid_x, grid_y
@@ -204,20 +214,20 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     SELECT
                         CONCAT('g:', :mapLevel, ':', grid_x, ':', grid_y) AS "clusterId",
                         COALESCE(:category, '전체') AS "category",
-                        ST_Y(ST_Transform(
-                            ST_SetSRID(ST_MakePoint(
-                                (grid_x + 0.5) * :gridSizeMeters,
-                                (grid_y + 0.5) * :gridSizeMeters
-                            ), 3857),
-                            4326
-                        )) AS "latitude",
-                        ST_X(ST_Transform(
-                            ST_SetSRID(ST_MakePoint(
-                                (grid_x + 0.5) * :gridSizeMeters,
-                                (grid_y + 0.5) * :gridSizeMeters
-                            ), 3857),
-                            4326
-                        )) AS "longitude",
+                        CASE
+                            WHEN store_count = 1 THEN singleton_latitude
+                            ELSE ST_Y(ST_Transform(
+                                ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857),
+                                4326
+                            ))
+                        END AS "latitude",
+                        CASE
+                            WHEN store_count = 1 THEN singleton_longitude
+                            ELSE ST_X(ST_Transform(
+                                ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857),
+                                4326
+                            ))
+                        END AS "longitude",
                         store_count AS "count"
                     FROM grid_summary
                     ORDER BY store_count DESC, grid_y ASC, grid_x ASC
