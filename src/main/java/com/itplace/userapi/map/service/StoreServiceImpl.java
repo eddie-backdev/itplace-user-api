@@ -59,6 +59,13 @@ public class StoreServiceImpl implements StoreService {
     private static final int MAP_STORES_PER_CELL = 12;
     private static final int DEFAULT_MAP_IN_VIEW_PREVIEW_LIMIT = 500;
     private static final int MAX_MAP_IN_VIEW_PREVIEW_LIMIT = 2000;
+    private static final int MIN_SUPPORTED_MAP_LEVEL = 1;
+    private static final int MAX_SUPPORTED_MAP_LEVEL = 14;
+    private static final int BASE_CLUSTER_MAP_LEVEL = 5;
+    private static final double TOWN_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 0.25;
+    private static final double CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 2.0;
+    private static final double LEGACY_DETAIL_GRID_SIZE_METERS = 240.0;
+    private static final double BASE_CLUSTER_GRID_SIZE_METERS = 400.0;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @PreDestroy
@@ -77,6 +84,15 @@ public class StoreServiceImpl implements StoreService {
         double normalizedMinLng = Math.min(minLng, maxLng);
         double normalizedMaxLng = Math.max(minLng, maxLng);
         String normalizedCategory = normalizeCategory(category);
+        int normalizedMapLevel = normalizeMapLevel(mapLevel);
+        int aggregationMapLevel = resolveClusterAggregationMapLevel(
+                normalizedMapLevel,
+                normalizedMinLat,
+                normalizedMaxLat,
+                normalizedMinLng,
+                normalizedMaxLng
+        );
+        ClusterAdministrativeUnit administrativeUnit = resolveClusterAdministrativeUnit(aggregationMapLevel);
 
         return storeRepository.findStoreClustersInView(
                         normalizedMinLat,
@@ -84,54 +100,88 @@ public class StoreServiceImpl implements StoreService {
                         normalizedMinLng,
                         normalizedMaxLng,
                         normalizedCategory,
-                        mapLevel,
-                        resolveClusterGridSizeMeters(mapLevel),
-                        resolveClusterLimit(mapLevel)
+                        normalizedMapLevel,
+                        administrativeUnit.name(),
+                        resolveClusterGridSizeMeters(aggregationMapLevel)
                 ).stream()
-                .map(this::toMapStoreClusterResponse)
+                .map(projection -> toMapStoreClusterResponse(projection, normalizedMapLevel))
                 .toList();
     }
 
+    private int normalizeMapLevel(int mapLevel) {
+        return Math.max(MIN_SUPPORTED_MAP_LEVEL, Math.min(MAX_SUPPORTED_MAP_LEVEL, mapLevel));
+    }
+
     private double resolveClusterGridSizeMeters(int mapLevel) {
-        if (mapLevel >= 9) {
-            return 1800;
+        if (mapLevel < BASE_CLUSTER_MAP_LEVEL) {
+            return LEGACY_DETAIL_GRID_SIZE_METERS;
         }
-        if (mapLevel >= 8) {
-            return 1200;
-        }
-        if (mapLevel >= 7) {
-            return 750;
-        }
-        if (mapLevel >= 6) {
-            return 420;
-        }
-        return 240;
+
+        return Math.scalb(BASE_CLUSTER_GRID_SIZE_METERS, mapLevel - BASE_CLUSTER_MAP_LEVEL);
     }
 
-    private int resolveClusterLimit(int mapLevel) {
-        if (mapLevel >= 9) {
-            return 120;
+    private int resolveClusterAggregationMapLevel(
+            int requestedMapLevel,
+            double minLat,
+            double maxLat,
+            double minLng,
+            double maxLng
+    ) {
+        double viewportSpan = Math.max(maxLat - minLat, maxLng - minLng);
+        if (viewportSpan >= CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES) {
+            return Math.max(requestedMapLevel, 10);
         }
-        if (mapLevel >= 8) {
-            return 160;
+        if (viewportSpan >= TOWN_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES) {
+            return Math.max(requestedMapLevel, 6);
         }
-        if (mapLevel >= 7) {
-            return 220;
-        }
-        if (mapLevel >= 6) {
-            return 280;
-        }
-        return 320;
+        return requestedMapLevel;
     }
 
-    private MapStoreClusterResponse toMapStoreClusterResponse(StoreClusterProjection projection) {
+    private ClusterAdministrativeUnit resolveClusterAdministrativeUnit(int mapLevel) {
+        if (mapLevel >= 10) {
+            return ClusterAdministrativeUnit.CITY;
+        }
+        if (mapLevel >= 6) {
+            return ClusterAdministrativeUnit.TOWN;
+        }
+        return ClusterAdministrativeUnit.LEGAL_DONG;
+    }
+
+    private int resolveClusterTargetMapLevel(String administrativeUnitType, int currentMapLevel) {
+        if (administrativeUnitType == null) {
+            return Math.max(MIN_SUPPORTED_MAP_LEVEL, currentMapLevel - 1);
+        }
+
+        int hierarchyTarget = switch (administrativeUnitType) {
+            case "CITY" -> 9;
+            case "TOWN" -> 5;
+            case "LEGAL_DONG" -> 4;
+            default -> currentMapLevel - 1;
+        };
+        return Math.max(MIN_SUPPORTED_MAP_LEVEL, Math.min(currentMapLevel - 1, hierarchyTarget));
+    }
+
+    private MapStoreClusterResponse toMapStoreClusterResponse(
+            StoreClusterProjection projection,
+            int currentMapLevel
+    ) {
         return MapStoreClusterResponse.builder()
                 .clusterId(projection.getClusterId())
                 .category(projection.getCategory())
+                .administrativeUnitType(projection.getAdministrativeUnitType())
+                .administrativeUnitName(projection.getAdministrativeUnitName())
+                .targetMapLevel(resolveClusterTargetMapLevel(
+                        projection.getAdministrativeUnitType(), currentMapLevel))
                 .latitude(projection.getLatitude())
                 .longitude(projection.getLongitude())
                 .count(projection.getCount())
                 .build();
+    }
+
+    private enum ClusterAdministrativeUnit {
+        LEGAL_DONG,
+        TOWN,
+        CITY
     }
 
     @Override

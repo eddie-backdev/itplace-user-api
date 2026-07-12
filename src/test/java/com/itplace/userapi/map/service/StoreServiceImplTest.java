@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -98,11 +100,13 @@ class StoreServiceImplTest {
 
     @Test
     void findStoreClustersInView_returnsServerAggregatedClusters() {
-        StoreClusterProjection firstCluster = cluster("1:2", "전체", 37.501, 127.001, 44L);
-        StoreClusterProjection secondCluster = cluster("3:2", "전체", 37.502, 127.002, 27L);
+        StoreClusterProjection firstCluster = cluster(
+                "a:7:TOWN:one", "전체", "TOWN", "강남구", 37.501, 127.001, 44L);
+        StoreClusterProjection secondCluster = cluster(
+                "a:7:TOWN:two", "전체", "TOWN", "송파구", 37.502, 127.002, 27L);
 
         when(storeRepository.findStoreClustersInView(
-                37.49, 37.52, 126.99, 127.02, null, 7, 750.0, 220))
+                37.49, 37.52, 126.99, 127.02, null, 7, "TOWN", 1600.0))
                 .thenReturn(List.of(firstCluster, secondCluster));
 
         List<MapStoreClusterResponse> result = storeService.findStoreClustersInView(
@@ -110,15 +114,149 @@ class StoreServiceImplTest {
 
         assertThat(result)
                 .extracting(MapStoreClusterResponse::getClusterId)
-                .containsExactly("1:2", "3:2");
+                .containsExactly("a:7:TOWN:one", "a:7:TOWN:two");
         assertThat(result).first()
                 .satisfies(cluster -> {
                     assertThat(cluster.getCategory()).isEqualTo("전체");
+                    assertThat(cluster.getAdministrativeUnitType()).isEqualTo("TOWN");
+                    assertThat(cluster.getAdministrativeUnitName()).isEqualTo("강남구");
+                    assertThat(cluster.getTargetMapLevel()).isEqualTo(5);
                     assertThat(cluster.getLatitude()).isEqualTo(37.501);
                     assertThat(cluster.getLongitude()).isEqualTo(127.001);
                     assertThat(cluster.getCount()).isEqualTo(44L);
                 });
         verify(partnerBenefitCacheService, never()).getBenefitsBatch(anyList());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "0, 1, LEGAL_DONG, 240.0",
+            "1, 1, LEGAL_DONG, 240.0",
+            "4, 4, LEGAL_DONG, 240.0",
+            "5, 5, LEGAL_DONG, 400.0",
+            "6, 6, TOWN, 800.0",
+            "7, 7, TOWN, 1600.0",
+            "8, 8, TOWN, 3200.0",
+            "9, 9, TOWN, 6400.0",
+            "10, 10, CITY, 12800.0",
+            "11, 11, CITY, 25600.0",
+            "12, 12, CITY, 51200.0",
+            "13, 13, CITY, 102400.0",
+            "14, 14, CITY, 204800.0",
+            "15, 14, CITY, 204800.0"
+    })
+    void findStoreClustersInView_selectsAdministrativeUnitAsMapZoomsOut(
+            int mapLevel,
+            int expectedMapLevel,
+            String expectedAdministrativeUnitType,
+            double expectedGridSizeMeters
+    ) {
+        when(storeRepository.findStoreClustersInView(
+                37.49,
+                37.52,
+                126.99,
+                127.02,
+                null,
+                expectedMapLevel,
+                expectedAdministrativeUnitType,
+                expectedGridSizeMeters
+        )).thenReturn(List.of());
+
+        storeService.findStoreClustersInView(
+                37.49,
+                126.99,
+                37.52,
+                127.02,
+                null,
+                mapLevel
+        );
+
+        verify(storeRepository).findStoreClustersInView(
+                37.49,
+                37.52,
+                126.99,
+                127.02,
+                null,
+                expectedMapLevel,
+                expectedAdministrativeUnitType,
+                expectedGridSizeMeters
+        );
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "5, LEGAL_DONG, 400.0, LEGAL_DONG, 4",
+            "7, TOWN, 1600.0, TOWN, 5",
+            "10, CITY, 12800.0, CITY, 9",
+            "7, TOWN, 1600.0, GRID, 6",
+            "7, TOWN, 1600.0, CITY, 6"
+    })
+    void findStoreClustersInView_targetsNextAvailableHierarchy(
+            int mapLevel,
+            String requestedAdministrativeUnitType,
+            double gridSizeMeters,
+            String returnedAdministrativeUnitType,
+            int expectedTargetMapLevel
+    ) {
+        StoreClusterProjection projection = cluster(
+                "cluster", "전체", returnedAdministrativeUnitType, "테스트 지역",
+                37.5, 127.0, 10L);
+        when(storeRepository.findStoreClustersInView(
+                37.49,
+                37.52,
+                126.99,
+                127.02,
+                null,
+                mapLevel,
+                requestedAdministrativeUnitType,
+                gridSizeMeters
+        )).thenReturn(List.of(projection));
+
+        List<MapStoreClusterResponse> result = storeService.findStoreClustersInView(
+                37.49, 126.99, 37.52, 127.02, null, mapLevel);
+
+        assertThat(result).singleElement()
+                .extracting(MapStoreClusterResponse::getTargetMapLevel)
+                .isEqualTo(expectedTargetMapLevel);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "37.4, 37.8, 126.7, 127.2, TOWN, 800.0",
+            "33.0, 39.0, 124.0, 132.0, CITY, 12800.0"
+    })
+    void findStoreClustersInView_coarsensUnitWhenBoundsOutgrowRequestedLevel(
+            double minLat,
+            double maxLat,
+            double minLng,
+            double maxLng,
+            String expectedAdministrativeUnitType,
+            double expectedGridSizeMeters
+    ) {
+        when(storeRepository.findStoreClustersInView(
+                minLat,
+                maxLat,
+                minLng,
+                maxLng,
+                null,
+                5,
+                expectedAdministrativeUnitType,
+                expectedGridSizeMeters
+        )).thenReturn(List.of());
+
+        storeService.findStoreClustersInView(
+                minLat, minLng, maxLat, maxLng, null, 5);
+
+        verify(storeRepository).findStoreClustersInView(
+                minLat,
+                maxLat,
+                minLng,
+                maxLng,
+                null,
+                5,
+                expectedAdministrativeUnitType,
+                expectedGridSizeMeters
+        );
     }
 
     @Test
@@ -683,6 +821,8 @@ class StoreServiceImplTest {
     private static StoreClusterProjection cluster(
             String clusterId,
             String category,
+            String administrativeUnitType,
+            String administrativeUnitName,
             Double latitude,
             Double longitude,
             Long count
@@ -696,6 +836,16 @@ class StoreServiceImplTest {
             @Override
             public String getCategory() {
                 return category;
+            }
+
+            @Override
+            public String getAdministrativeUnitType() {
+                return administrativeUnitType;
+            }
+
+            @Override
+            public String getAdministrativeUnitName() {
+                return administrativeUnitName;
             }
 
             @Override

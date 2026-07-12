@@ -4,7 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.hibernate.query.sql.internal.ParameterParser;
+import org.hibernate.query.sql.spi.ParameterRecognizer;
 import org.springframework.data.jpa.repository.Query;
 
 class StoreRepositoryQueryContractTest {
@@ -25,28 +29,57 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void clusterQuery_usesGloballyAnchoredGridCells() {
+    void clusterQuery_groupsByAdministrativeHierarchyWithGridFallback() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql)
                 .contains(
+                        "NULLIF(BTRIM(s.city), '')",
+                        "NULLIF(BTRIM(s.town), '')",
+                        "NULLIF(BTRIM(s.legalDong), '')",
+                        "regexp_split_to_array",
+                        "generate_subscripts",
+                        "string_agg(address_parts.parts[town_index], ' ' ORDER BY town_index)",
+                        ":administrativeUnitType = 'CITY' THEN ''",
+                        ":administrativeUnitType <> 'CITY'",
+                        "ORDER BY part_index DESC",
+                        "AS address_is_full",
+                        "WHEN '서울특별시' THEN '서울'",
+                        "WHEN '경기도' THEN '경기'",
+                        "administrative_city.address_is_full",
+                        ":administrativeUnitType = 'LEGAL_DONG'",
+                        ":administrativeUnitType IN ('LEGAL_DONG', 'TOWN')",
+                        "town ~ '(동|읍|면|리|가)$'",
+                        "town ~ '(시|군|구|읍|면)$'",
+                        "CONCAT_WS('|', city, town, legal_dong)",
+                        "CONCAT_WS('|', city, town)",
                         "FLOOR(ST_X(geom) / :gridSizeMeters)",
                         "FLOOR(ST_Y(geom) / :gridSizeMeters)",
-                        "CONCAT('g:', :mapLevel, ':', grid_x, ':', grid_y)",
-                        "GROUP BY grid_x, grid_y",
+                        "CONCAT('grid|', grid_x, '|', grid_y)",
+                        "'GRID'",
+                        "MD5(region_key)",
+                        "GROUP BY region_type, region_key",
                         "s.location && ST_MakeEnvelope"
                 )
-                .doesNotContain("ST_ClusterDBSCAN", "ST_ClusterKMeans");
+                .doesNotContain(
+                        "ST_ClusterDBSCAN",
+                        "ST_ClusterKMeans",
+                        "LIMIT :clusterLimit",
+                        "parts[2:",
+                        ":administrative_dong.position"
+                );
     }
 
     @Test
-    void clusterQuery_usesExactSingletonCoordinatesAndProjectedCentroids() {
+    void clusterQuery_usesProjectedCentroidWithoutRankingEveryStore() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql)
                 .contains(
                         "s.latitude::double precision AS latitude",
                         "s.longitude::double precision AS longitude",
+                        "MIN(latitude) AS singleton_latitude",
+                        "MIN(longitude) AS singleton_longitude",
                         "AVG(map_x) AS centroid_x",
                         "AVG(map_y) AS centroid_y",
                         "WHEN store_count = 1 THEN singleton_latitude",
@@ -54,9 +87,49 @@ class StoreRepositoryQueryContractTest {
                         "ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857)"
                 )
                 .doesNotContain(
+                        "ROW_NUMBER() OVER",
+                        "POWER(classified.map_x - summary.centroid_x, 2)",
                         "(grid_x + 0.5) * :gridSizeMeters",
                         "(grid_y + 0.5) * :gridSizeMeters"
                 );
+    }
+
+    @Test
+    void clusterQuery_exposesOnlyDeclaredHibernateNamedParameters() {
+        Set<String> namedParameters = new LinkedHashSet<>();
+
+        ParameterParser.parse(queryValue("findStoreClustersInView"), new ParameterRecognizer() {
+            @Override
+            public void ordinalParameter(int sourcePosition) {
+                throw new AssertionError("Unexpected ordinal parameter at " + sourcePosition);
+            }
+
+            @Override
+            public void namedParameter(String name, int sourcePosition) {
+                namedParameters.add(name);
+            }
+
+            @Override
+            public void jpaPositionalParameter(int label, int sourcePosition) {
+                throw new AssertionError("Unexpected positional parameter at " + sourcePosition);
+            }
+
+            @Override
+            public void other(char character) {
+                // SQL literals and operators are intentionally ignored.
+            }
+        });
+
+        assertThat(namedParameters).containsExactlyInAnyOrder(
+                "minLat",
+                "maxLat",
+                "minLng",
+                "maxLng",
+                "category",
+                "mapLevel",
+                "administrativeUnitType",
+                "gridSizeMeters"
+        );
     }
 
     private String queryValue(String methodName) {

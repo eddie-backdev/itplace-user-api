@@ -8,6 +8,9 @@ import lombok.Getter;
 public class MapStoreClusterResponse {
     private String clusterId;
     private String category;
+    private String administrativeUnitType;
+    private String administrativeUnitName;
+    private Integer targetMapLevel;
     private Double latitude;
     private Double longitude;
     private Long count;
