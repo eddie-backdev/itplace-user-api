@@ -5,6 +5,10 @@ public interface StoreClusterProjection {
 
     String getCategory();
 
+    String getAdministrativeUnitType();
+
+    String getAdministrativeUnitName();
+
     Double getLatitude();
 
     Double getLongitude();
