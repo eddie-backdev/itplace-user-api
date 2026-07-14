@@ -32,81 +32,50 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void clusterQuery_groupsByAdministrativeHierarchyWithGridFallback() {
+    void clusterQuery_groupsPrecomputedAdministrativeRegionsInsideViewport() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql)
                 .contains(
-                        "NULLIF(BTRIM(s.city), '')",
-                        "NULLIF(BTRIM(s.town), '')",
-                        "NULLIF(BTRIM(s.legalDong), '')",
-                        "regexp_split_to_array",
-                        "generate_subscripts",
-                        "string_agg(address_parts.parts[town_index], ' ' ORDER BY town_index)",
-                        ":administrativeUnitType = 'CITY' THEN ''",
-                        ":administrativeUnitType <> 'CITY'",
-                        "ORDER BY part_index DESC",
-                        "AS address_is_full",
-                        "WHEN '서울특별시' THEN '서울'",
-                        "WHEN '경기도' THEN '경기'",
-                        "administrative_city.address_is_full",
-                        ":administrativeUnitType = 'LEGAL_DONG'",
-                        ":administrativeUnitType IN ('LEGAL_DONG', 'TOWN')",
-                        "town ~ '(동|읍|면|리|가)$'",
-                        "town ~ '(시|군|구|읍|면)$'",
-                        "CONCAT_WS('|', city, town, legal_dong)",
-                        "CONCAT_WS('|', city, town)",
-                        "FLOOR(ST_X(geom) / :gridSizeMeters)",
-                        "FLOOR(ST_Y(geom) / :gridSizeMeters)",
-                        "CONCAT('grid|', grid_x, '|', grid_y)",
-                        "'GRID'",
+                        "JOIN map_store_cluster_region mapped ON mapped.store_id = s.storeId",
+                        "CASE :administrativeUnitType",
+                        "mapped.city_region_key",
+                        "mapped.town_region_key",
+                        "mapped.legal_dong_region_key",
+                        "GROUP BY region.region_type, region.region_key",
                         "MD5(region_summary.region_key)",
-                        "GROUP BY region_type, region_key",
                         "s.location && ST_MakeEnvelope"
                 )
                 .doesNotContain(
+                        "regexp_split_to_array",
+                        "generate_subscripts",
+                        "ST_Transform",
+                        ":gridSizeMeters",
+                        "'GRID'",
                         "ST_ClusterDBSCAN",
                         "ST_ClusterKMeans",
-                        "LIMIT :clusterLimit",
-                        "parts[2:",
-                        ":administrative_dong.position"
+                        "LIMIT :clusterLimit"
                 );
     }
 
     @Test
-    void clusterQuery_usesFixedAdministrativeAnchorAndDeterministicGridCenter() {
+    void clusterQuery_returnsOnlyFixedAdministrativeAnchors() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql)
                 .contains(
-                        "s.latitude::double precision AS latitude",
-                        "s.longitude::double precision AS longitude",
-                        "MIN(latitude) AS singleton_latitude",
-                        "MIN(longitude) AS singleton_longitude",
-                        "AVG(map_x) AS centroid_x",
-                        "AVG(map_y) AS centroid_y",
-                        "MIN(grid_x) AS grid_x",
-                        "MIN(grid_y) AS grid_y",
-                        "LEFT JOIN map_region_anchor region_anchor",
+                        "JOIN map_region_anchor region_anchor",
                         "region_anchor.region_type = region_summary.region_type",
                         "region_anchor.region_key = region_summary.region_key",
-                        "WHEN region_anchor.latitude IS NOT NULL",
-                        "WHEN region_anchor.longitude IS NOT NULL",
-                        "WHEN region_summary.region_type = 'GRID'",
-                        "(grid_x + 0.5) * :gridSizeMeters",
-                        "(grid_y + 0.5) * :gridSizeMeters",
-                        "WHEN store_count = 1 THEN singleton_latitude",
-                        "WHEN store_count = 1 THEN singleton_longitude",
-                        "ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857)"
+                        "region_anchor.latitude AS \"latitude\"",
+                        "region_anchor.longitude AS \"longitude\""
                 )
                 .doesNotContain(
-                        "ROW_NUMBER() OVER",
-                        "POWER(classified.map_x - summary.centroid_x, 2)"
-                )
-                .containsSubsequence(
-                        "WHEN region_anchor.latitude IS NOT NULL",
-                        "WHEN region_summary.region_type = 'GRID'",
-                        "WHEN store_count = 1 THEN singleton_latitude"
+                        "LEFT JOIN map_region_anchor",
+                        "AVG(map_x)",
+                        "AVG(map_y)",
+                        "singleton_latitude",
+                        "singleton_longitude"
                 );
     }
 
@@ -126,6 +95,27 @@ class StoreRepositoryQueryContractTest {
                 "ON CONFLICT (region_type, region_key) DO NOTHING"
         );
     }
+
+    @Test
+    void storeClusterRegionMigration_backfillsAndSynchronizesPrecomputedRegions() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream("/db/map_store_cluster_region.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        assertThat(sql).contains(
+                "CREATE TABLE IF NOT EXISTS map_store_cluster_region",
+                "CREATE OR REPLACE FUNCTION resolve_map_store_cluster_region",
+                "CREATE OR REPLACE FUNCTION sync_map_store_cluster_region",
+                "CREATE TRIGGER trg_sync_map_store_cluster_region",
+                "ON CONFLICT (store_id) DO UPDATE SET",
+                "ON CONFLICT (region_type, region_key) DO NOTHING",
+                "ANALYZE map_store_cluster_region"
+        );
+    }
+
+
 
     @Test
     void clusterQuery_exposesOnlyDeclaredHibernateNamedParameters() {
@@ -160,8 +150,7 @@ class StoreRepositoryQueryContractTest {
                 "maxLng",
                 "category",
                 "mapLevel",
-                "administrativeUnitType",
-                "gridSizeMeters"
+                "administrativeUnitType"
         );
     }
 
