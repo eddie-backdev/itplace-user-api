@@ -174,45 +174,57 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    WITH region_summary AS (
+                    WITH selected_region AS MATERIALIZED (
+                        SELECT
+                            mapped.store_id,
+                            CASE :administrativeUnitType
+                                WHEN 'CITY' THEN 'CITY'
+                                WHEN 'TOWN' THEN mapped.town_region_type
+                                ELSE mapped.legal_dong_region_type
+                            END AS region_type,
+                            CASE :administrativeUnitType
+                                WHEN 'CITY' THEN mapped.city_region_key
+                                WHEN 'TOWN' THEN mapped.town_region_key
+                                ELSE mapped.legal_dong_region_key
+                            END AS region_key,
+                            CASE :administrativeUnitType
+                                WHEN 'CITY' THEN mapped.city_region_name
+                                WHEN 'TOWN' THEN mapped.town_region_name
+                                ELSE mapped.legal_dong_region_name
+                            END AS region_name,
+                            CASE :administrativeUnitType
+                                WHEN 'CITY' THEN mapped.city_region_hash
+                                WHEN 'TOWN' THEN mapped.town_region_hash
+                                ELSE mapped.legal_dong_region_hash
+                            END AS region_hash
+                        FROM map_store_cluster_region mapped
+                    ),
+                    region_summary AS (
                         SELECT
                             region.region_type,
-                            region.region_key,
+                            MIN(region.region_key) AS region_key,
                             MIN(region.region_name) AS region_name,
+                            region.region_hash,
                             COUNT(*) AS store_count
                         FROM store s
-                        JOIN partner p ON s.partnerId = p.partnerId
-                        JOIN map_store_cluster_region mapped ON mapped.store_id = s.storeId
-                        CROSS JOIN LATERAL (
-                            SELECT
-                                CASE :administrativeUnitType
-                                    WHEN 'CITY' THEN 'CITY'
-                                    WHEN 'TOWN' THEN mapped.town_region_type
-                                    ELSE mapped.legal_dong_region_type
-                                END AS region_type,
-                                CASE :administrativeUnitType
-                                    WHEN 'CITY' THEN mapped.city_region_key
-                                    WHEN 'TOWN' THEN mapped.town_region_key
-                                    ELSE mapped.legal_dong_region_key
-                                END AS region_key,
-                                CASE :administrativeUnitType
-                                    WHEN 'CITY' THEN mapped.city_region_name
-                                    WHEN 'TOWN' THEN mapped.town_region_name
-                                    ELSE mapped.legal_dong_region_name
-                                END AS region_name
-                        ) region
+                        JOIN selected_region region ON region.store_id = s.storeId
                         WHERE s.location IS NOT NULL
-                          AND (:category IS NULL OR p.category = :category)
+                          AND (:category IS NULL OR EXISTS (
+                              SELECT 1
+                              FROM partner p
+                              WHERE p.partnerId = s.partnerId
+                                AND p.category = :category
+                          ))
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
-                          AND s.longitude BETWEEN :minLng AND :maxLng
-                          AND s.latitude BETWEEN :minLat AND :maxLat
+                          AND s.longitude BETWEEN CAST(:minLng AS NUMERIC) AND CAST(:maxLng AS NUMERIC)
+                          AND s.latitude BETWEEN CAST(:minLat AS NUMERIC) AND CAST(:maxLat AS NUMERIC)
                           AND region.region_key IS NOT NULL
-                        GROUP BY region.region_type, region.region_key
+                        GROUP BY region.region_type, region.region_hash
                     )
                     SELECT
                         CONCAT(
                             'a:', :mapLevel, ':', region_summary.region_type, ':',
-                            MD5(region_summary.region_key)
+                            region_summary.region_hash
                         ) AS "clusterId",
                         COALESCE(:category, '전체') AS "category",
                         region_summary.region_type AS "administrativeUnitType",
@@ -227,7 +239,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     ORDER BY
                         region_summary.store_count DESC,
                         region_summary.region_type ASC,
-                        region_summary.region_key ASC
+                        region_summary.region_hash ASC
                     """,
             nativeQuery = true
     )

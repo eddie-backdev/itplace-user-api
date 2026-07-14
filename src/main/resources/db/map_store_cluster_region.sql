@@ -13,12 +13,16 @@ CREATE TABLE IF NOT EXISTS map_store_cluster_region (
     store_id BIGINT PRIMARY KEY REFERENCES store(storeId) ON DELETE CASCADE,
     city_region_key VARCHAR(300),
     city_region_name VARCHAR(100),
+    city_region_hash CHAR(32) GENERATED ALWAYS AS (MD5(city_region_key)) STORED,
     town_region_type VARCHAR(20) NOT NULL,
     town_region_key VARCHAR(300),
     town_region_name VARCHAR(100),
+    town_region_hash CHAR(32) GENERATED ALWAYS AS (MD5(town_region_key)) STORED,
     legal_dong_region_type VARCHAR(20) NOT NULL,
     legal_dong_region_key VARCHAR(300),
     legal_dong_region_name VARCHAR(100),
+    legal_dong_region_hash CHAR(32)
+        GENERATED ALWAYS AS (MD5(legal_dong_region_key)) STORED,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (town_region_type IN ('CITY', 'TOWN')),
     CHECK (legal_dong_region_type IN ('CITY', 'TOWN', 'LEGAL_DONG'))
@@ -26,6 +30,14 @@ CREATE TABLE IF NOT EXISTS map_store_cluster_region (
 
 COMMENT ON TABLE map_store_cluster_region IS
     '지도 클러스터 조회 시 반복적인 주소 파싱을 제거하기 위한 매장별 행정구역 분류';
+
+ALTER TABLE map_store_cluster_region
+    ADD COLUMN IF NOT EXISTS city_region_hash CHAR(32)
+        GENERATED ALWAYS AS (MD5(city_region_key)) STORED,
+    ADD COLUMN IF NOT EXISTS town_region_hash CHAR(32)
+        GENERATED ALWAYS AS (MD5(town_region_key)) STORED,
+    ADD COLUMN IF NOT EXISTS legal_dong_region_hash CHAR(32)
+        GENERATED ALWAYS AS (MD5(legal_dong_region_key)) STORED;
 
 CREATE OR REPLACE FUNCTION resolve_map_store_cluster_region(
     source_address TEXT,
