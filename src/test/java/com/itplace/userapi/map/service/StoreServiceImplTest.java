@@ -106,7 +106,7 @@ class StoreServiceImplTest {
                 "a:7:TOWN:two", "전체", "TOWN", "송파구", 37.502, 127.002, 27L);
 
         when(storeRepository.findStoreClustersInView(
-                37.49, 37.52, 126.99, 127.02, null, 7, "TOWN", 1600.0))
+                37.49, 37.52, 126.99, 127.02, null, 7, "TOWN"))
                 .thenReturn(List.of(firstCluster, secondCluster));
 
         List<MapStoreClusterResponse> result = storeService.findStoreClustersInView(
@@ -130,26 +130,25 @@ class StoreServiceImplTest {
 
     @ParameterizedTest
     @CsvSource({
-            "0, 1, LEGAL_DONG, 240.0",
-            "1, 1, LEGAL_DONG, 240.0",
-            "4, 4, LEGAL_DONG, 240.0",
-            "5, 5, LEGAL_DONG, 400.0",
-            "6, 6, TOWN, 800.0",
-            "7, 7, TOWN, 1600.0",
-            "8, 8, TOWN, 3200.0",
-            "9, 9, TOWN, 6400.0",
-            "10, 10, CITY, 12800.0",
-            "11, 11, CITY, 25600.0",
-            "12, 12, CITY, 51200.0",
-            "13, 13, CITY, 102400.0",
-            "14, 14, CITY, 204800.0",
-            "15, 14, CITY, 204800.0"
+            "0, 1, LEGAL_DONG",
+            "1, 1, LEGAL_DONG",
+            "4, 4, LEGAL_DONG",
+            "5, 5, LEGAL_DONG",
+            "6, 6, TOWN",
+            "7, 7, TOWN",
+            "8, 8, TOWN",
+            "9, 9, TOWN",
+            "10, 10, CITY",
+            "11, 11, CITY",
+            "12, 12, CITY",
+            "13, 13, CITY",
+            "14, 14, CITY",
+            "15, 14, CITY"
     })
     void findStoreClustersInView_selectsAdministrativeUnitAsMapZoomsOut(
             int mapLevel,
             int expectedMapLevel,
-            String expectedAdministrativeUnitType,
-            double expectedGridSizeMeters
+            String expectedAdministrativeUnitType
     ) {
         when(storeRepository.findStoreClustersInView(
                 37.49,
@@ -158,8 +157,7 @@ class StoreServiceImplTest {
                 127.02,
                 null,
                 expectedMapLevel,
-                expectedAdministrativeUnitType,
-                expectedGridSizeMeters
+                expectedAdministrativeUnitType
         )).thenReturn(List.of());
 
         storeService.findStoreClustersInView(
@@ -178,23 +176,21 @@ class StoreServiceImplTest {
                 127.02,
                 null,
                 expectedMapLevel,
-                expectedAdministrativeUnitType,
-                expectedGridSizeMeters
+                expectedAdministrativeUnitType
         );
     }
 
     @ParameterizedTest
     @CsvSource({
-            "5, LEGAL_DONG, 400.0, LEGAL_DONG, 4",
-            "7, TOWN, 1600.0, TOWN, 5",
-            "10, CITY, 12800.0, CITY, 9",
-            "7, TOWN, 1600.0, GRID, 6",
-            "7, TOWN, 1600.0, CITY, 6"
+            "5, LEGAL_DONG, LEGAL_DONG, 4",
+            "7, TOWN, TOWN, 5",
+            "10, CITY, CITY, 9",
+            "7, TOWN, GRID, 6",
+            "7, TOWN, CITY, 6"
     })
     void findStoreClustersInView_targetsNextAvailableHierarchy(
             int mapLevel,
             String requestedAdministrativeUnitType,
-            double gridSizeMeters,
             String returnedAdministrativeUnitType,
             int expectedTargetMapLevel
     ) {
@@ -208,8 +204,7 @@ class StoreServiceImplTest {
                 127.02,
                 null,
                 mapLevel,
-                requestedAdministrativeUnitType,
-                gridSizeMeters
+                requestedAdministrativeUnitType
         )).thenReturn(List.of(projection));
 
         List<MapStoreClusterResponse> result = storeService.findStoreClustersInView(
@@ -222,16 +217,15 @@ class StoreServiceImplTest {
 
     @ParameterizedTest
     @CsvSource({
-            "37.4, 37.8, 126.7, 127.2, TOWN, 800.0",
-            "33.0, 39.0, 124.0, 132.0, CITY, 12800.0"
+            "37.4, 37.8, 126.7, 127.2, TOWN",
+            "33.0, 39.0, 124.0, 132.0, CITY"
     })
     void findStoreClustersInView_coarsensUnitWhenBoundsOutgrowRequestedLevel(
             double minLat,
             double maxLat,
             double minLng,
             double maxLng,
-            String expectedAdministrativeUnitType,
-            double expectedGridSizeMeters
+            String expectedAdministrativeUnitType
     ) {
         when(storeRepository.findStoreClustersInView(
                 minLat,
@@ -240,8 +234,7 @@ class StoreServiceImplTest {
                 maxLng,
                 null,
                 5,
-                expectedAdministrativeUnitType,
-                expectedGridSizeMeters
+                expectedAdministrativeUnitType
         )).thenReturn(List.of());
 
         storeService.findStoreClustersInView(
@@ -254,8 +247,7 @@ class StoreServiceImplTest {
                 maxLng,
                 null,
                 5,
-                expectedAdministrativeUnitType,
-                expectedGridSizeMeters
+                expectedAdministrativeUnitType
         );
     }
 

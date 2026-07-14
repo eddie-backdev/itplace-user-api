@@ -61,11 +61,8 @@ public class StoreServiceImpl implements StoreService {
     private static final int MAX_MAP_IN_VIEW_PREVIEW_LIMIT = 2000;
     private static final int MIN_SUPPORTED_MAP_LEVEL = 1;
     private static final int MAX_SUPPORTED_MAP_LEVEL = 14;
-    private static final int BASE_CLUSTER_MAP_LEVEL = 5;
     private static final double TOWN_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 0.25;
     private static final double CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 2.0;
-    private static final double LEGACY_DETAIL_GRID_SIZE_METERS = 240.0;
-    private static final double BASE_CLUSTER_GRID_SIZE_METERS = 400.0;
     private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @PreDestroy
@@ -101,8 +98,7 @@ public class StoreServiceImpl implements StoreService {
                         normalizedMaxLng,
                         normalizedCategory,
                         normalizedMapLevel,
-                        administrativeUnit.name(),
-                        resolveClusterGridSizeMeters(aggregationMapLevel)
+                        administrativeUnit.name()
                 ).stream()
                 .map(projection -> toMapStoreClusterResponse(projection, normalizedMapLevel))
                 .toList();
@@ -112,13 +108,6 @@ public class StoreServiceImpl implements StoreService {
         return Math.max(MIN_SUPPORTED_MAP_LEVEL, Math.min(MAX_SUPPORTED_MAP_LEVEL, mapLevel));
     }
 
-    private double resolveClusterGridSizeMeters(int mapLevel) {
-        if (mapLevel < BASE_CLUSTER_MAP_LEVEL) {
-            return LEGACY_DETAIL_GRID_SIZE_METERS;
-        }
-
-        return Math.scalb(BASE_CLUSTER_GRID_SIZE_METERS, mapLevel - BASE_CLUSTER_MAP_LEVEL);
-    }
 
     private int resolveClusterAggregationMapLevel(
             int requestedMapLevel,
