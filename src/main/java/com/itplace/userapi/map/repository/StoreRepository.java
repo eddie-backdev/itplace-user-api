@@ -296,6 +296,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                             longitude,
                             map_x,
                             map_y,
+                            grid_x,
+                            grid_y,
                             CASE
                                 WHEN :administrativeUnitType = 'LEGAL_DONG'
                                   AND city IS NOT NULL
@@ -379,16 +381,30 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                             MIN(longitude) AS singleton_longitude,
                             AVG(map_x) AS centroid_x,
                             AVG(map_y) AS centroid_y,
+                            MIN(grid_x) AS grid_x,
+                            MIN(grid_y) AS grid_y,
                             COUNT(*) AS store_count
                         FROM classified_store
                         GROUP BY region_type, region_key
                     )
                     SELECT
-                        CONCAT('a:', :mapLevel, ':', region_type, ':', MD5(region_key)) AS "clusterId",
+                        CONCAT(
+                            'a:', :mapLevel, ':', region_summary.region_type, ':',
+                            MD5(region_summary.region_key)
+                        ) AS "clusterId",
                         COALESCE(:category, '전체') AS "category",
-                        region_type AS "administrativeUnitType",
-                        region_name AS "administrativeUnitName",
+                        region_summary.region_type AS "administrativeUnitType",
+                        region_summary.region_name AS "administrativeUnitName",
                         CASE
+                            WHEN region_anchor.latitude IS NOT NULL
+                                THEN region_anchor.latitude
+                            WHEN region_summary.region_type = 'GRID' THEN ST_Y(ST_Transform(
+                                ST_SetSRID(ST_MakePoint(
+                                    (grid_x + 0.5) * :gridSizeMeters,
+                                    (grid_y + 0.5) * :gridSizeMeters
+                                ), 3857),
+                                4326
+                            ))
                             WHEN store_count = 1 THEN singleton_latitude
                             ELSE ST_Y(ST_Transform(
                                 ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857),
@@ -396,6 +412,15 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                             ))
                         END AS "latitude",
                         CASE
+                            WHEN region_anchor.longitude IS NOT NULL
+                                THEN region_anchor.longitude
+                            WHEN region_summary.region_type = 'GRID' THEN ST_X(ST_Transform(
+                                ST_SetSRID(ST_MakePoint(
+                                    (grid_x + 0.5) * :gridSizeMeters,
+                                    (grid_y + 0.5) * :gridSizeMeters
+                                ), 3857),
+                                4326
+                            ))
                             WHEN store_count = 1 THEN singleton_longitude
                             ELSE ST_X(ST_Transform(
                                 ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857),
@@ -404,7 +429,13 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         END AS "longitude",
                         store_count AS "count"
                     FROM region_summary
-                    ORDER BY store_count DESC, region_type ASC, region_key ASC
+                    LEFT JOIN map_region_anchor region_anchor
+                      ON region_anchor.region_type = region_summary.region_type
+                     AND region_anchor.region_key = region_summary.region_key
+                    ORDER BY
+                        region_summary.store_count DESC,
+                        region_summary.region_type ASC,
+                        region_summary.region_key ASC
                     """,
             nativeQuery = true
     )
