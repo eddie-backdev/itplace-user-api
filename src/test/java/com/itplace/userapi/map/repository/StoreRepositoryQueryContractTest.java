@@ -2,7 +2,10 @@ package com.itplace.userapi.map.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -57,7 +60,7 @@ class StoreRepositoryQueryContractTest {
                         "FLOOR(ST_Y(geom) / :gridSizeMeters)",
                         "CONCAT('grid|', grid_x, '|', grid_y)",
                         "'GRID'",
-                        "MD5(region_key)",
+                        "MD5(region_summary.region_key)",
                         "GROUP BY region_type, region_key",
                         "s.location && ST_MakeEnvelope"
                 )
@@ -71,7 +74,7 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void clusterQuery_usesProjectedCentroidWithoutRankingEveryStore() {
+    void clusterQuery_usesFixedAdministrativeAnchorAndDeterministicGridCenter() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql)
@@ -82,16 +85,46 @@ class StoreRepositoryQueryContractTest {
                         "MIN(longitude) AS singleton_longitude",
                         "AVG(map_x) AS centroid_x",
                         "AVG(map_y) AS centroid_y",
+                        "MIN(grid_x) AS grid_x",
+                        "MIN(grid_y) AS grid_y",
+                        "LEFT JOIN map_region_anchor region_anchor",
+                        "region_anchor.region_type = region_summary.region_type",
+                        "region_anchor.region_key = region_summary.region_key",
+                        "WHEN region_anchor.latitude IS NOT NULL",
+                        "WHEN region_anchor.longitude IS NOT NULL",
+                        "WHEN region_summary.region_type = 'GRID'",
+                        "(grid_x + 0.5) * :gridSizeMeters",
+                        "(grid_y + 0.5) * :gridSizeMeters",
                         "WHEN store_count = 1 THEN singleton_latitude",
                         "WHEN store_count = 1 THEN singleton_longitude",
                         "ST_SetSRID(ST_MakePoint(centroid_x, centroid_y), 3857)"
                 )
                 .doesNotContain(
                         "ROW_NUMBER() OVER",
-                        "POWER(classified.map_x - summary.centroid_x, 2)",
-                        "(grid_x + 0.5) * :gridSizeMeters",
-                        "(grid_y + 0.5) * :gridSizeMeters"
+                        "POWER(classified.map_x - summary.centroid_x, 2)"
+                )
+                .containsSubsequence(
+                        "WHEN region_anchor.latitude IS NOT NULL",
+                        "WHEN region_summary.region_type = 'GRID'",
+                        "WHEN store_count = 1 THEN singleton_latitude"
                 );
+    }
+
+    @Test
+    void regionAnchorMigration_preservesExistingAnchorsOnRepeatedExecution() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream("/db/map_region_anchor.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        assertThat(sql).contains(
+                "CREATE TABLE IF NOT EXISTS map_region_anchor",
+                "PRIMARY KEY (region_type, region_key)",
+                "CHECK (region_type IN ('CITY', 'TOWN', 'LEGAL_DONG'))",
+                "'STORE_CENTROID'",
+                "ON CONFLICT (region_type, region_key) DO NOTHING"
+        );
     }
 
     @Test
