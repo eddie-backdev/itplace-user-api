@@ -37,13 +37,20 @@ class StoreRepositoryQueryContractTest {
 
         assertThat(sql)
                 .contains(
-                        "JOIN map_store_cluster_region mapped ON mapped.store_id = s.storeId",
+                        "WITH selected_region AS MATERIALIZED",
+                        "FROM map_store_cluster_region mapped",
+                        "JOIN selected_region region ON region.store_id = s.storeId",
                         "CASE :administrativeUnitType",
                         "mapped.city_region_key",
                         "mapped.town_region_key",
                         "mapped.legal_dong_region_key",
-                        "GROUP BY region.region_type, region.region_key",
-                        "MD5(region_summary.region_key)",
+                        "mapped.city_region_hash",
+                        "mapped.town_region_hash",
+                        "mapped.legal_dong_region_hash",
+                        "GROUP BY region.region_type, region.region_hash",
+                        "region_summary.region_hash",
+                        "CAST(:minLng AS NUMERIC)",
+                        "CAST(:minLat AS NUMERIC)",
                         "s.location && ST_MakeEnvelope"
                 )
                 .doesNotContain(
@@ -109,6 +116,10 @@ class StoreRepositoryQueryContractTest {
                 "CREATE OR REPLACE FUNCTION resolve_map_store_cluster_region",
                 "CREATE OR REPLACE FUNCTION sync_map_store_cluster_region",
                 "CREATE TRIGGER trg_sync_map_store_cluster_region",
+                "city_region_hash CHAR(32)",
+                "town_region_hash CHAR(32)",
+                "legal_dong_region_hash CHAR(32)",
+                "GENERATED ALWAYS AS (MD5",
                 "ON CONFLICT (store_id) DO UPDATE SET",
                 "ON CONFLICT (region_type, region_key) DO NOTHING",
                 "ANALYZE map_store_cluster_region"
