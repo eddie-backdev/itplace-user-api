@@ -359,6 +359,54 @@ class StoreServiceImplTest {
     }
 
     @Test
+    void findStoresInViewPreviews_rejectsDaracNameCollisionWithCareCenter() {
+        StorePreviewProjection validStorage = previewWithBusiness(
+                1L,
+                8L,
+                "다락 노원역점",
+                "서비스,산업 > 보관,저장 > 무인보관함 > 다락",
+                "다락",
+                "생활/편의",
+                "https://example.com/darac.png",
+                37.654,
+                127.061,
+                "서울 노원구 상계동",
+                "서울 노원구 상계로",
+                "서울 노원구 상계로 51",
+                "01695",
+                false
+        );
+        StorePreviewProjection careCenter = previewWithBusiness(
+                2L,
+                8L,
+                "상계다락 아이휴센터 우리동네키움센터 노원16호점",
+                "사회,공공기관 > 단체,협회 > 사회복지시설 > 아동복지시설",
+                "다락",
+                "생활/편의",
+                "https://example.com/darac.png",
+                37.660,
+                127.070,
+                "서울 노원구 상계동",
+                "서울 노원구 한글비석로",
+                "서울 노원구 한글비석로 426-12",
+                "01661",
+                false
+        );
+
+        when(storeRepository.findStorePreviewsInView(
+                37.64, 37.67, 127.05, 127.08, 37.655, 127.065, null, 900))
+                .thenReturn(List.of(careCenter, validStorage));
+
+        List<MapStorePreviewResponse> result = storeService.findStoresInViewPreviews(
+                37.64, 127.05, 37.67, 127.08, null, 37.655, 127.065, 900, false);
+
+        assertThat(result)
+                .extracting(MapStorePreviewResponse::getStoreName)
+                .containsExactly("다락 노원역점");
+        verify(partnerBenefitCacheService, never()).getBenefitsBatch(anyList());
+    }
+
+    @Test
     void findNearbyByCategory_returnsStoresSortedByDistance() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
@@ -872,6 +920,40 @@ class StoreServiceImplTest {
             String postCode,
             Boolean hasCoupon
     ) {
+        return previewWithBusiness(
+                storeId,
+                partnerId,
+                storeName,
+                "business",
+                partnerName,
+                category,
+                image,
+                latitude,
+                longitude,
+                address,
+                roadName,
+                roadAddress,
+                postCode,
+                hasCoupon
+        );
+    }
+
+    private static StorePreviewProjection previewWithBusiness(
+            Long storeId,
+            Long partnerId,
+            String storeName,
+            String business,
+            String partnerName,
+            String category,
+            String image,
+            Double latitude,
+            Double longitude,
+            String address,
+            String roadName,
+            String roadAddress,
+            String postCode,
+            Boolean hasCoupon
+    ) {
         return new StorePreviewProjection() {
             @Override
             public Long getStoreId() {
@@ -886,6 +968,11 @@ class StoreServiceImplTest {
             @Override
             public String getStoreName() {
                 return storeName;
+            }
+
+            @Override
+            public String getBusiness() {
+                return business;
             }
 
             @Override

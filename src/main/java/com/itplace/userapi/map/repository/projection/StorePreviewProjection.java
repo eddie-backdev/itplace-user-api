@@ -7,6 +7,8 @@ public interface StorePreviewProjection {
 
     String getStoreName();
 
+    String getBusiness();
+
     String getPartnerName();
 
     String getCategory();

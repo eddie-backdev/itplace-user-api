@@ -126,7 +126,37 @@ class StoreRepositoryQueryContractTest {
         );
     }
 
+    @Test
+    void clusterQuery_excludesDaracPlacesOutsideStorageBusiness() {
+        String sql = queryValue("findStoreClustersInView");
 
+        assertThat(sql).contains(
+                "REGEXP_REPLACE(",
+                "LOWER(COALESCE(p.partnerName, ''))",
+                "NOT IN ('다락', '미니창고다락')",
+                "s.business LIKE '%보관%'",
+                "s.business LIKE '%저장%'"
+        );
+    }
+
+    @Test
+    void previewQuery_excludesDaracPlacesOutsideStorageBusinessBeforeLimit() {
+        String sql = queryValue("findStorePreviewsInView");
+
+        assertThat(sql)
+                .contains(
+                        "REGEXP_REPLACE(",
+                        "LOWER(COALESCE(p.partnerName, ''))",
+                        "NOT IN ('다락', '미니창고다락')",
+                        "s.business LIKE '%보관%'",
+                        "s.business LIKE '%저장%'"
+                )
+                .containsSubsequence(
+                        "NOT IN ('다락', '미니창고다락')",
+                        "ORDER BY",
+                        "LIMIT :limit"
+                );
+    }
 
     @Test
     void clusterQuery_exposesOnlyDeclaredHibernateNamedParameters() {

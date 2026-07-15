@@ -5,10 +5,13 @@ import com.itplace.userapi.benefit.dto.request.BenefitSnapshotImportRequest;
 import com.itplace.userapi.benefit.dto.response.BenefitSnapshotImportResponse;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
+import com.itplace.userapi.benefit.entity.BenefitPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
+import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
+import com.itplace.userapi.benefit.repository.BenefitPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
@@ -19,10 +22,12 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +44,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private final PartnerRepository partnerRepository;
     private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
+    private final BenefitPolicyRepository benefitPolicyRepository;
 
     @Value("${app.internal.api-key:}")
     private String expectedApiKey;
@@ -100,6 +106,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
         List<BenefitCarrierPolicy> savedPolicies = benefitCarrierPolicyRepository.saveAll(policiesToSave);
         replaceCarrierTierBenefits(savedPolicies, latestRowBySourceKey);
+        inactivateMissingPolicies(request.getCarrier(), latestRowBySourceKey.keySet(), crawledAt);
 
         return BenefitSnapshotImportResponse.builder()
                 .carrier(request.getCarrier())
@@ -123,15 +130,25 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
     private Map<String, Partner> upsertPartners(List<BenefitSnapshotImportRequest.BenefitSnapshotItem> items) {
         List<String> partnerNames = items.stream()
-                .map(BenefitSnapshotImportRequest.BenefitSnapshotItem::getPartnerName)
+                .flatMap(item -> partnerLookupNames(item).stream())
                 .distinct()
                 .toList();
-        Map<String, Partner> partnerByName = partnerRepository.findAllByPartnerNameIn(partnerNames).stream()
+        Map<String, Partner> existingPartnerByName = partnerRepository.findAllByPartnerNameIn(partnerNames).stream()
                 .collect(Collectors.toMap(Partner::getPartnerName, Function.identity(), (first, ignored) -> first));
 
         Map<String, Partner> upsertTargets = new LinkedHashMap<>();
         for (BenefitSnapshotImportRequest.BenefitSnapshotItem item : items) {
-            Partner partner = partnerByName.computeIfAbsent(item.getPartnerName(), ignored -> new Partner());
+            Partner partner = upsertTargets.get(item.getPartnerName());
+            if (partner == null) {
+                partner = existingPartnerByName.get(item.getPartnerName());
+            }
+            if (partner == null) {
+                partner = partnerLookupNames(item).stream()
+                        .map(existingPartnerByName::get)
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElseGet(Partner::new);
+            }
             partner.setPartnerName(item.getPartnerName());
             partner.setImage(PartnerImagePolicy.resolveCanonicalImage(
                     partner.getImage(),
@@ -143,6 +160,20 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
         return partnerRepository.saveAll(new ArrayList<>(upsertTargets.values())).stream()
                 .collect(Collectors.toMap(Partner::getPartnerName, Function.identity(), (first, ignored) -> first));
+    }
+
+    private List<String> partnerLookupNames(BenefitSnapshotImportRequest.BenefitSnapshotItem item) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (StringUtils.hasText(item.getPartnerName())) {
+            names.add(item.getPartnerName());
+        }
+        if (item.getPartnerAliases() != null) {
+            item.getPartnerAliases().stream()
+                    .filter(StringUtils::hasText)
+                    .map(String::trim)
+                    .forEach(names::add);
+        }
+        return List.copyOf(names);
     }
 
     private Map<String, BenefitCarrierPolicy> findPoliciesBySourceKey(
@@ -209,10 +240,35 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         target.setType(item.getType());
         target.setDescription(item.getDescription());
         target.setManual(item.getManual());
+        target.setBenefitPolicy(resolveBenefitPolicy(item.getBenefitPolicyCode()));
         target.setUsageType(item.getUsageType());
         target.setUrl(resolveBenefitUrl(item));
 
         return target;
+    }
+
+    private BenefitPolicy resolveBenefitPolicy(BenefitPolicyCode requestedCode) {
+        BenefitPolicyCode code = requestedCode == null ? BenefitPolicyCode.UNLIMITED : requestedCode;
+        return benefitPolicyRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalStateException("혜택 이용 정책을 찾을 수 없습니다: " + code));
+    }
+
+    private void inactivateMissingPolicies(
+            Carrier carrier,
+            Set<String> incomingSourceKeys,
+            LocalDateTime crawledAt
+    ) {
+        List<BenefitCarrierPolicy> missingPolicies = benefitCarrierPolicyRepository.findAllByCarrier(carrier).stream()
+                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
+                .filter(policy -> !incomingSourceKeys.contains(policy.getSourceKey()))
+                .peek(policy -> {
+                    policy.setActive(false);
+                    policy.setLastCrawledAt(crawledAt);
+                })
+                .toList();
+        if (!missingPolicies.isEmpty()) {
+            benefitCarrierPolicyRepository.saveAll(missingPolicies);
+        }
     }
 
     private void replaceCarrierTierBenefits(
