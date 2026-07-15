@@ -594,6 +594,30 @@ class BenefitServiceImplTest {
                 .containsExactly("SKT 골드 할인", "SKT VIP 추가 혜택", "LGU VIP 할인");
     }
 
+    @Test
+    void getMapBenefitDetail_rejectsDaracBenefitForCareCenterNameCollision() {
+        Partner darac = Partner.builder()
+                .partnerId(8L)
+                .partnerName("다락")
+                .image("dalock.png")
+                .build();
+        Store careCenter = Store.builder()
+                .storeId(30619L)
+                .partner(darac)
+                .storeName("상계다락 아이휴센터 우리동네키움센터 노원16호점")
+                .business("사회,공공기관 > 단체,협회 > 사회복지시설 > 아동복지시설")
+                .build();
+
+        when(storeRepository.findByIdAndPartnerId(30619L, 8L)).thenReturn(Optional.of(careCenter));
+
+        assertThatThrownBy(() -> benefitService.getMapBenefitDetail(
+                30619L, 8L, MainCategory.BASIC_BENEFIT, Carrier.KT, null))
+                .isInstanceOf(StorePartnerMismatchException.class)
+                .hasMessage("지점과 제휴사가 일치하지 않습니다.");
+        verify(benefitRepository, never())
+                .findMapBenefitsWithPartnerAndTierBenefits(8L, MainCategory.BASIC_BENEFIT);
+    }
+
 
     @Test
     void getMapBenefitDetail_rejectsSeoulLandBenefitForFancyLandStoreWhenPartnerDoesNotMatch() {

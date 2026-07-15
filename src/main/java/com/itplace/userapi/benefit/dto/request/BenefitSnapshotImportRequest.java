@@ -2,6 +2,7 @@ package com.itplace.userapi.benefit.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
+import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
@@ -38,6 +39,7 @@ public class BenefitSnapshotImportRequest {
 
         @NotBlank(message = "제휴사명은 필수 항목입니다.")
         private String partnerName;
+        private List<String> partnerAliases = List.of();
 
         @JsonAlias("partnerImageUrl")
         private String partnerImage;
@@ -54,6 +56,7 @@ public class BenefitSnapshotImportRequest {
 
         private String description;
         private String manual;
+        private BenefitPolicyCode benefitPolicyCode = BenefitPolicyCode.UNLIMITED;
 
         @NotNull(message = "사용 타입은 필수 항목입니다.")
         private UsageType usageType;

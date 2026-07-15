@@ -136,6 +136,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         s.storeId AS "storeId",
                         p.partnerId AS "partnerId",
                         s.storeName AS "storeName",
+                        s.business AS "business",
                         p.partnerName AS "partnerName",
                         p.category AS "category",
                         p.image AS "image",
@@ -150,6 +151,16 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE s.location IS NOT NULL
                       AND (:category IS NULL OR p.category = :category)
+                      AND (
+                          REGEXP_REPLACE(
+                              LOWER(COALESCE(p.partnerName, '')),
+                              '[^가-힣a-z0-9]+',
+                              '',
+                              'g'
+                          ) NOT IN ('다락', '미니창고다락')
+                          OR s.business LIKE '%보관%'
+                          OR s.business LIKE '%저장%'
+                      )
                       AND s.longitude BETWEEN :minLng AND :maxLng
                       AND s.latitude BETWEEN :minLat AND :maxLat
                     ORDER BY
@@ -207,14 +218,20 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                             region.region_hash,
                             COUNT(*) AS store_count
                         FROM store s
+                        JOIN partner p ON s.partnerId = p.partnerId
                         JOIN selected_region region ON region.store_id = s.storeId
                         WHERE s.location IS NOT NULL
-                          AND (:category IS NULL OR EXISTS (
-                              SELECT 1
-                              FROM partner p
-                              WHERE p.partnerId = s.partnerId
-                                AND p.category = :category
-                          ))
+                          AND (:category IS NULL OR p.category = :category)
+                          AND (
+                              REGEXP_REPLACE(
+                                  LOWER(COALESCE(p.partnerName, '')),
+                                  '[^가-힣a-z0-9]+',
+                                  '',
+                                  'g'
+                              ) NOT IN ('다락', '미니창고다락')
+                              OR s.business LIKE '%보관%'
+                              OR s.business LIKE '%저장%'
+                          )
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                           AND s.longitude BETWEEN CAST(:minLng AS NUMERIC) AND CAST(:maxLng AS NUMERIC)
                           AND s.latitude BETWEEN CAST(:minLat AS NUMERIC) AND CAST(:maxLat AS NUMERIC)

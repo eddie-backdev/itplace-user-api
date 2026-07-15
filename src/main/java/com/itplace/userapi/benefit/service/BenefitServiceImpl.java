@@ -23,6 +23,7 @@ import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.exception.StorePartnerMismatchException;
 import com.itplace.userapi.map.repository.StoreRepository;
+import com.itplace.userapi.map.service.StorePartnerBusinessPolicy;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
 import java.util.Arrays;
@@ -511,6 +512,9 @@ public class BenefitServiceImpl implements BenefitService {
         // Store + Partner 체크
         Store store = storeRepository.findByIdAndPartnerId(storeId, partnerId)
                 .orElseThrow(() -> new StorePartnerMismatchException(StoreCode.STORE_PARTNER_MISMATCH));
+        if (!StorePartnerBusinessPolicy.matches(store)) {
+            throw new StorePartnerMismatchException(StoreCode.STORE_PARTNER_MISMATCH);
+        }
 
         // Benefit + TierBenefit 조회
         List<Benefit> benefits = benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(partnerId, mainCategory);

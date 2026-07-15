@@ -108,7 +108,6 @@ public class StoreServiceImpl implements StoreService {
         return Math.max(MIN_SUPPORTED_MAP_LEVEL, Math.min(MAX_SUPPORTED_MAP_LEVEL, mapLevel));
     }
 
-
     private int resolveClusterAggregationMapLevel(
             int requestedMapLevel,
             double minLat,
@@ -591,22 +590,28 @@ public class StoreServiceImpl implements StoreService {
         if (store == null || store.getPartner() == null) {
             return false;
         }
-        return isStoreMatchedToPartner(store.getStoreName(), store.getPartner().getPartnerName());
+        return isStoreMatchedToPartner(
+                store.getStoreName(), store.getBusiness(), store.getPartner().getPartnerName());
     }
 
     private boolean isStoreMatchedToPartner(StorePreviewProjection preview) {
         if (preview == null) {
             return false;
         }
-        return isStoreMatchedToPartner(preview.getStoreName(), preview.getPartnerName());
+        return isStoreMatchedToPartner(
+                preview.getStoreName(), preview.getBusiness(), preview.getPartnerName());
     }
 
-    private boolean isStoreMatchedToPartner(String storeName, String partnerName) {
+    private boolean isStoreMatchedToPartner(String storeName, String business, String partnerName) {
         String normalizedStoreName = normalizeSearchText(storeName);
-        return aliasesForPartner(partnerName).stream()
+        boolean partnerNameMatches = aliasesForPartner(partnerName).stream()
                 .map(this::normalizeSearchText)
                 .filter(alias -> !alias.isBlank())
                 .anyMatch(normalizedStoreName::contains);
+        if (!partnerNameMatches) {
+            return false;
+        }
+        return StorePartnerBusinessPolicy.matches(partnerName, business);
     }
 
     private List<String> aliasesForPartner(String partnerName) {
