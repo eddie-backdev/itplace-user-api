@@ -100,3 +100,60 @@ jobs:
             GHCR_USERNAME=${{ secrets.GHCR_USERNAME }} \
             GHCR_TOKEN='${{ secrets.GHCR_TOKEN }}' \
             ${{ env.REMOTE_SCRIPT_PATH }} ${{ steps.vars.outputs.short_sha }}
+
+      - name: Notify deployment result to Discord
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          DEPLOY_STATUS: ${{ job.status }}
+          SERVICE_NAME: user-api
+          REPOSITORY: ${{ github.repository }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ -z "${DISCORD_WEBHOOK_URL}" ]]; then
+            echo "::warning::DISCORD_DEPLOY_WEBHOOK_URL secret is not configured"
+            exit 0
+          fi
+
+          python3 <<'PY' > discord-payload.json
+          import json
+          import os
+          from datetime import datetime, timezone
+
+          status = os.environ["DEPLOY_STATUS"]
+          icon, label, color = {
+              "success": ("✅", "성공", 0x57F287),
+              "failure": ("❌", "실패", 0xED4245),
+              "cancelled": ("⚠️", "취소", 0xFEE75C),
+          }.get(status, ("ℹ️", status, 0x5865F2))
+
+          payload = {
+              "username": "ITPLACE Deploy",
+              "allowed_mentions": {"parse": []},
+              "embeds": [{
+                  "title": f"{icon} [{os.environ['SERVICE_NAME']}] 운영 배포 {label}",
+                  "url": os.environ["RUN_URL"],
+                  "color": color,
+                  "fields": [
+                      {"name": "저장소", "value": f"`{os.environ['REPOSITORY']}`", "inline": False},
+                      {"name": "브랜치", "value": f"`{os.environ['BRANCH_NAME']}`", "inline": True},
+                      {"name": "커밋", "value": f"`{os.environ['COMMIT_SHA'][:7]}`", "inline": True},
+                      {"name": "실행자", "value": os.environ["ACTOR"], "inline": True},
+                  ],
+                  "footer": {"text": "GitHub Actions · 상세 내용은 제목을 누르세요"},
+                  "timestamp": datetime.now(timezone.utc).isoformat(),
+              }],
+          }
+          json.dump(payload, fp=__import__("sys").stdout, ensure_ascii=False)
+          PY
+
+          curl -fsS \
+            --connect-timeout 5 \
+            --max-time 15 \
+            -H 'Content-Type: application/json' \
+            --data @discord-payload.json \
+            "${DISCORD_WEBHOOK_URL}"
