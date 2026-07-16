@@ -150,6 +150,7 @@ public class SecurityConfig {
                 "/swagger-ui.html",
                 "/v3/api-docs/**",
                 "/actuator/health",
+                "/actuator/prometheus",
                 "/error",
                 "/oauth2/**",
                 "/login/oauth2/**"

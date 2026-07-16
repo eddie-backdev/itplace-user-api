@@ -6,4 +6,6 @@ USER appuser
 
 COPY build/libs/*.jar application.jar
 
+EXPOSE 8080 9090
+
 ENTRYPOINT ["java", "-jar", "application.jar"]

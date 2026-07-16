@@ -38,6 +38,7 @@ class SecurityConfigAuthorizationRulesTest {
     @Test
     void intendedPublicRoutesStayPublic() {
         assertThat(isPublicEndpoint("/api-docs")).isTrue();
+        assertThat(isPublicEndpoint("/actuator/prometheus")).isTrue();
         assertThat(isPublicEndpoint("/oauth2/authorization/kakao")).isTrue();
         assertThat(isPublicEndpoint("/login/oauth2/code/kakao")).isTrue();
         assertThat(isPublicReadEndpoint("/api/v1/auth/csrf")).isTrue();
