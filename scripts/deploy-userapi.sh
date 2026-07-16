@@ -15,6 +15,7 @@ ENV_FILE="${ENV_FILE:-/home/ubuntu/app/env/userapi.env}"
 UPSTREAM_FILE="${UPSTREAM_FILE:-/home/ubuntu/app/nginx/conf.d/userapi-upstream.conf}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-nginx-proxy}"
 APP_PORT="${APP_PORT:-8080}"
+MANAGEMENT_PORT="${MANAGEMENT_PORT:-9090}"
 HEALTH_ENDPOINT="${HEALTH_ENDPOINT:-/actuator/health}"
 HEALTH_CHECK_IMAGE="${HEALTH_CHECK_IMAGE:-curlimages/curl:8.7.1}"
 HEALTH_CHECK_MAX_ATTEMPTS="${HEALTH_CHECK_MAX_ATTEMPTS:-30}"
@@ -81,10 +82,16 @@ docker run -d \
   --name "${NEW_CONTAINER}" \
   --restart unless-stopped \
   --network "${APP_NETWORK}" \
+  --label "itplace.monitoring.enabled=true" \
+  --label "itplace.service=user-api" \
+  --label "itplace.metrics.port=${MANAGEMENT_PORT}" \
+  -e "MANAGEMENT_SERVER_PORT=${MANAGEMENT_PORT}" \
   --env-file "${ENV_FILE}" \
   -v "${LOGS_DIR}:/app/logs" \
   -v "${PROMPTS_DIR}:/app/prompts" \
   "${LOCAL_IMAGE}"
+
+NEW_CONTAINER_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NEW_CONTAINER}")"
 
 echo "[userapi] waiting for health check ${HEALTH_ENDPOINT}"
 
@@ -92,7 +99,7 @@ for ((i=1; i<=HEALTH_CHECK_MAX_ATTEMPTS; i++)); do
   if docker run --rm \
     --network "${APP_NETWORK}" \
     "${HEALTH_CHECK_IMAGE}" \
-    -fsS "http://${NEW_CONTAINER}:${APP_PORT}${HEALTH_ENDPOINT}" >/dev/null; then
+    -fsS "http://${NEW_CONTAINER_IP}:${MANAGEMENT_PORT}${HEALTH_ENDPOINT}" >/dev/null; then
     echo "[userapi] health check passed"
     break
   fi
