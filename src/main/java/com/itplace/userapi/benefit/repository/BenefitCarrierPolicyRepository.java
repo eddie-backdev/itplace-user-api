@@ -28,5 +28,11 @@ public interface BenefitCarrierPolicyRepository extends JpaRepository<BenefitCar
 
     List<BenefitCarrierPolicy> findAllByCarrier(Carrier carrier);
 
-    List<BenefitCarrierPolicy> findAllByBenefitIn(List<Benefit> benefits);
+    @Query("""
+            SELECT p FROM BenefitCarrierPolicy p
+            JOIN FETCH p.benefit b
+            LEFT JOIN FETCH p.benefitPolicy
+            WHERE b IN :benefits
+            """)
+    List<BenefitCarrierPolicy> findAllByBenefitIn(@Param("benefits") List<Benefit> benefits);
 }

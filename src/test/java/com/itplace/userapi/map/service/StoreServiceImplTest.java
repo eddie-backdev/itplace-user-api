@@ -2,6 +2,7 @@ package com.itplace.userapi.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -95,6 +96,60 @@ class StoreServiceImplTest {
         assertThat(MapStorePreviewResponse.class.getDeclaredFields())
                 .extracting(java.lang.reflect.Field::getName)
                 .doesNotContain("store", "partner", "business", "city", "town", "legalDong");
+    }
+
+    @Test
+    void findNearbyByBenefitCandidateLoadsAllCandidatePartnersInBatches() {
+        Partner firstPartner = Partner.builder().partnerId(10L).partnerName("브랜드").category("카페").build();
+        Partner secondPartner = Partner.builder().partnerId(20L).partnerName("브랜드").category("카페").build();
+        Store firstStore = store(1L, "브랜드 강남점", firstPartner, point(127.001, 37.501));
+        Store secondStore = store(2L, "브랜드 역삼점", secondPartner, point(127.002, 37.502));
+        TierBenefitDto firstTier = TierBenefitDto.builder()
+                .benefitId(100L)
+                .carrier(Carrier.SKT)
+                .grade(Grade.SKT_VIP)
+                .context("첫 번째 혜택")
+                .build();
+        TierBenefitDto secondTier = TierBenefitDto.builder()
+                .benefitId(200L)
+                .carrier(Carrier.KT)
+                .grade(Grade.KT_VIP)
+                .context("두 번째 혜택")
+                .build();
+
+        when(partnerRepository.findAllByPartnerName("브랜드"))
+                .thenReturn(List.of(firstPartner, secondPartner));
+        when(storeRepository.searchNearbyStoreIdsByPartnerIds(127.0, 37.5, List.of(10L, 20L)))
+                .thenReturn(List.of(1L, 2L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(1L, 2L)))
+                .thenReturn(List.of(firstStore, secondStore));
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L, 20L)))
+                .thenReturn(Map.of(
+                        10L, List.of(new BenefitCacheDto(100L, "첫 번째", List.of(firstTier))),
+                        20L, List.of(new BenefitCacheDto(200L, "두 번째", List.of(secondTier)))
+                ));
+
+        List<StoreDetailResponse> result = storeService.findNearbyByBenefitCandidate(
+                37.5,
+                127.0,
+                null,
+                "브랜드",
+                "카페",
+                null,
+                37.5,
+                127.0
+        );
+
+        assertThat(result)
+                .extracting(response -> response.getStore().getStoreId())
+                .containsExactly(1L, 2L);
+        verify(storeRepository).searchNearbyStoreIdsByPartnerIds(127.0, 37.5, List.of(10L, 20L));
+        verify(partnerBenefitCacheService).getBenefitsBatch(List.of(10L, 20L));
+        verify(storeRepository, never()).searchNearbyStoreIdsByPartnerId(
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                anyLong()
+        );
     }
 
 
@@ -693,15 +748,15 @@ class StoreServiceImplTest {
                 .build();
 
         when(partnerRepository.findByPartnerId(41L)).thenReturn(java.util.Optional.of(cafeSwarovski));
-        when(storeRepository.searchNearbyStoreIdsByPartnerId(127.00, 37.50, 41L))
+        when(storeRepository.searchNearbyStoreIdsByPartnerIds(127.00, 37.50, List.of(41L)))
                 .thenReturn(List.of(41L));
         when(storeRepository.findAllByStoreIdInWithPartner(List.of(41L)))
                 .thenReturn(List.of(cafeStore));
-        when(partnerBenefitCacheService.getBenefits(41L))
-                .thenReturn(List.of(
-                        new BenefitCacheDto(410L, "카페 스와로브스키 혜택", List.of(selectedBenefit)),
-                        new BenefitCacheDto(411L, "스와로브스키 기타 혜택", List.of(otherBenefit))
-                ));
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(41L)))
+                .thenReturn(Map.of(41L, List.of(
+                                new BenefitCacheDto(410L, "카페 스와로브스키 혜택", List.of(selectedBenefit)),
+                                new BenefitCacheDto(411L, "스와로브스키 기타 혜택", List.of(otherBenefit))
+                        )));
 
         List<StoreDetailResponse> result = storeService.findNearbyByBenefitCandidate(
                 37.50, 127.00, 41L, "스와로브스키", "카페", 410L, 37.50, 127.00);
