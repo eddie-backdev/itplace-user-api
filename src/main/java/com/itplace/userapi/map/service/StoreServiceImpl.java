@@ -19,9 +19,10 @@ import jakarta.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -817,8 +818,52 @@ public class StoreServiceImpl implements StoreService {
             return Collections.emptyList();
         }
 
-        return partners.stream()
-                .flatMap(partner -> findNearbyByPartner(lat, lng, partner, benefitId, userLat, userLng).stream())
+        List<Long> partnerIds = partners.stream()
+                .map(Partner::getPartnerId)
+                .distinct()
+                .toList();
+        Map<Long, Integer> partnerOrder = new HashMap<>();
+        for (int index = 0; index < partnerIds.size(); index++) {
+            partnerOrder.put(partnerIds.get(index), index);
+        }
+        List<Long> storeIds = storeRepository.searchNearbyStoreIdsByPartnerIds(lng, lat, partnerIds);
+        List<Store> stores = filterStoresMatchedToPartner(findStoresWithPartnerInRequestedOrder(storeIds));
+        if (stores.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, List<BenefitCacheDto>> benefitsByPartner = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
+        return stores.stream()
+                .map(store -> {
+                    Partner partner = store.getPartner();
+                    List<BenefitCacheDto> partnerBenefits = filterBenefitsById(
+                            benefitsByPartner.getOrDefault(partner.getPartnerId(), List.of()),
+                            benefitId
+                    );
+                    if (benefitId != null && partnerBenefits.isEmpty()) {
+                        return null;
+                    }
+                    double distance = calculateDistance(
+                            userLat,
+                            userLng,
+                            store.getLocation().getY(),
+                            store.getLocation().getX()
+                    );
+                    List<BenefitCacheDto> finalBenefits = selectBenefits(partnerBenefits, store.getStoreName());
+                    return StoreDetailResponse.of(
+                            store,
+                            partner,
+                            toDistinctTierBenefits(finalBenefits),
+                            distance
+                    );
+                })
+                .filter(Objects::nonNull)
+                .sorted(Comparator
+                        .comparingInt((StoreDetailResponse response) -> partnerOrder.getOrDefault(
+                                response.getPartner().getPartnerId(),
+                                Integer.MAX_VALUE
+                        ))
+                        .thenComparing(StoreDetailResponse::getDistance))
                 .toList();
     }
 

@@ -246,6 +246,56 @@ class BenefitServiceImplTest {
     }
 
     @Test
+    void getBenefitList_hydratesDatabasePagePartnersInOneBatch() {
+        Benefit rawBenefit = Benefit.builder()
+                .benefitId(20L)
+                .benefitName("아메리카노 할인")
+                .mainCategory(MainCategory.BASIC_BENEFIT)
+                .build();
+        Partner partner = Partner.builder()
+                .partnerId(10L)
+                .partnerName("IT 카페")
+                .category("카페")
+                .image("image")
+                .build();
+        Benefit hydratedBenefit = benefit(
+                20L,
+                partner,
+                Carrier.LGU,
+                "아메리카노 할인",
+                Grade.VIP,
+                "VIP 커피 할인"
+        );
+        BenefitCarrierPolicy policy = hydratedBenefit.getCarrierPolicies().get(0);
+
+        when(benefitRepository.findFilteredBenefits(
+                eq(null), eq(null), eq(null), eq(null), eq(false), anyList(), eq("POPULARITY"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(rawBenefit), PageRequest.of(0, 12), 1));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(hydratedBenefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(hydratedBenefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of());
+        when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(List.of());
+
+        var result = benefitService.getBenefitList(
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                PageRequest.of(0, 12)
+        );
+
+        assertThat(result.getContent()).singleElement().satisfies(item -> {
+            assertThat(item.getPartnerId()).isEqualTo(10L);
+            assertThat(item.getCategory()).isEqualTo("카페");
+            assertThat(item.getImage()).isEqualTo("image");
+        });
+        verify(benefitRepository).findAllByIdWithPartner(List.of(20L));
+    }
+
+    @Test
     void getBenefitList_usesLexicalSearchWhenKeywordSortIsPopularity() {
         Partner partner = Partner.builder()
                 .partnerId(10L)

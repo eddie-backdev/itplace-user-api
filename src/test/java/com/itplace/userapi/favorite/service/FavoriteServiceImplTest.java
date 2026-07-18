@@ -13,6 +13,8 @@ import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.favorite.dto.response.FavoriteDetailResponse;
+import com.itplace.userapi.favorite.dto.response.FavoriteResponse;
+import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.partner.entity.Partner;
@@ -26,6 +28,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class FavoriteServiceImplTest {
@@ -60,7 +64,7 @@ class FavoriteServiceImplTest {
                 .build();
 
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
-        when(benefitRepository.findAllById(List.of(100L))).thenReturn(List.of(benefit));
+        when(benefitRepository.findAllByIdWithPartner(List.of(100L))).thenReturn(List.of(benefit));
 
         favoriteService.removeFavorites(7L, List.of(100L));
 
@@ -73,6 +77,32 @@ class FavoriteServiceImplTest {
                 "benefitId=100"
         );
         verify(favoriteRepository).deleteByUserAndBenefitIn(user, List.of(benefit));
+    }
+
+    @Test
+    void getFavoritesUsesPageQueryThatFetchesBenefitAndPartner() {
+        User user = User.builder().id(7L).role(Role.USER).build();
+        Partner partner = Partner.builder().partnerId(200L).partnerName("파트너").image("logo.png").build();
+        Benefit benefit = Benefit.builder()
+                .benefitId(100L)
+                .benefitName("공통 혜택")
+                .partner(partner)
+                .build();
+        Favorite favorite = Favorite.builder().user(user).benefit(benefit).build();
+        PageRequest pageable = PageRequest.of(0, 6);
+
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(favoriteRepository.findPageByUserWithBenefitAndPartner(user, pageable))
+                .thenReturn(new PageImpl<>(List.of(favorite), pageable, 1));
+
+        List<FavoriteResponse> responses = favoriteService.getFavorites(7L, null, pageable).getContent();
+
+        assertThat(responses).singleElement().satisfies(response -> {
+            assertThat(response.getBenefitId()).isEqualTo(100L);
+            assertThat(response.getPartnerName()).isEqualTo("파트너");
+            assertThat(response.getPartnerImage()).isEqualTo("logo.png");
+        });
+        verify(favoriteRepository).findPageByUserWithBenefitAndPartner(user, pageable);
     }
     @Test
     void getBenefitDetailReturnsTiersForEveryCarrierPolicy() {

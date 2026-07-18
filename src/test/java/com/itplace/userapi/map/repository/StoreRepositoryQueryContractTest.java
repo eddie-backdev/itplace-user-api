@@ -159,6 +159,19 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
+    void candidatePartnerQueryRanksNearbyStoresForAllPartnersInOneSql() {
+        String sql = queryValue("searchNearbyStoreIdsByPartnerIds");
+
+        assertThat(sql)
+                .contains(
+                        "s.partnerId IN :partnerIds",
+                        "ROW_NUMBER() OVER",
+                        "PARTITION BY s.partnerId",
+                        "row_num <= 30"
+                );
+    }
+
+    @Test
     void clusterQuery_exposesOnlyDeclaredHibernateNamedParameters() {
         Set<String> namedParameters = new LinkedHashSet<>();
 

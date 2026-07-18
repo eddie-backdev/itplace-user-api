@@ -45,7 +45,8 @@ public class FavoriteServiceImpl implements FavoriteService {
     public void addFavorite(Long userId, Long benefitId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
-        Benefit benefit = benefitRepository.findById(benefitId)
+        Benefit benefit = benefitRepository.findAllByIdWithPartner(List.of(benefitId)).stream()
+                .findFirst()
                 .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
 
         if (favoriteRepository.existsByUserAndBenefit(user, benefit)) {
@@ -73,7 +74,7 @@ public class FavoriteServiceImpl implements FavoriteService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        List<Benefit> benefits = benefitRepository.findAllById(benefitIds);
+        List<Benefit> benefits = benefitRepository.findAllByIdWithPartner(benefitIds);
 
         if (benefits.size() != benefitIds.size()) {
             throw new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND);
@@ -101,9 +102,13 @@ public class FavoriteServiceImpl implements FavoriteService {
 
         if (category != null && !category.isBlank()) {
             MainCategory mainCategory = MainCategory.fromLabel(category);
-            favorites = favoriteRepository.findByUserAndBenefit_MainCategory(user, mainCategory, pageable);
+            favorites = favoriteRepository.findPageByUserAndCategoryWithBenefitAndPartner(
+                    user,
+                    mainCategory,
+                    pageable
+            );
         } else {
-            favorites = favoriteRepository.findByUser(user, pageable);
+            favorites = favoriteRepository.findPageByUserWithBenefitAndPartner(user, pageable);
         }
 
         return favorites.map(fav -> {
@@ -137,9 +142,11 @@ public class FavoriteServiceImpl implements FavoriteService {
         }
         // 특정 카테고리일 때만 partner.category 필터 적용
         else {
-            favs = favoriteRepository
-                    .findByUserAndBenefit_BenefitNameContainingAndBenefit_Partner_CategoryContaining(
-                            user, keyword, category);
+            favs = favoriteRepository.searchByUserKeywordAndPartnerCategoryWithBenefitAndPartner(
+                    user,
+                    keyword,
+                    category
+            );
         }
 
         return favs.stream()

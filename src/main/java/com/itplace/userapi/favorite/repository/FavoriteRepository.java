@@ -14,7 +14,19 @@ import org.springframework.data.repository.query.Param;
 
 public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> {
 
-    Page<Favorite> findByUser(User user, Pageable pageable);
+    @Query(
+            value = """
+                    SELECT f FROM Favorite f
+                    JOIN FETCH f.benefit b
+                    LEFT JOIN FETCH b.partner
+                    WHERE f.user = :user
+                    """,
+            countQuery = "SELECT COUNT(f) FROM Favorite f WHERE f.user = :user"
+    )
+    Page<Favorite> findPageByUserWithBenefitAndPartner(
+            @Param("user") User user,
+            Pageable pageable
+    );
 
     @Query("""
                 SELECT f FROM Favorite f
@@ -29,7 +41,26 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     boolean existsByUserIdAndCreatedDateAfter(@Param("userId") Long userId,
                                               @Param("createdAfter") java.time.LocalDateTime createdAfter);
 
-    Page<Favorite> findByUserAndBenefit_MainCategory(User user, MainCategory mainCategory, Pageable pageable);
+    @Query(
+            value = """
+                    SELECT f FROM Favorite f
+                    JOIN FETCH f.benefit b
+                    LEFT JOIN FETCH b.partner
+                    WHERE f.user = :user
+                      AND b.mainCategory = :mainCategory
+                    """,
+            countQuery = """
+                    SELECT COUNT(f) FROM Favorite f
+                    JOIN f.benefit b
+                    WHERE f.user = :user
+                      AND b.mainCategory = :mainCategory
+                    """
+    )
+    Page<Favorite> findPageByUserAndCategoryWithBenefitAndPartner(
+            @Param("user") User user,
+            @Param("mainCategory") MainCategory mainCategory,
+            Pageable pageable
+    );
 
     @Query("""
                 SELECT f FROM Favorite f
@@ -53,9 +84,19 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     void deleteByUserAndBenefitIn(User user, List<Benefit> benefits);
 
 
-    List<Favorite> findByUserAndBenefit_BenefitNameContainingAndBenefit_Partner_CategoryContaining(User user,
-                                                                                                   String keyword,
-                                                                                                   String category);
+    @Query("""
+            SELECT f FROM Favorite f
+            JOIN FETCH f.benefit b
+            LEFT JOIN FETCH b.partner p
+            WHERE f.user = :user
+              AND b.benefitName LIKE %:keyword%
+              AND p.category LIKE %:category%
+            """)
+    List<Favorite> searchByUserKeywordAndPartnerCategoryWithBenefitAndPartner(
+            @Param("user") User user,
+            @Param("keyword") String keyword,
+            @Param("category") String category
+    );
 
     boolean existsByUser_IdAndBenefit_BenefitId(Long userId, Long benefitId);
 

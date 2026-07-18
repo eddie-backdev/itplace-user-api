@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
@@ -32,16 +33,19 @@ public class PartnerBenefitCacheService {
 
     /**
      * 여러 파트너의 혜택을 한 번에 로드한다.
-     * 캐시 히트인 파트너는 Redis에서, 미스인 파트너는 2개 쿼리(benefits + tierBenefits)로 배치 로드 후 캐시에 적재.
+     * 캐시 히트인 파트너는 Redis에서, 미스인 파트너는 3개 쿼리(benefits + policies + tierBenefits)로
+     * 배치 로드 후 캐시에 적재한다.
      */
     @Transactional(readOnly = true)
     public Map<Long, List<BenefitCacheDto>> getBenefitsBatch(List<Long> partnerIds) {
         Map<Long, List<BenefitCacheDto>> result = new HashMap<>();
         List<Long> uncachedIds = new ArrayList<>();
+        List<Long> uniquePartnerIds = partnerIds.stream().distinct().toList();
 
         Cache cache = cacheManager.getCache("partner-benefits");
-        for (Long partnerId : partnerIds) {
-            Cache.ValueWrapper cached = cache != null ? cache.get(partnerId) : null;
+        Map<Long, Cache.ValueWrapper> cachedByPartner = readCachedBenefits(cache, uniquePartnerIds);
+        for (Long partnerId : uniquePartnerIds) {
+            Cache.ValueWrapper cached = cachedByPartner.get(partnerId);
             if (cached != null) {
                 @SuppressWarnings("unchecked")
                 List<BenefitCacheDto> hit = (List<BenefitCacheDto>) cached.get();
@@ -87,6 +91,39 @@ public class PartnerBenefitCacheService {
         }
 
         return result;
+    }
+
+    private Map<Long, Cache.ValueWrapper> readCachedBenefits(Cache cache, List<Long> partnerIds) {
+        if (cache == null || partnerIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, CompletableFuture<?>> futureByPartner = new HashMap<>();
+        try {
+            for (Long partnerId : partnerIds) {
+                CompletableFuture<?> future = cache.retrieve(partnerId);
+                futureByPartner.put(
+                        partnerId,
+                        future != null ? future : CompletableFuture.completedFuture(null)
+                );
+            }
+        } catch (UnsupportedOperationException unsupported) {
+            Map<Long, Cache.ValueWrapper> cachedByPartner = new HashMap<>();
+            partnerIds.forEach(partnerId -> cachedByPartner.put(partnerId, cache.get(partnerId)));
+            return cachedByPartner;
+        }
+
+        CompletableFuture.allOf(futureByPartner.values().toArray(CompletableFuture[]::new)).join();
+        Map<Long, Cache.ValueWrapper> cachedByPartner = new HashMap<>();
+        futureByPartner.forEach((partnerId, future) -> {
+            Object cached = future.join();
+            if (cached instanceof Cache.ValueWrapper wrapper) {
+                cachedByPartner.put(partnerId, wrapper);
+            } else if (cached != null) {
+                cachedByPartner.put(partnerId, () -> cached);
+            }
+        });
+        return cachedByPartner;
     }
 
     @Cacheable(value = "partner-benefits", key = "#partnerId")

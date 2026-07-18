@@ -326,6 +326,39 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("partnerId") Long partnerId
     );
 
+    @Query(
+            value = """
+                    SELECT ranked.store_id
+                    FROM (
+                        SELECT
+                            s.storeId AS store_id,
+                            s.partnerId AS partner_id,
+                            ST_DistanceSphere(
+                                s.location::geometry,
+                                ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
+                            ) AS distance,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY s.partnerId
+                                ORDER BY ST_DistanceSphere(
+                                    s.location::geometry,
+                                    ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
+                                )
+                            ) AS row_num
+                        FROM store s
+                        WHERE s.location IS NOT NULL
+                          AND s.partnerId IN :partnerIds
+                    ) ranked
+                    WHERE ranked.row_num <= 30
+                    ORDER BY ranked.partner_id, ranked.distance
+                    """,
+            nativeQuery = true
+    )
+    List<Long> searchNearbyStoreIdsByPartnerIds(
+            @Param("lng") double lng,
+            @Param("lat") double lat,
+            @Param("partnerIds") List<Long> partnerIds
+    );
+
     @Query("""
                 SELECT s FROM Store s
                 JOIN FETCH s.partner p

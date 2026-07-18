@@ -174,7 +174,7 @@ public class BenefitServiceImpl implements BenefitService {
                 repositoryPageable
         );
         List<Benefit> benefitContent = normalizedKeyword == null
-                ? benefitPage.getContent()
+                ? hydratePartners(benefitPage.getContent())
                 : expandSamePartnerBenefits(
                         benefitPage.getContent(),
                         mainCategory,
@@ -322,6 +322,22 @@ public class BenefitServiceImpl implements BenefitService {
         return benefitIds.stream()
                 .map(benefitsById::get)
                 .filter(benefit -> benefit != null && !Boolean.FALSE.equals(benefit.getActive()))
+                .toList();
+    }
+
+    private List<Benefit> hydratePartners(List<Benefit> benefits) {
+        if (benefits == null || benefits.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> benefitIds = benefits.stream()
+                .map(Benefit::getBenefitId)
+                .toList();
+        Map<Long, Benefit> hydratedById = benefitRepository.findAllByIdWithPartner(benefitIds).stream()
+                .collect(Collectors.toMap(Benefit::getBenefitId, benefit -> benefit));
+
+        return benefits.stream()
+                .map(benefit -> hydratedById.getOrDefault(benefit.getBenefitId(), benefit))
                 .toList();
     }
 
