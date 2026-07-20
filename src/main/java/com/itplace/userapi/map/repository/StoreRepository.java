@@ -32,24 +32,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    SELECT storeId FROM store
-                    WHERE
-                        longitude BETWEEN :minLng AND :maxLng
-                        AND latitude BETWEEN :minLat AND :maxLat
-                    LIMIT :limit
-""",
-            nativeQuery = true
-    )
-    List<Long> findStoreIdsInBounds(
-            @Param("minLat") double minLat,
-            @Param("maxLat") double maxLat,
-            @Param("minLng") double minLng,
-            @Param("maxLng") double maxLng,
-            @Param("limit") int limit
-    );
-
-    @Query(
-            value = """
                     SELECT s.storeId
                     FROM store s
                     JOIN partner p ON s.partnerId = p.partnerId

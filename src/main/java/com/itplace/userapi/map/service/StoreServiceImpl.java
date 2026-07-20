@@ -15,7 +15,6 @@ import com.itplace.userapi.partner.PartnerCode;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
 import com.itplace.userapi.partner.repository.PartnerRepository;
-import jakarta.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -24,12 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -51,12 +44,10 @@ public class StoreServiceImpl implements StoreService {
     private final PartnerBenefitCacheService partnerBenefitCacheService;
     private final StoreSearchService storeSearchService;
 
-    private static final int GRID_SIZE = 5;
-    private static final int STORES_PER_CELL = 15;
+    private static final int DISTRIBUTED_GRID_SIZE = 5;
     private static final int FINAL_LIMIT = 300;
     private static final int CANDIDATE_FETCH_MULTIPLIER = 3;
     private static final int STORE_CANDIDATE_FETCH_LIMIT = FINAL_LIMIT * CANDIDATE_FETCH_MULTIPLIER;
-    private static final int WIDE_RADIUS_THRESHOLD = 10000;
     private static final int MAP_STORES_PER_CELL = 12;
     private static final int DEFAULT_MAP_IN_VIEW_PREVIEW_LIMIT = 500;
     private static final int MAX_MAP_IN_VIEW_PREVIEW_LIMIT = 2000;
@@ -64,15 +55,6 @@ public class StoreServiceImpl implements StoreService {
     private static final int MAX_SUPPORTED_MAP_LEVEL = 14;
     private static final double TOWN_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 0.25;
     private static final double CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 2.0;
-    private static final ExecutorService GRID_EXECUTOR = Executors.newFixedThreadPool(10);
-
-    @PreDestroy
-    public void shutdownExecutor() {
-        GRID_EXECUTOR.shutdown();
-    }
-
-
-
     @Override
     @Transactional(readOnly = true)
     public List<MapStoreClusterResponse> findStoreClustersInView(double minLat, double minLng, double maxLat,
@@ -214,13 +196,8 @@ public class StoreServiceImpl implements StoreService {
     @Transactional(readOnly = true)
     public List<MapStorePreviewResponse> findNearbyPreviews(double lat, double lng, double radiusMeters, double userLat,
                                                             double userLng) {
-        List<Long> allStoreIds;
-
-        if (radiusMeters <= WIDE_RADIUS_THRESHOLD) {
-            allStoreIds = findNearbyWithSingleQuery(lat, lng, radiusMeters);
-        } else {
-            allStoreIds = findNearbyWithGridSampling(lat, lng, radiusMeters);
-        }
+        List<Long> allStoreIds = storeRepository.findStoreIdsInRadius(
+                lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
 
         if (allStoreIds.isEmpty()) {
             return Collections.emptyList();
@@ -238,13 +215,8 @@ public class StoreServiceImpl implements StoreService {
     @Transactional(readOnly = true)
     public List<StoreDetailResponse> findNearby(double lat, double lng, double radiusMeters, double userLat,
                                            double userLng) {
-        List<Long> allStoreIds;
-
-        if (radiusMeters <= WIDE_RADIUS_THRESHOLD) {
-            allStoreIds = findNearbyWithSingleQuery(lat, lng, radiusMeters);
-        } else {
-            allStoreIds = findNearbyWithGridSampling(lat, lng, radiusMeters);
-        }
+        List<Long> allStoreIds = storeRepository.findStoreIdsInRadius(
+                lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
 
         if (allStoreIds.isEmpty()) {
             return Collections.emptyList();
@@ -302,41 +274,11 @@ public class StoreServiceImpl implements StoreService {
                 : category.trim();
     }
 
-    private List<Long> findNearbyWithSingleQuery(double lat, double lng, double radiusMeters) {
-        return storeRepository.findStoreIdsInRadius(lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
-    }
-
-    private List<Long> findNearbyWithGridSampling(double lat, double lng, double radiusMeters) {
-        double[] bbox = computeBoundingBox(lat, lng, radiusMeters);
-        double minLat = bbox[0], maxLat = bbox[1], minLng = bbox[2], maxLng = bbox[3];
-
-        double latStep = (maxLat - minLat) / GRID_SIZE;
-        double lngStep = (maxLng - minLng) / GRID_SIZE;
-
-        List<CompletableFuture<List<Long>>> futures = new ArrayList<>();
-
-        for (int i = 0; i < GRID_SIZE; i++) {
-            for (int j = 0; j < GRID_SIZE; j++) {
-                double cellMinLat = minLat + i * latStep;
-                double cellMaxLat = cellMinLat + latStep;
-                double cellMinLng = minLng + j * lngStep;
-                double cellMaxLng = cellMinLng + lngStep;
-
-                futures.add(CompletableFuture.supplyAsync(() ->
-                        storeRepository.findStoreIdsInBounds(cellMinLat, cellMaxLat, cellMinLng, cellMaxLng, STORES_PER_CELL),
-                        GRID_EXECUTOR
-                ));
-            }
-        }
-
-        return awaitGridResults(futures);
-    }
-
     private List<Long> findDistributedStoreIdsForMap(double lat, double lng, double radiusMeters, String category) {
         double[] bbox = computeBoundingBox(lat, lng, radiusMeters);
         double minLat = bbox[0], maxLat = bbox[1], minLng = bbox[2], maxLng = bbox[3];
-        double cellLatDegrees = (maxLat - minLat) / GRID_SIZE;
-        double cellLngDegrees = (maxLng - minLng) / GRID_SIZE;
+        double cellLatDegrees = (maxLat - minLat) / DISTRIBUTED_GRID_SIZE;
+        double cellLngDegrees = (maxLng - minLng) / DISTRIBUTED_GRID_SIZE;
 
         return storeRepository.findDistributedStoreIdsWithinRadius(
                 category,
@@ -353,26 +295,6 @@ public class StoreServiceImpl implements StoreService {
                 FINAL_LIMIT
         );
     }
-
-    private List<Long> awaitGridResults(List<CompletableFuture<List<Long>>> futures) {
-        try {
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .get(10, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            log.warn("그리드 검색 타임아웃 (10s), 완료된 결과만 반환");
-        } catch (ExecutionException | InterruptedException e) {
-            log.error("그리드 검색 중 오류", e);
-            Thread.currentThread().interrupt();
-        }
-
-        return futures.stream()
-                .filter(f -> f.isDone() && !f.isCompletedExceptionally())
-                .map(CompletableFuture::join)
-                .flatMap(List::stream)
-                .distinct()
-                .collect(Collectors.toList());
-    }
-
 
     /**
      * DB-level random sorting is intentionally avoided because it is expensive on large geospatial result sets.
