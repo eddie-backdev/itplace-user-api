@@ -66,6 +66,25 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
+    void clusterQuery_countsEntireVisibleAdministrativeRegion() {
+        String sql = queryValue("findStoreClustersInView");
+
+        assertThat(sql).contains(
+                "visible_region AS MATERIALIZED",
+                "JOIN visible_region visible",
+                "visible.region_type = region.region_type",
+                "visible.region_hash = region.region_hash"
+        );
+
+        String regionSummarySql = sql.substring(sql.indexOf("region_summary AS"));
+        assertThat(regionSummarySql).doesNotContain(
+                "ST_MakeEnvelope",
+                "s.longitude BETWEEN",
+                "s.latitude BETWEEN"
+        );
+    }
+
+    @Test
     void clusterQuery_returnsOnlyFixedAdministrativeAnchors() {
         String sql = queryValue("findStoreClustersInView");
 

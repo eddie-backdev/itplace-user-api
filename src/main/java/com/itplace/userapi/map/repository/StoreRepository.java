@@ -192,13 +192,10 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                             END AS region_hash
                         FROM map_store_cluster_region mapped
                     ),
-                    region_summary AS (
-                        SELECT
+                    visible_region AS MATERIALIZED (
+                        SELECT DISTINCT
                             region.region_type,
-                            MIN(region.region_key) AS region_key,
-                            MIN(region.region_name) AS region_name,
-                            region.region_hash,
-                            COUNT(*) AS store_count
+                            region.region_hash
                         FROM store s
                         JOIN partner p ON s.partnerId = p.partnerId
                         JOIN selected_region region ON region.store_id = s.storeId
@@ -217,6 +214,34 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                           AND s.longitude BETWEEN CAST(:minLng AS NUMERIC) AND CAST(:maxLng AS NUMERIC)
                           AND s.latitude BETWEEN CAST(:minLat AS NUMERIC) AND CAST(:maxLat AS NUMERIC)
+                          AND region.region_key IS NOT NULL
+                          AND region.region_hash IS NOT NULL
+                    ),
+                    region_summary AS (
+                        SELECT
+                            region.region_type,
+                            MIN(region.region_key) AS region_key,
+                            MIN(region.region_name) AS region_name,
+                            region.region_hash,
+                            COUNT(*) AS store_count
+                        FROM store s
+                        JOIN partner p ON s.partnerId = p.partnerId
+                        JOIN selected_region region ON region.store_id = s.storeId
+                        JOIN visible_region visible
+                          ON visible.region_type = region.region_type
+                         AND visible.region_hash = region.region_hash
+                        WHERE s.location IS NOT NULL
+                          AND (:category IS NULL OR p.category = :category)
+                          AND (
+                              REGEXP_REPLACE(
+                                  LOWER(COALESCE(p.partnerName, '')),
+                                  '[^가-힣a-z0-9]+',
+                                  '',
+                                  'g'
+                              ) NOT IN ('다락', '미니창고다락')
+                              OR s.business LIKE '%보관%'
+                              OR s.business LIKE '%저장%'
+                          )
                           AND region.region_key IS NOT NULL
                         GROUP BY region.region_type, region.region_hash
                     )
