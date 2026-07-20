@@ -99,6 +99,18 @@ class StoreServiceImplTest {
     }
 
     @Test
+    void findNearbyPreviews_usesPostgisRadiusQueryForWideRadius() {
+        when(storeRepository.findStoreIdsInRadius(37.50, 127.00, 20_000, 900))
+                .thenReturn(List.of());
+
+        List<MapStorePreviewResponse> result = storeService.findNearbyPreviews(
+                37.50, 127.00, 20_000, 37.50, 127.00);
+
+        assertThat(result).isEmpty();
+        verify(storeRepository).findStoreIdsInRadius(37.50, 127.00, 20_000, 900);
+    }
+
+    @Test
     void findNearbyByBenefitCandidateLoadsAllCandidatePartnersInBatches() {
         Partner firstPartner = Partner.builder().partnerId(10L).partnerName("브랜드").category("카페").build();
         Partner secondPartner = Partner.builder().partnerId(20L).partnerName("브랜드").category("카페").build();
@@ -521,6 +533,18 @@ class StoreServiceImplTest {
         assertThat(selectedIdsCaptor.getValue()).hasSize(300);
         assertThat(candidateIds).containsAll(selectedIdsCaptor.getValue());
         assertThat(result).hasSize(300);
+    }
+
+    @Test
+    void findNearby_usesPostgisRadiusQueryForWideRadius() {
+        when(storeRepository.findStoreIdsInRadius(37.50, 127.00, 20_000, 900))
+                .thenReturn(List.of());
+
+        List<StoreDetailResponse> result = storeService.findNearby(
+                37.50, 127.00, 20_000, 37.50, 127.00);
+
+        assertThat(result).isEmpty();
+        verify(storeRepository).findStoreIdsInRadius(37.50, 127.00, 20_000, 900);
     }
 
     @Test
