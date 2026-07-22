@@ -19,7 +19,7 @@ public record MobileMapMarkerResponse(
         Boolean hasCoupon,
         List<TierBenefitDto> tierBenefits
 ) {
-    private static final String DEFAULT_BENEFIT_SUMMARY = "사용 가능한 혜택을 확인해 보세요.";
+    private static final String DEFAULT_BENEFIT_SUMMARY = "혜택 정보를 확인할 수 없습니다.";
 
     public static MobileMapMarkerResponse from(StoreDetailResponse response) {
         return from(response, null);

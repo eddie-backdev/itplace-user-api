@@ -80,6 +80,34 @@ class MobileMapServiceImplTest {
     }
 
     @Test
+    void findNearby_excludesStoreWithoutTierBenefitWhenCarrierIsRequested() {
+        StoreDetailResponse noBenefit = store(1L, "GS25 강남점", Carrier.LGU);
+        noBenefit.setTierBenefit(List.of());
+        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
+                .thenReturn(List.of(noBenefit));
+
+        MobileMapNearbyResponse response = mobileMapService.findNearby(
+                37.5, 127.0, 37.5, 127.0, 800, "LGU", null, null, null);
+
+        assertThat(response.markers()).isEmpty();
+    }
+
+    @Test
+    void findNearby_usesNeutralSummaryWhenBenefitDetailsAreUnavailable() {
+        StoreDetailResponse noBenefit = store(1L, "GS25 강남점", Carrier.LGU);
+        noBenefit.setTierBenefit(List.of());
+        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
+                .thenReturn(List.of(noBenefit));
+
+        MobileMapNearbyResponse response = mobileMapService.findNearby(
+                37.5, 127.0, 37.5, 127.0, 800, null, null, null, null);
+
+        assertThat(response.markers()).singleElement()
+                .satisfies(marker -> assertThat(marker.benefitSummary())
+                        .isEqualTo("혜택 정보를 확인할 수 없습니다."));
+    }
+
+    @Test
     void findNearby_filtersKeywordResultsOutsideRequestedRadius() {
         when(storeService.findNearbyByKeyword(37.5, 127.0, null, "커피", 37.5, 127.0))
                 .thenReturn(List.of(
