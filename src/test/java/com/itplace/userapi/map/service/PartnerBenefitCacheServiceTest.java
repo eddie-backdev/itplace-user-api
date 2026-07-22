@@ -6,10 +6,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
+import com.itplace.userapi.partner.entity.Partner;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -74,5 +76,25 @@ class PartnerBenefitCacheServiceTest {
 
         assertThat(result).containsEntry(1L, cachedBenefits);
         verify(cache).get(1L);
+    }
+
+    @Test
+    void getBenefitsBatch_doesNotCacheInactiveBenefits() {
+        Partner partner = Partner.builder().partnerId(3L).partnerName("종료 제휴처").build();
+        Benefit inactiveBenefit = Benefit.builder()
+                .benefitId(30L)
+                .partner(partner)
+                .benefitName("종료 혜택")
+                .active(false)
+                .build();
+
+        when(cacheManager.getCache("partner-benefits")).thenReturn(null);
+        when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(3L)))
+                .thenReturn(List.of(inactiveBenefit));
+
+        var result = cacheService.getBenefitsBatch(List.of(3L));
+
+        assertThat(result).containsEntry(3L, List.of());
+        verify(benefitCarrierPolicyRepository, never()).findAllByBenefitIn(org.mockito.ArgumentMatchers.anyList());
     }
 }

@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -76,5 +77,28 @@ public class Store {
 
     @Column(name = "hasCoupon")
     private boolean hasCoupon;
+
+    @Column(name = "sourceProvider", length = 32)
+    private String sourceProvider;
+
+    @Column(name = "sourcePlaceId", length = 128)
+    private String sourcePlaceId;
+
+    @Builder.Default
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "lastSeenAt")
+    private Instant lastSeenAt;
+
+    @Column(name = "lastSeenRunId", length = 36)
+    private String lastSeenRunId;
+
+    @Builder.Default
+    @Column(name = "healthyMissCount", nullable = false)
+    private int healthyMissCount = 0;
+
+    @Column(name = "inactivatedAt")
+    private Instant inactivatedAt;
 
 }

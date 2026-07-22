@@ -59,7 +59,9 @@ public class PartnerBenefitCacheService {
             return result;
         }
 
-        List<Benefit> benefits = benefitRepository.findAllByPartnerIdsWithPartner(uncachedIds);
+        List<Benefit> benefits = benefitRepository.findAllByPartnerIdsWithPartner(uncachedIds).stream()
+                .filter(benefit -> Boolean.TRUE.equals(benefit.getActive()))
+                .toList();
         List<BenefitCarrierPolicy> policies = benefits.isEmpty()
                 ? List.of() : benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
                 .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
@@ -129,7 +131,9 @@ public class PartnerBenefitCacheService {
     @Cacheable(value = "partner-benefits", key = "#partnerId")
     @Transactional(readOnly = true)
     public List<BenefitCacheDto> getBenefits(Long partnerId) {
-        List<Benefit> benefits = benefitRepository.findAllByPartner_PartnerId(partnerId);
+        List<Benefit> benefits = benefitRepository.findAllByPartner_PartnerId(partnerId).stream()
+                .filter(benefit -> Boolean.TRUE.equals(benefit.getActive()))
+                .toList();
         if (benefits.isEmpty()) {
             // List.of() 대신 new ArrayList<>() 사용.
             // 이유: List.of()는 final 클래스(ImmutableCollections$ListN)를 반환하므로,

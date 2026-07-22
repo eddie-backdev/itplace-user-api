@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.hibernate.query.sql.internal.ParameterParser;
@@ -188,6 +189,62 @@ class StoreRepositoryQueryContractTest {
                         "PARTITION BY s.partnerId",
                         "row_num <= 30"
                 );
+    }
+
+    @Test
+    void mapCandidateQueries_requireActiveStoreAndActiveOfflineBenefit() {
+        List<String> mapQueryMethods = List.of(
+                "findStoreIdsInRadius",
+                "findStoreIdsByCategoryWithinRadius",
+                "findDistributedStoreIdsWithinRadius",
+                "findStorePreviewsInView",
+                "findStoreClustersInView",
+                "searchNearbyStoreIds",
+                "searchNearbyStoreIdsByPartnerId",
+                "searchNearbyStoreIdsByPartnerIds"
+        );
+
+        mapQueryMethods.forEach(methodName -> assertThat(queryValue(methodName))
+                .as(methodName)
+                .contains(
+                        "s.active = true",
+                        "EXISTS (",
+                        "COALESCE(b.active, true) = true",
+                        "COALESCE(bcp.active, true) = true",
+                        "bcp.usageType IN ('offline', 'both')"
+                ));
+    }
+
+    @Test
+    void finalStoreLoads_repeatVisibilityGuardForStaleSearchIds() {
+        assertThat(queryValue("findAllByStoreIdInWithPartner")).contains(
+                "s.active = true",
+                "COALESCE(b.active, true) = true",
+                "COALESCE(policy.active, true) = true",
+                "UsageType.OFFLINE",
+                "UsageType.BOTH"
+        );
+    }
+
+    @Test
+    void geodataLifecycleMigration_isIdempotentAndUsesSoftDeactivationFields() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream("/db/store_geodata_lifecycle.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        assertThat(sql).contains(
+                "ADD COLUMN IF NOT EXISTS sourceProvider",
+                "ADD COLUMN IF NOT EXISTS sourcePlaceId",
+                "ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE",
+                "ADD COLUMN IF NOT EXISTS lastSeenRunId",
+                "ADD COLUMN IF NOT EXISTS healthyMissCount",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_store_kakao_partner_place",
+                "WHERE sourceProvider = 'KAKAO' AND sourcePlaceId IS NOT NULL",
+                "CREATE INDEX IF NOT EXISTS idx_benefit_active_partner",
+                "CREATE INDEX IF NOT EXISTS idx_benefit_policy_active_offline"
+        ).doesNotContain("DELETE FROM store");
     }
 
     @Test

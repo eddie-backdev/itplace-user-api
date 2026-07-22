@@ -135,7 +135,7 @@ public class MobileMapServiceImpl implements MobileMapService {
         }
         List<TierBenefitDto> tierBenefits = store.getTierBenefit();
         if (tierBenefits == null || tierBenefits.isEmpty()) {
-            return true;
+            return false;
         }
         return tierBenefits.stream()
                 .map(TierBenefitDto::getCarrier)
