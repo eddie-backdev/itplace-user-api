@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.util.HashMap;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.flyway.FlywayDataSource;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ public class DataSourceConfig {
 
     // Write replica 정보로 만든 DataSource
     @Bean
+    @FlywayDataSource
     @ConfigurationProperties(prefix = "spring.datasource.source")
     public DataSource sourceDataSource() {
         return DataSourceBuilder.create().type(HikariDataSource.class).build();

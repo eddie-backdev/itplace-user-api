@@ -28,6 +28,7 @@ ITPLACE 사용자 서비스 백엔드입니다.
 - Spring Web / WebFlux / WebSocket
 - Spring Security / OAuth2 Client
 - Spring Data JPA
+- Flyway
 - PostgreSQL
 - MongoDB
 - Redis
@@ -86,6 +87,17 @@ KAKAO_REST_API_KEY=
 ./gradlew test
 ./gradlew build -x test
 ```
+
+## 데이터베이스 마이그레이션
+
+Flyway가 애플리케이션 시작 시 `sourceDataSource`에 아직 적용되지 않은
+`src/main/resources/db/migration/V*.sql`을 순서대로 실행합니다. Hibernate의
+`ddl-auto=validate`는 Flyway 실행 후 엔티티와 운영 스키마가 일치하는지 검증합니다.
+
+기존 운영 DB를 Flyway에 처음 편입할 때만 `FLYWAY_BASELINE_ON_MIGRATE=true`로
+기동해 `20260722.0`을 baseline으로 기록한 뒤 후속 마이그레이션을 적용합니다.
+`flyway_schema_history`가 생성된 것을 확인한 후에는 다시 `false`로 전환합니다.
+`admin-api` DB는 별도 데이터베이스이므로 이 저장소의 Flyway 이력에 포함되지 않습니다.
 
 ## API 문서
 

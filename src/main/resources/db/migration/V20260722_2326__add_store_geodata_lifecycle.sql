@@ -1,5 +1,8 @@
--- 운영은 ddl-auto=validate이므로 admin-api/user-api 배포 전에 실행한다.
+-- Flyway 도입 전 스키마는 20260722.0으로 baseline하고 이 변경부터 자동 적용한다.
 -- 기존 매장은 우선 활성 상태로 유지하고, 이후 정상 지오데이터 수집부터 발견 이력을 누적한다.
+
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '120s';
 
 ALTER TABLE store
     ADD COLUMN IF NOT EXISTS sourceProvider VARCHAR(32),
