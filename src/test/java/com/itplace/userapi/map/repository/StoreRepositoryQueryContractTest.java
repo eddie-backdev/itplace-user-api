@@ -229,7 +229,8 @@ class StoreRepositoryQueryContractTest {
     @Test
     void geodataLifecycleMigration_isIdempotentAndUsesSoftDeactivationFields() throws IOException {
         String sql;
-        try (InputStream input = getClass().getResourceAsStream("/db/store_geodata_lifecycle.sql")) {
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20260722_2326__add_store_geodata_lifecycle.sql")) {
             assertThat(input).isNotNull();
             sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }

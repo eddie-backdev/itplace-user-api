@@ -9,6 +9,14 @@ spring:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    validate-migration-naming: true
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:20260722.0}
+    baseline-description: existing-schema-before-flyway
+
   ai:
     chat:
       categorizePrompt: classpath:prompt/categorizePrompt.txt
