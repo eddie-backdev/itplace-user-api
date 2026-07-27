@@ -52,8 +52,10 @@ public class StoreSearchServiceImpl implements StoreSearchService {
                     .filter(id -> !brandSet.contains(id))
                     .toList();
             return new StoreSearchResult(brandMatchIds, nameMatchIds);
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new RuntimeException("매장 ES 검색 실패", e);
+        } catch (ExecutionException e) {
             throw new RuntimeException("매장 ES 검색 실패", e);
         }
     }

@@ -25,13 +25,13 @@ class StoreIndexerTest {
     private ElasticService elasticService;
 
     @Test
-    void run_doesNotIndexStoresWhenSeedIsDisabled() throws Exception {
+    void run_ensuresStoreIndexButDoesNotSeedWhenSeedIsDisabled() throws Exception {
         StoreIndexer indexer = new StoreIndexer(esClient, storeRepository, elasticService);
         ReflectionTestUtils.setField(indexer, "seedEnabled", false);
 
         indexer.run(null);
 
-        verify(elasticService, never()).createStoreIndexIfNotExists();
+        verify(elasticService).createStoreIndexIfNotExists();
         verify(storeRepository, never()).findAllWithPartner();
     }
 }
