@@ -25,13 +25,13 @@ public class StoreIndexer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        if (!seedEnabled) {
-            log.info("매장 ES 초기 인덱싱이 비활성화되어 있습니다.");
-            return;
-        }
-
         try {
             elasticService.createStoreIndexIfNotExists();
+
+            if (!seedEnabled) {
+                log.info("매장 ES 인덱스 확인 완료, 초기 데이터 적재는 비활성화되어 있습니다.");
+                return;
+            }
 
             storeRepository.findAllWithPartner().forEach(store -> {
                 try {
