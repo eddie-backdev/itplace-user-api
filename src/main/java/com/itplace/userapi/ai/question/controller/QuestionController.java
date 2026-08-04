@@ -3,6 +3,7 @@ package com.itplace.userapi.ai.question.controller;
 import com.itplace.userapi.ai.question.dto.request.QuestionSaveRequest;
 import com.itplace.userapi.ai.question.service.ElasticQuestionService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ public class QuestionController {
 
     @PostMapping("/save")
     @Deprecated(forRemoval = false)
-    public ResponseEntity<String> saveQuestion(@RequestBody QuestionSaveRequest request) {
+    public ResponseEntity<String> saveQuestion(@Valid @RequestBody QuestionSaveRequest request) {
         try {
             List<Float> embedding = embeddingService.embed(request.getQuestion());
             String id = UUID.randomUUID().toString();
