@@ -109,6 +109,7 @@ public class SecurityConfig {
                         .requestMatchers(publicEndpoints()).permitAll()
                         .requestMatchers(HttpMethod.GET, publicReadEndpoints()).permitAll()
                         .requestMatchers(HttpMethod.POST, publicPostEndpoints()).permitAll()
+                        .requestMatchers(adminOnlyEndpoints()).hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers(authenticatedEndpoints()).authenticated()
                         .anyRequest().authenticated());
@@ -201,10 +202,15 @@ public class SecurityConfig {
                 "/api/v1/favorites/**",
                 "/api/v1/auth/logout",
                 "/api/v1/auth/oauth/result",
-                "/api/v1/questions/search",
                 "/api/v1/questions/recommend",
-                "/api/v1/questions/save",
                 "/api/v1/recommendations"
+        };
+    }
+
+    static String[] adminOnlyEndpoints() {
+        return new String[]{
+                "/api/v1/questions/search",
+                "/api/v1/questions/save"
         };
     }
 

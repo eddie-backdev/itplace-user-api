@@ -29,6 +29,15 @@ class SecurityConfigAuthorizationRulesTest {
     }
 
     @Test
+    void questionMemoryMaintenanceEndpointsRequireAdminRole() {
+        assertThat(isAdminOnlyEndpoint("/api/v1/questions/search")).isTrue();
+        assertThat(isAdminOnlyEndpoint("/api/v1/questions/save")).isTrue();
+        assertThat(isAuthenticatedEndpoint("/api/v1/questions/search")).isFalse();
+        assertThat(isAuthenticatedEndpoint("/api/v1/questions/save")).isFalse();
+        assertThat(isAuthenticatedEndpoint("/api/v1/questions/recommend")).isTrue();
+    }
+
+    @Test
     void passwordRecoveryRoutesStayPublicBeforeUsersWildcard() {
         assertThat(isPublicPostEndpoint("/api/v1/users/findPassword")).isTrue();
         assertThat(isPublicPostEndpoint("/api/v1/users/findPassword/confirm")).isTrue();
@@ -63,6 +72,10 @@ class SecurityConfigAuthorizationRulesTest {
 
     private boolean isAuthenticatedEndpoint(String path) {
         return matchesAny(SecurityConfig.authenticatedEndpoints(), path);
+    }
+
+    private boolean isAdminOnlyEndpoint(String path) {
+        return matchesAny(SecurityConfig.adminOnlyEndpoints(), path);
     }
 
     private boolean matchesAny(String[] patterns, String path) {
