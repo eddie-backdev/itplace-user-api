@@ -33,28 +33,29 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void clusterQuery_groupsPrecomputedAdministrativeRegionsInsideViewport() {
+    void clusterQuery_readsPrecomputedAdministrativeRegionSummaryInsideViewport() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql)
                 .contains(
-                        "WITH selected_region AS MATERIALIZED",
-                        "FROM map_store_cluster_region mapped",
-                        "JOIN selected_region region ON region.store_id = s.storeId",
+                        "WITH visible_region AS",
+                        "JOIN map_store_cluster_region mapped ON mapped.store_id = s.storeId",
                         "CASE :administrativeUnitType",
-                        "mapped.city_region_key",
-                        "mapped.town_region_key",
-                        "mapped.legal_dong_region_key",
                         "mapped.city_region_hash",
                         "mapped.town_region_hash",
                         "mapped.legal_dong_region_hash",
-                        "GROUP BY region.region_type, region.region_hash",
-                        "region_summary.region_hash",
+                        "JOIN map_region_store_summary summary",
+                        "summary.aggregation_unit = :administrativeUnitType",
+                        "summary.region_hash = visible.region_hash",
+                        "SUM(summary.store_count)",
+                        "summarized_region AS MATERIALIZED",
                         "CAST(:minLng AS NUMERIC)",
                         "CAST(:minLat AS NUMERIC)",
                         "s.location && ST_MakeEnvelope"
                 )
                 .doesNotContain(
+                        "selected_region AS MATERIALIZED",
+                        "region_summary AS",
                         "regexp_split_to_array",
                         "generate_subscripts",
                         "ST_Transform",
@@ -67,18 +68,19 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void clusterQuery_countsEntireVisibleAdministrativeRegion() {
+    void clusterQuery_countsEntireVisibleAdministrativeRegionFromSummary() {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql).contains(
-                "visible_region AS MATERIALIZED",
-                "JOIN visible_region visible",
-                "visible.region_type = region.region_type",
-                "visible.region_hash = region.region_hash"
+                "FROM visible_region visible",
+                "JOIN map_region_store_summary summary",
+                "summary.region_type = visible.region_type",
+                "summary.region_hash = visible.region_hash"
         );
 
-        String regionSummarySql = sql.substring(sql.indexOf("region_summary AS"));
-        assertThat(regionSummarySql).doesNotContain(
+        String finalLookupSql = sql.substring(sql.indexOf("FROM summarized_region summarized"));
+        assertThat(finalLookupSql).doesNotContain(
+                "FROM store s",
                 "ST_MakeEnvelope",
                 "s.longitude BETWEEN",
                 "s.latitude BETWEEN"
@@ -92,8 +94,8 @@ class StoreRepositoryQueryContractTest {
         assertThat(sql)
                 .contains(
                         "JOIN map_region_anchor region_anchor",
-                        "region_anchor.region_type = region_summary.region_type",
-                        "region_anchor.region_key = region_summary.region_key",
+                        "region_anchor.region_type = summarized.region_type",
+                        "region_anchor.region_key = summarized.region_key",
                         "region_anchor.latitude AS \"latitude\"",
                         "region_anchor.longitude AS \"longitude\""
                 )
@@ -143,6 +145,26 @@ class StoreRepositoryQueryContractTest {
                 "ON CONFLICT (store_id) DO UPDATE SET",
                 "ON CONFLICT (region_type, region_key) DO NOTHING",
                 "ANALYZE map_store_cluster_region"
+        );
+    }
+
+    @Test
+    void regionStoreSummaryMigration_precomputesAndRefreshesClusterCounts() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20260806_0001__add_map_region_store_summary.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        assertThat(sql).contains(
+                "CREATE MATERIALIZED VIEW map_region_store_summary",
+                "'CITY'::VARCHAR(20) AS aggregation_unit",
+                "'TOWN'::VARCHAR(20) AS aggregation_unit",
+                "'LEGAL_DONG'::VARCHAR(20) AS aggregation_unit",
+                "COUNT(*)::BIGINT AS store_count",
+                "CREATE UNIQUE INDEX uq_map_region_store_summary_lookup",
+                "CREATE TABLE map_region_store_summary_state"
         );
     }
 
