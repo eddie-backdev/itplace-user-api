@@ -72,6 +72,13 @@ google:
       url: https://www.google.com/recaptcha/api/siteverify
 
 app:
+  map:
+    cluster-summary:
+      refresh:
+        enabled: ${MAP_CLUSTER_SUMMARY_REFRESH_ENABLED:true}
+        initial-delay-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_INITIAL_DELAY_MS:60000}
+        fixed-delay-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_FIXED_DELAY_MS:300000}
+        minimum-interval-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_MINIMUM_INTERVAL_MS:240000}
   ai:
     indexing:
       enabled: ${AI_INDEXING_ENABLED:false}

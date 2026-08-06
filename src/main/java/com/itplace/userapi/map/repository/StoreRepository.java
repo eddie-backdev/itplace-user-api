@@ -207,38 +207,21 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query(
             value = """
-                    WITH selected_region AS MATERIALIZED (
-                        SELECT
-                            mapped.store_id,
+                    WITH visible_region AS (
+                        SELECT DISTINCT
                             CASE :administrativeUnitType
                                 WHEN 'CITY' THEN 'CITY'
                                 WHEN 'TOWN' THEN mapped.town_region_type
                                 ELSE mapped.legal_dong_region_type
                             END AS region_type,
                             CASE :administrativeUnitType
-                                WHEN 'CITY' THEN mapped.city_region_key
-                                WHEN 'TOWN' THEN mapped.town_region_key
-                                ELSE mapped.legal_dong_region_key
-                            END AS region_key,
-                            CASE :administrativeUnitType
-                                WHEN 'CITY' THEN mapped.city_region_name
-                                WHEN 'TOWN' THEN mapped.town_region_name
-                                ELSE mapped.legal_dong_region_name
-                            END AS region_name,
-                            CASE :administrativeUnitType
                                 WHEN 'CITY' THEN mapped.city_region_hash
                                 WHEN 'TOWN' THEN mapped.town_region_hash
                                 ELSE mapped.legal_dong_region_hash
                             END AS region_hash
-                        FROM map_store_cluster_region mapped
-                    ),
-                    visible_region AS MATERIALIZED (
-                        SELECT DISTINCT
-                            region.region_type,
-                            region.region_hash
                         FROM store s
                         JOIN partner p ON s.partnerId = p.partnerId
-                        JOIN selected_region region ON region.store_id = s.storeId
+                        JOIN map_store_cluster_region mapped ON mapped.store_id = s.storeId
                         WHERE s.location IS NOT NULL
                           AND s.active = true
                           AND EXISTS (
@@ -264,66 +247,46 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                           AND s.longitude BETWEEN CAST(:minLng AS NUMERIC) AND CAST(:maxLng AS NUMERIC)
                           AND s.latitude BETWEEN CAST(:minLat AS NUMERIC) AND CAST(:maxLat AS NUMERIC)
-                          AND region.region_key IS NOT NULL
-                          AND region.region_hash IS NOT NULL
+                          AND CASE :administrativeUnitType
+                              WHEN 'CITY' THEN mapped.city_region_hash
+                              WHEN 'TOWN' THEN mapped.town_region_hash
+                              ELSE mapped.legal_dong_region_hash
+                          END IS NOT NULL
                     ),
-                    region_summary AS (
+                    summarized_region AS MATERIALIZED (
                         SELECT
-                            region.region_type,
-                            MIN(region.region_key) AS region_key,
-                            MIN(region.region_name) AS region_name,
-                            region.region_hash,
-                            COUNT(*) AS store_count
-                        FROM store s
-                        JOIN partner p ON s.partnerId = p.partnerId
-                        JOIN selected_region region ON region.store_id = s.storeId
-                        JOIN visible_region visible
-                          ON visible.region_type = region.region_type
-                         AND visible.region_hash = region.region_hash
-                        WHERE s.location IS NOT NULL
-                          AND s.active = true
-                          AND EXISTS (
-                              SELECT 1
-                              FROM benefit b
-                              JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                              WHERE b.partnerId = s.partnerId
-                                AND COALESCE(b.active, true) = true
-                                AND COALESCE(bcp.active, true) = true
-                                AND bcp.usageType IN ('offline', 'both')
-                          )
-                          AND (:category IS NULL OR p.category = :category)
-                          AND (
-                              REGEXP_REPLACE(
-                                  LOWER(COALESCE(p.partnerName, '')),
-                                  '[^가-힣a-z0-9]+',
-                                  '',
-                                  'g'
-                              ) NOT IN ('다락', '미니창고다락')
-                              OR s.business LIKE '%보관%'
-                              OR s.business LIKE '%저장%'
-                          )
-                          AND region.region_key IS NOT NULL
-                        GROUP BY region.region_type, region.region_hash
+                            summary.region_type,
+                            summary.region_hash,
+                            summary.region_key,
+                            MIN(summary.region_name) AS region_name,
+                            CAST(SUM(summary.store_count) AS BIGINT) AS store_count
+                        FROM visible_region visible
+                        JOIN map_region_store_summary summary
+                          ON summary.aggregation_unit = :administrativeUnitType
+                         AND summary.region_type = visible.region_type
+                         AND summary.region_hash = visible.region_hash
+                        WHERE (:category IS NULL OR summary.category = :category)
+                        GROUP BY summary.region_type, summary.region_hash, summary.region_key
                     )
                     SELECT
                         CONCAT(
-                            'a:', :mapLevel, ':', region_summary.region_type, ':',
-                            region_summary.region_hash
+                            'a:', :mapLevel, ':', summarized.region_type, ':',
+                            summarized.region_hash
                         ) AS "clusterId",
                         COALESCE(:category, '전체') AS "category",
-                        region_summary.region_type AS "administrativeUnitType",
-                        region_summary.region_name AS "administrativeUnitName",
+                        summarized.region_type AS "administrativeUnitType",
+                        summarized.region_name AS "administrativeUnitName",
                         region_anchor.latitude AS "latitude",
                         region_anchor.longitude AS "longitude",
-                        region_summary.store_count AS "count"
-                    FROM region_summary
+                        summarized.store_count AS "count"
+                    FROM summarized_region summarized
                     JOIN map_region_anchor region_anchor
-                      ON region_anchor.region_type = region_summary.region_type
-                     AND region_anchor.region_key = region_summary.region_key
+                      ON region_anchor.region_type = summarized.region_type
+                     AND region_anchor.region_key = summarized.region_key
                     ORDER BY
-                        region_summary.store_count DESC,
-                        region_summary.region_type ASC,
-                        region_summary.region_hash ASC
+                        summarized.store_count DESC,
+                        summarized.region_type ASC,
+                        summarized.region_hash ASC
                     """,
             nativeQuery = true
     )
