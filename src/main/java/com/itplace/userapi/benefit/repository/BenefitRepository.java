@@ -71,8 +71,8 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 WHERE (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
                   AND (:filter IS NULL OR
-                       (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
-                       (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
+                       (:filter = 'ONLINE' AND bcp.usageType IN ('online', 'both')) OR
+                       (:filter = 'OFFLINE' AND bcp.usageType IN ('offline', 'both')))
                   AND (:keyword IS NULL OR (
                        LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
                        LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
@@ -104,8 +104,8 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 WHERE (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
                   AND (:filter IS NULL OR
-                       (:filter = 'ONLINE' AND bcp.usageType IN ('ONLINE', 'BOTH')) OR
-                       (:filter = 'OFFLINE' AND bcp.usageType IN ('OFFLINE', 'BOTH')))
+                       (:filter = 'ONLINE' AND bcp.usageType IN ('online', 'both')) OR
+                       (:filter = 'OFFLINE' AND bcp.usageType IN ('offline', 'both')))
                   AND (:keyword IS NULL OR (
                        LOWER(b.benefitName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
                        LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
