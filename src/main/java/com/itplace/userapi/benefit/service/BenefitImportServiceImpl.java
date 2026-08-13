@@ -3,9 +3,11 @@ package com.itplace.userapi.benefit.service;
 import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.request.BenefitSnapshotImportRequest;
 import com.itplace.userapi.benefit.dto.response.BenefitSnapshotImportResponse;
+import com.itplace.userapi.benefit.dto.response.BenefitSnapshotImportStatus;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.BenefitPolicy;
+import com.itplace.userapi.benefit.entity.BenefitSnapshotImportState;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
@@ -13,6 +15,7 @@ import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
+import com.itplace.userapi.benefit.repository.BenefitSnapshotImportStateRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
@@ -20,6 +23,7 @@ import com.itplace.userapi.partner.service.PartnerImagePolicy;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -45,6 +49,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
     private final BenefitPolicyRepository benefitPolicyRepository;
+    private final BenefitSnapshotImportStateRepository benefitSnapshotImportStateRepository;
 
     @Value("${app.internal.api-key:}")
     private String expectedApiKey;
@@ -54,7 +59,22 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     public BenefitSnapshotImportResponse importSnapshot(BenefitSnapshotImportRequest request, String apiKey) {
         validateInternalKey(apiKey);
 
-        LocalDateTime crawledAt = request.getCrawledAt() != null ? request.getCrawledAt() : LocalDateTime.now();
+        LocalDateTime crawledAt = Objects.requireNonNull(
+                request.getCrawledAt(),
+                "스냅샷 생성 시각은 필수 항목입니다."
+        ).truncatedTo(ChronoUnit.MICROS);
+        BenefitSnapshotImportState importState = benefitSnapshotImportStateRepository
+                .findByCarrierForUpdate(request.getCarrier())
+                .orElseThrow(() -> new IllegalStateException(
+                        "혜택 스냅샷 수신 상태가 초기화되지 않았습니다: " + request.getCarrier()
+                ));
+        LocalDateTime latestKnownCrawledAt = latestKnownCrawledAt(importState, request.getCarrier());
+        BenefitSnapshotImportStatus ignoredStatus = ignoredStatus(latestKnownCrawledAt, crawledAt);
+        if (ignoredStatus != null) {
+            importState.markApplied(latestKnownCrawledAt);
+            return ignoredResponse(request, latestKnownCrawledAt, ignoredStatus);
+        }
+
         List<BenefitSnapshotImportRequest.BenefitSnapshotItem> items = request.getBenefits();
         Map<String, Partner> partnerByName = upsertPartners(items);
         Map<String, BenefitCarrierPolicy> policyBySourceKey = findPoliciesBySourceKey(request.getCarrier(), items);
@@ -107,12 +127,63 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         List<BenefitCarrierPolicy> savedPolicies = benefitCarrierPolicyRepository.saveAll(policiesToSave);
         replaceCarrierTierBenefits(savedPolicies, latestRowBySourceKey);
         inactivateMissingPolicies(request.getCarrier(), latestRowBySourceKey.keySet(), crawledAt);
+        importState.markApplied(crawledAt);
 
         return BenefitSnapshotImportResponse.builder()
                 .carrier(request.getCarrier())
                 .receivedCount(items.size())
                 .upsertedBenefitCount(items.size())
                 .tierBenefitCount(tierBenefitCount)
+                .status(BenefitSnapshotImportStatus.APPLIED)
+                .lastAppliedCrawledAt(crawledAt)
+                .build();
+    }
+
+    private LocalDateTime latestKnownCrawledAt(
+            BenefitSnapshotImportState importState,
+            Carrier carrier
+    ) {
+        LocalDateTime stateCrawledAt = importState.getLastAppliedCrawledAt();
+        LocalDateTime policyCrawledAt = benefitCarrierPolicyRepository
+                .findLatestCrawledAtByCarrier(carrier)
+                .orElse(null);
+        if (stateCrawledAt == null) {
+            return policyCrawledAt;
+        }
+        if (policyCrawledAt == null) {
+            return stateCrawledAt;
+        }
+        return stateCrawledAt.isAfter(policyCrawledAt) ? stateCrawledAt : policyCrawledAt;
+    }
+
+    private BenefitSnapshotImportStatus ignoredStatus(
+            LocalDateTime lastApplied,
+            LocalDateTime crawledAt
+    ) {
+        if (lastApplied == null) {
+            return null;
+        }
+        if (crawledAt.isEqual(lastApplied)) {
+            return BenefitSnapshotImportStatus.DUPLICATE;
+        }
+        if (crawledAt.isBefore(lastApplied)) {
+            return BenefitSnapshotImportStatus.STALE;
+        }
+        return null;
+    }
+
+    private BenefitSnapshotImportResponse ignoredResponse(
+            BenefitSnapshotImportRequest request,
+            LocalDateTime lastAppliedCrawledAt,
+            BenefitSnapshotImportStatus status
+    ) {
+        return BenefitSnapshotImportResponse.builder()
+                .carrier(request.getCarrier())
+                .receivedCount(request.getBenefits().size())
+                .upsertedBenefitCount(0)
+                .tierBenefitCount(0)
+                .status(status)
+                .lastAppliedCrawledAt(lastAppliedCrawledAt)
                 .build();
     }
 
