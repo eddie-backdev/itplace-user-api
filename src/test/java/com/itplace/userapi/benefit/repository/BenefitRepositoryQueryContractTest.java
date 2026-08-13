@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.entity.enums.UsageTypeConverter;
 import com.itplace.userapi.partner.repository.PartnerRepository;
+import jakarta.persistence.LockModeType;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 class BenefitRepositoryQueryContractTest {
@@ -48,6 +50,19 @@ class BenefitRepositoryQueryContractTest {
         assertThat(usageTypeConverter.convertToDatabaseColumn(UsageType.ONLINE)).isEqualTo("online");
         assertThat(usageTypeConverter.convertToDatabaseColumn(UsageType.OFFLINE)).isEqualTo("offline");
         assertThat(usageTypeConverter.convertToDatabaseColumn(UsageType.BOTH)).isEqualTo("both");
+    }
+
+    @Test
+    void snapshotImportStateQueryUsesPessimisticWriteLock() {
+        Method method = repositoryMethod(
+                BenefitSnapshotImportStateRepository.class,
+                "findByCarrierForUpdate"
+        );
+
+        assertThat(method.getAnnotation(Lock.class).value())
+                .isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+        assertThat(method.getAnnotation(Query.class).value())
+                .contains("state.carrier = :carrier");
     }
 
     private void assertUsageTypeLabels(String query) {

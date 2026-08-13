@@ -14,9 +14,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.request.BenefitSnapshotImportRequest;
 import com.itplace.userapi.benefit.dto.response.BenefitSnapshotImportResponse;
+import com.itplace.userapi.benefit.dto.response.BenefitSnapshotImportStatus;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.BenefitPolicy;
+import com.itplace.userapi.benefit.entity.BenefitSnapshotImportState;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
@@ -28,9 +30,11 @@ import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
+import com.itplace.userapi.benefit.repository.BenefitSnapshotImportStateRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +63,9 @@ class BenefitImportServiceImplTest {
     @Mock
     private BenefitPolicyRepository benefitPolicyRepository;
 
+    @Mock
+    private BenefitSnapshotImportStateRepository benefitSnapshotImportStateRepository;
+
     private BenefitImportServiceImpl service;
 
     @BeforeEach
@@ -68,13 +75,20 @@ class BenefitImportServiceImplTest {
                 partnerRepository,
                 benefitCarrierPolicyRepository,
                 carrierTierBenefitRepository,
-                benefitPolicyRepository
+                benefitPolicyRepository,
+                benefitSnapshotImportStateRepository
         );
         ReflectionTestUtils.setField(service, "expectedApiKey", "internal-key");
+        lenient().when(benefitSnapshotImportStateRepository.findByCarrierForUpdate(any(Carrier.class)))
+                .thenAnswer(invocation -> java.util.Optional.of(
+                        new BenefitSnapshotImportState(invocation.getArgument(0), null)
+                ));
         lenient().when(partnerRepository.findAllByPartnerNameIn(any())).thenReturn(List.of());
         lenient().when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(any(Carrier.class), any()))
                 .thenReturn(List.of());
         lenient().when(benefitCarrierPolicyRepository.findAllByCarrier(any(Carrier.class))).thenReturn(List.of());
+        lenient().when(benefitCarrierPolicyRepository.findLatestCrawledAtByCarrier(any(Carrier.class)))
+                .thenReturn(java.util.Optional.empty());
         lenient().when(benefitPolicyRepository.findByCode(any(BenefitPolicyCode.class))).thenAnswer(invocation -> {
             BenefitPolicyCode code = invocation.getArgument(0);
             return java.util.Optional.of(BenefitPolicy.builder().code(code).name(code.name()).build());
@@ -132,12 +146,18 @@ class BenefitImportServiceImplTest {
     @Test
     void importsSanitizedCarrierScopedSnapshotWithoutMembershipArtifacts() {
         BenefitSnapshotImportRequest request = request();
+        BenefitSnapshotImportState importState = new BenefitSnapshotImportState(Carrier.SKT, null);
+        when(benefitSnapshotImportStateRepository.findByCarrierForUpdate(Carrier.SKT))
+                .thenReturn(java.util.Optional.of(importState));
 
         BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
 
         assertThat(response.getCarrier()).isEqualTo(Carrier.SKT);
         assertThat(response.getReceivedCount()).isEqualTo(1);
         assertThat(response.getTierBenefitCount()).isEqualTo(1);
+        assertThat(response.getStatus()).isEqualTo(BenefitSnapshotImportStatus.APPLIED);
+        assertThat(response.getLastAppliedCrawledAt()).isEqualTo(request.getCrawledAt());
+        assertThat(importState.getLastAppliedCrawledAt()).isEqualTo(request.getCrawledAt());
 
         ArgumentCaptor<Iterable<Benefit>> benefitCaptor = iterableCaptor();
         verify(benefitRepository).saveAll(benefitCaptor.capture());
@@ -260,6 +280,63 @@ class BenefitImportServiceImplTest {
     }
 
     @Test
+    void ignoresDuplicateSnapshotWithoutChangingBenefits() {
+        BenefitSnapshotImportRequest request = request();
+        request.setCrawledAt(LocalDateTime.of(2026, 8, 14, 3, 0, 0, 123_456_789));
+        LocalDateTime alreadyAppliedAt = LocalDateTime.of(2026, 8, 14, 3, 0, 0, 123_456_000);
+        when(benefitSnapshotImportStateRepository.findByCarrierForUpdate(Carrier.SKT))
+                .thenReturn(java.util.Optional.of(
+                        new BenefitSnapshotImportState(Carrier.SKT, alreadyAppliedAt)
+                ));
+
+        BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
+
+        assertThat(response.getStatus()).isEqualTo(BenefitSnapshotImportStatus.DUPLICATE);
+        assertThat(response.getReceivedCount()).isEqualTo(1);
+        assertThat(response.getUpsertedBenefitCount()).isZero();
+        assertThat(response.getLastAppliedCrawledAt()).isEqualTo(alreadyAppliedAt);
+        verify(partnerRepository, never()).saveAll(any());
+        verify(benefitRepository, never()).saveAll(any());
+        verify(benefitCarrierPolicyRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void ignoresStaleSnapshotWithoutInactivatingCurrentBenefits() {
+        BenefitSnapshotImportRequest request = request();
+        LocalDateTime lastAppliedAt = request.getCrawledAt().plusMinutes(1);
+        when(benefitSnapshotImportStateRepository.findByCarrierForUpdate(Carrier.SKT))
+                .thenReturn(java.util.Optional.of(
+                        new BenefitSnapshotImportState(Carrier.SKT, lastAppliedAt)
+                ));
+
+        BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
+
+        assertThat(response.getStatus()).isEqualTo(BenefitSnapshotImportStatus.STALE);
+        assertThat(response.getUpsertedBenefitCount()).isZero();
+        assertThat(response.getLastAppliedCrawledAt()).isEqualTo(lastAppliedAt);
+        verify(benefitCarrierPolicyRepository, never()).findAllByCarrier(any(Carrier.class));
+        verify(partnerRepository, never()).saveAll(any());
+        verify(benefitRepository, never()).saveAll(any());
+        verify(benefitCarrierPolicyRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void rejectsSnapshotOlderThanPolicyDataDuringBlueGreenTransition() {
+        BenefitSnapshotImportRequest request = request();
+        LocalDateTime policyCrawledAt = request.getCrawledAt().plusMinutes(1);
+        when(benefitCarrierPolicyRepository.findLatestCrawledAtByCarrier(Carrier.SKT))
+                .thenReturn(java.util.Optional.of(policyCrawledAt));
+
+        BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
+
+        assertThat(response.getStatus()).isEqualTo(BenefitSnapshotImportStatus.STALE);
+        assertThat(response.getLastAppliedCrawledAt()).isEqualTo(policyCrawledAt);
+        verify(partnerRepository, never()).saveAll(any());
+        verify(benefitRepository, never()).saveAll(any());
+        verify(benefitCarrierPolicyRepository, never()).saveAll(any());
+    }
+
+    @Test
     void rejectsMissingInternalApiKey() {
         assertThatThrownBy(() -> service.importSnapshot(request(), "wrong-key"))
                 .isInstanceOf(BenefitImportUnauthorizedException.class)
@@ -306,6 +383,7 @@ class BenefitImportServiceImplTest {
     private BenefitSnapshotImportRequest request() {
         BenefitSnapshotImportRequest request = new BenefitSnapshotImportRequest();
         request.setCarrier(Carrier.SKT);
+        request.setCrawledAt(LocalDateTime.of(2026, 8, 14, 3, 0));
 
         BenefitSnapshotImportRequest.BenefitSnapshotItem item = new BenefitSnapshotImportRequest.BenefitSnapshotItem();
         item.setSourceKey("skt-benefit-1");

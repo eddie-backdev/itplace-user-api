@@ -51,8 +51,10 @@ class FlywayMigrationIntegrationTest {
                     CREATE TABLE benefitCarrierPolicy (
                         id BIGSERIAL PRIMARY KEY,
                         benefitId BIGINT NOT NULL,
+                        carrier VARCHAR(16),
                         active BOOLEAN,
-                        usageType VARCHAR(20)
+                        usageType VARCHAR(20),
+                        lastCrawledAt TIMESTAMP
                     )
                     """);
             statement.execute("""
@@ -84,7 +86,15 @@ class FlywayMigrationIntegrationTest {
             statement.execute("INSERT INTO partner VALUES (1, '테스트카페', '카페')");
             statement.execute("INSERT INTO store (partnerId, business, location) VALUES (1, '카페', 'POINT')");
             statement.execute("INSERT INTO benefit (partnerId, active) VALUES (1, true)");
-            statement.execute("INSERT INTO benefitCarrierPolicy (benefitId, active, usageType) VALUES (1, true, 'offline')");
+            statement.execute("""
+                    INSERT INTO benefitCarrierPolicy (
+                        benefitId,
+                        carrier,
+                        active,
+                        usageType,
+                        lastCrawledAt
+                    ) VALUES (1, 'SKT', true, 'offline', TIMESTAMP '2026-08-13 03:00:00')
+                    """);
             statement.execute("""
                     INSERT INTO map_store_cluster_region VALUES (
                         1,
@@ -111,7 +121,7 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(3);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
@@ -119,6 +129,13 @@ class FlywayMigrationIntegrationTest {
             assertThat(indexExists(connection, "uq_store_kakao_partner_place")).isTrue();
             assertThat(indexExists(connection, "uq_map_region_store_summary_lookup")).isTrue();
             assertThat(materializedViewExists(connection, "map_region_store_summary")).isTrue();
+            assertThat(tableExists(connection, "benefitsnapshotimportstate")).isTrue();
+            assertThat(longValue(connection, "SELECT COUNT(*) FROM benefitSnapshotImportState")).isEqualTo(3L);
+            assertThat(stringValue(connection, """
+                    SELECT lastAppliedCrawledAt::text
+                    FROM benefitSnapshotImportState
+                    WHERE carrier = 'SKT'
+                    """)).isEqualTo("2026-08-13 03:00:00");
             assertThat(booleanValue(connection, "SELECT active FROM store WHERE storeId = 1")).isTrue();
             assertThat(longValue(connection, """
                     SELECT store_count
@@ -133,7 +150,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20260806.0001");
+                    """)).isEqualTo("20260814.0001");
 
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("UPDATE store SET active = false WHERE storeId = 1");
@@ -156,6 +173,23 @@ class FlywayMigrationIntegrationTest {
                 """)) {
             statement.setString(1, tableName);
             statement.setString(2, columnName);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getBoolean(1);
+            }
+        }
+    }
+
+    private boolean tableExists(Connection connection, String tableName) throws SQLException {
+        try (var statement = connection.prepareStatement("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = ?
+                )
+                """)) {
+            statement.setString(1, tableName);
             try (ResultSet result = statement.executeQuery()) {
                 result.next();
                 return result.getBoolean(1);

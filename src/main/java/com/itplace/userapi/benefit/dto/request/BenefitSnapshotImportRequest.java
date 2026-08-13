@@ -23,6 +23,7 @@ public class BenefitSnapshotImportRequest {
     private Carrier carrier;
 
     @JsonAlias("exportedAt")
+    @NotNull(message = "스냅샷 생성 시각은 필수 항목입니다.")
     private LocalDateTime crawledAt;
 
     @Valid

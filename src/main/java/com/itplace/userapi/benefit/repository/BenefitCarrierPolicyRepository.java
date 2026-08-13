@@ -3,6 +3,7 @@ package com.itplace.userapi.benefit.repository;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,6 +28,9 @@ public interface BenefitCarrierPolicyRepository extends JpaRepository<BenefitCar
     );
 
     List<BenefitCarrierPolicy> findAllByCarrier(Carrier carrier);
+
+    @Query("SELECT MAX(p.lastCrawledAt) FROM BenefitCarrierPolicy p WHERE p.carrier = :carrier")
+    Optional<LocalDateTime> findLatestCrawledAtByCarrier(@Param("carrier") Carrier carrier);
 
     @Query("""
             SELECT p FROM BenefitCarrierPolicy p
