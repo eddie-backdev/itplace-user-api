@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.exception.SmsVerificationException;
+import com.itplace.userapi.security.support.SensitiveDataMasker;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,14 +52,18 @@ public class OctomoMessageClientImpl implements OctomoMessageClient {
             boolean verified = parseVerified(response.getBody());
             log.info(
                     "Octomo 문자 인증 조회 결과: mobileNumber={}, textLength={}, status={}, verified={}",
-                    mobileNumber,
+                    SensitiveDataMasker.maskPhoneNumber(mobileNumber),
                     text == null ? 0 : text.length(),
                     response.getStatusCode(),
                     verified
             );
             return verified;
         } catch (RestClientException e) {
-            log.warn("Octomo 문자 인증 조회 실패: mobileNumber={}, reason={}", mobileNumber, e.getMessage());
+            log.warn(
+                    "Octomo 문자 인증 조회 실패: mobileNumber={}, reason={}",
+                    SensitiveDataMasker.maskPhoneNumber(mobileNumber),
+                    e.getMessage()
+            );
             throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
         }
     }

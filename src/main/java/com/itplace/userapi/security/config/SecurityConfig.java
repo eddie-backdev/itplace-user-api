@@ -3,6 +3,7 @@ package com.itplace.userapi.security.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.LegacyAwarePasswordEncoder;
+import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService;
 import com.itplace.userapi.security.auth.local.filter.LoginFilter;
 import com.itplace.userapi.security.auth.local.service.CustomUserDetailsService;
 import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationFailureHandler;
@@ -48,6 +49,7 @@ public class SecurityConfig {
     private final CookieUtil cookieUtil;
     private final JWTUtil jwtUtil;
     private final JWTFilter jwtFilter;
+    private final AuthenticationAbuseProtectionService abuseProtectionService;
 
     @Value("${app.cookie.domain:}")
     private String cookieDomain;
@@ -126,7 +128,8 @@ public class SecurityConfig {
                 jwtUtil,
                 redisTemplate,
                 objectMapper,
-                cookieUtil);
+                cookieUtil,
+                abuseProtectionService);
         loginFilter.setFilterProcessesUrl("/api/v1/auth/login");
 
         http

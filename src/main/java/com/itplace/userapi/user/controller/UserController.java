@@ -2,6 +2,7 @@ package com.itplace.userapi.user.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.SecurityCode;
+import com.itplace.userapi.security.abuse.ClientAddressResolver;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
@@ -13,6 +14,7 @@ import com.itplace.userapi.user.dto.request.WithdrawRequest;
 import com.itplace.userapi.user.dto.response.FindPasswordConfirmResponse;
 import com.itplace.userapi.user.dto.response.UserInfoResponse;
 import com.itplace.userapi.user.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -45,8 +47,11 @@ public class UserController {
     }
 
     @PostMapping("/findPassword")
-    public ResponseEntity<ApiResponse<Void>> findPassword(@RequestBody @Validated EmailVerificationRequest request) {
-        emailService.send(request);
+    public ResponseEntity<ApiResponse<Void>> findPassword(
+            @RequestBody @Validated EmailVerificationRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        emailService.send(request, ClientAddressResolver.resolve(servletRequest));
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.EMAIL_SEND_SUCCESS);
         return body.toResponseEntity();
     }

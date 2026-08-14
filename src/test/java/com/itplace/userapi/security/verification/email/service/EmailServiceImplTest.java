@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService;
+import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService.VerificationChannel;
 import com.itplace.userapi.security.verification.OtpUtil;
 import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
 import com.itplace.userapi.user.repository.UserRepository;
@@ -37,6 +39,9 @@ class EmailServiceImplTest {
     @Mock
     private OtpUtil otpUtil;
 
+    @Mock
+    private AuthenticationAbuseProtectionService abuseProtectionService;
+
     @InjectMocks
     private EmailServiceImpl emailService;
 
@@ -47,24 +52,31 @@ class EmailServiceImplTest {
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        emailService.confirm(request);
+        emailService.confirm(request, "127.0.0.1");
 
+        verify(abuseProtectionService).checkVerificationConfirm(
+                VerificationChannel.EMAIL,
+                "hong@example.com",
+                "127.0.0.1"
+        );
         verify(valueOperations).set(eq("email:verified:hong@example.com"), eq("true"), eq(1800L), eq(TimeUnit.SECONDS));
     }
 
     @Test
     void consumeVerifiedDeletesVerifiedEmailMarker() {
-        when(redisTemplate.hasKey("email:verified:hong@example.com")).thenReturn(true);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete("email:verified:hong@example.com")).thenReturn("true");
 
         boolean consumed = emailService.consumeVerified("hong@example.com");
 
         assertThat(consumed).isTrue();
-        verify(redisTemplate).delete("email:verified:hong@example.com");
+        verify(valueOperations).getAndDelete("email:verified:hong@example.com");
     }
 
     @Test
     void consumeVerifiedReturnsFalseWhenEmailWasNotVerified() {
-        when(redisTemplate.hasKey("email:verified:hong@example.com")).thenReturn(false);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete("email:verified:hong@example.com")).thenReturn(null);
 
         boolean consumed = emailService.consumeVerified("hong@example.com");
 

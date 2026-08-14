@@ -15,6 +15,8 @@ public enum SecurityCode implements BaseCode {
     // 로그인
     LOGIN_SUCCESS("LOGIN_SUCCESS", HttpStatus.OK, "성공적으로 로그인 되었습니다."),
     LOGIN_FAIL("LOGIN_FAIL", HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 일치하지 않습니다."),
+    AUTHENTICATION_RATE_LIMITED("AUTHENTICATION_RATE_LIMITED", HttpStatus.TOO_MANY_REQUESTS,
+            "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     LOGOUT_SUCCESS("LOGOUT_SUCCESS", HttpStatus.OK, "성공적으로 로그아웃 되었습니다."),
     UNAUTHORIZED_ACCESS("UNAUTHORIZED_ACCESS", HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."),
 

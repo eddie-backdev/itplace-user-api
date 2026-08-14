@@ -5,9 +5,9 @@ import com.itplace.userapi.security.verification.sms.dto.request.SmsVerification
 import com.itplace.userapi.security.verification.sms.dto.response.SmsVerificationIssueResponse;
 
 public interface SmsVerificationService {
-    SmsVerificationIssueResponse issue(SmsVerificationIssueRequest request);
+    SmsVerificationIssueResponse issue(SmsVerificationIssueRequest request, String clientAddress);
 
-    void confirm(SmsVerificationConfirmRequest request);
+    void confirm(SmsVerificationConfirmRequest request, String clientAddress);
 
     boolean consumeVerified(String phoneNumber);
 }
