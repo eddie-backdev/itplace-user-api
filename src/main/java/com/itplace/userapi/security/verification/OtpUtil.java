@@ -2,10 +2,11 @@ package com.itplace.userapi.security.verification;
 
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +17,23 @@ public class OtpUtil {
     private static final String ATTEMPT_SUFFIX = ":attempts";
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final SecureRandom random = new SecureRandom();
+    private static final DefaultRedisScript<Long> VALIDATE_OTP = new DefaultRedisScript<>("""
+            local attempts = tonumber(redis.call('GET', KEYS[2]) or '0')
+            if attempts >= tonumber(ARGV[2]) then
+                return -1
+            end
+
+            if redis.call('GET', KEYS[1]) == ARGV[1] then
+                redis.call('DEL', KEYS[1], KEYS[2])
+                return 1
+            end
+
+            local newAttempts = redis.call('INCR', KEYS[2])
+            if newAttempts == 1 then
+                redis.call('PEXPIRE', KEYS[2], ARGV[3])
+            end
+            return 0
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
 
@@ -55,25 +73,14 @@ public class OtpUtil {
     public boolean validateOtp(String key, String otp, String prefix) {
         String redisKey = prefix + key;
         String attemptKey = redisKey + ATTEMPT_SUFFIX;
-
-        String attemptStr = redisTemplate.opsForValue().get(attemptKey);
-        int attempts = StringUtils.hasText(attemptStr) ? Integer.parseInt(attemptStr) : 0;
-        if (attempts >= MAX_OTP_ATTEMPTS) {
-            return false;
-        }
-
-        String storedOtp = redisTemplate.opsForValue().get(redisKey);
-        if (storedOtp != null && storedOtp.equals(otp)) {
-            redisTemplate.delete(redisKey);
-            redisTemplate.delete(attemptKey);
-            return true;
-        }
-
-        Long newAttempts = redisTemplate.opsForValue().increment(attemptKey);
-        if (newAttempts != null && newAttempts == 1) {
-            redisTemplate.expire(attemptKey, Duration.ofMinutes(ttlInMinutes));
-        }
-        return false;
+        Long result = redisTemplate.execute(
+                VALIDATE_OTP,
+                List.of(redisKey, attemptKey),
+                otp,
+                Integer.toString(MAX_OTP_ATTEMPTS),
+                Long.toString(Duration.ofMinutes(ttlInMinutes).toMillis())
+        );
+        return Long.valueOf(1L).equals(result);
     }
 
     public boolean validateSmsOtp(String phoneNumber, String otp) {
@@ -84,4 +91,3 @@ public class OtpUtil {
         return validateOtp(email, otp, EMAIL_PREFIX);
     }
 }
-

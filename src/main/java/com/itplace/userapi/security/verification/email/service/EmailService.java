@@ -5,9 +5,9 @@ import com.itplace.userapi.security.verification.email.dto.request.EmailVerifica
 
 public interface EmailService {
 
-    void send(EmailVerificationRequest request);
+    void send(EmailVerificationRequest request, String clientAddress);
 
-    void confirm(EmailConfirmRequest request);
+    void confirm(EmailConfirmRequest request, String clientAddress);
 
     boolean hasVerified(String email);
 

@@ -1,6 +1,8 @@
 package com.itplace.userapi.security.verification.email.service;
 
 import com.itplace.userapi.security.SecurityCode;
+import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService;
+import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService.VerificationChannel;
 import com.itplace.userapi.security.exception.DuplicateEmailException;
 import com.itplace.userapi.security.exception.EmailVerificationException;
 import com.itplace.userapi.security.verification.OtpUtil;
@@ -24,13 +26,15 @@ public class EmailServiceImpl implements EmailService {
     private final StringRedisTemplate redisTemplate;
     private final UserRepository userRepository;
     private final OtpUtil otpUtil;
+    private final AuthenticationAbuseProtectionService abuseProtectionService;
 
     private static final String VERIFIED_PREFIX = "email:verified:";
     private static final long VERIFIED_TTL_SECONDS = 1800;
 
     @Override
-    public void send(EmailVerificationRequest request) {
+    public void send(EmailVerificationRequest request, String clientAddress) {
         String email = request.getEmail();
+        abuseProtectionService.checkVerificationIssue(VerificationChannel.EMAIL, email, clientAddress);
 
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
 
@@ -109,7 +113,12 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void confirm(EmailConfirmRequest request) {
+    public void confirm(EmailConfirmRequest request, String clientAddress) {
+        abuseProtectionService.checkVerificationConfirm(
+                VerificationChannel.EMAIL,
+                request.getEmail(),
+                clientAddress
+        );
         if (otpUtil.validateEmailOtp(request.getEmail(), request.getVerificationCode())) {
             log.info("이메일 인증 성공");
             if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -130,11 +139,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public boolean consumeVerified(String email) {
         String key = verifiedKey(email);
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
-            redisTemplate.delete(key);
-            return true;
-        }
-        return false;
+        return "true".equals(redisTemplate.opsForValue().getAndDelete(key));
     }
 
     private String verifiedKey(String email) {

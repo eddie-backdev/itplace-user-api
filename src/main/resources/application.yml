@@ -72,6 +72,22 @@ google:
       url: https://www.google.com/recaptcha/api/siteverify
 
 app:
+  security:
+    abuse-protection:
+      enabled: ${AUTH_ABUSE_PROTECTION_ENABLED:true}
+      verification-issue-cooldown: ${AUTH_VERIFICATION_ISSUE_COOLDOWN:1m}
+      verification-issue-window: ${AUTH_VERIFICATION_ISSUE_WINDOW:1h}
+      verification-issue-per-identifier: ${AUTH_VERIFICATION_ISSUE_PER_IDENTIFIER:5}
+      verification-issue-per-ip: ${AUTH_VERIFICATION_ISSUE_PER_IP:20}
+      verification-confirm-window: ${AUTH_VERIFICATION_CONFIRM_WINDOW:10m}
+      verification-confirm-per-identifier: ${AUTH_VERIFICATION_CONFIRM_PER_IDENTIFIER:10}
+      verification-confirm-per-ip: ${AUTH_VERIFICATION_CONFIRM_PER_IP:50}
+      login-ip-window: ${AUTH_LOGIN_IP_WINDOW:1m}
+      login-per-ip: ${AUTH_LOGIN_PER_IP:30}
+      login-failure-window: ${AUTH_LOGIN_FAILURE_WINDOW:15m}
+      login-failure-threshold: ${AUTH_LOGIN_FAILURE_THRESHOLD:5}
+      login-initial-lock: ${AUTH_LOGIN_INITIAL_LOCK:30s}
+      login-max-lock: ${AUTH_LOGIN_MAX_LOCK:15m}
   map:
     cluster-summary:
       refresh:

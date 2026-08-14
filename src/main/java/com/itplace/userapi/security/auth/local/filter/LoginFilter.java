@@ -4,8 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
+import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService;
+import com.itplace.userapi.security.abuse.ClientAddressResolver;
 import com.itplace.userapi.security.auth.local.dto.CustomUserDetails;
+import com.itplace.userapi.security.auth.local.dto.request.LoginRequest;
 import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
+import com.itplace.userapi.security.exception.LoginRateLimitAuthenticationException;
 import com.itplace.userapi.security.jwt.JWTConstants;
 import com.itplace.userapi.security.jwt.JWTUtil;
 import jakarta.servlet.FilterChain;
@@ -15,7 +19,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,16 +40,28 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final CookieUtil cookieUtil;
+    private final AuthenticationAbuseProtectionService abuseProtectionService;
 
     public static final String REFRESH_TOKEN_PREFIX = "RT:";
+    private static final String LOGIN_IDENTIFIER_ATTRIBUTE = LoginFilter.class.getName() + ".identifier";
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
         try {
-            Map<String, String> requestBody = objectMapper.readValue(request.getInputStream(), Map.class);
-            String username = requestBody.get("email");
-            String password = requestBody.get("password");
+            LoginRequest requestBody = objectMapper.readValue(request.getInputStream(), LoginRequest.class);
+            String username = requestBody.getEmail();
+            String password = requestBody.getPassword();
+            request.setAttribute(LOGIN_IDENTIFIER_ATTRIBUTE, username);
+
+            if (!abuseProtectionService.isLoginAllowed(
+                    username,
+                    ClientAddressResolver.resolve(request)
+            )) {
+                throw new LoginRateLimitAuthenticationException(
+                        SecurityCode.AUTHENTICATION_RATE_LIMITED.getMessage()
+                );
+            }
 
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password,
                     null);
@@ -78,6 +93,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String key = REFRESH_TOKEN_PREFIX + userId;
         Long refreshTokenValidityInMS = jwtUtil.getRefreshTokenValidityInMS();
         redisTemplate.opsForValue().set(key, refreshToken, refreshTokenValidityInMS, TimeUnit.MILLISECONDS);
+        clearLoginFailures(request);
 
         cookieUtil.setTokensToCookie(response, accessToken, refreshToken);
 
@@ -90,11 +106,41 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException, ServletException {
-        log.info("로그인 실패");
+        boolean rateLimited = failed instanceof LoginRateLimitAuthenticationException;
+        if (rateLimited) {
+            log.info("로그인 요청 제한");
+        } else {
+            log.info("로그인 실패");
+            recordLoginFailure(request);
+        }
         response.setContentType("application/json;charset=UTF-8");
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        ApiResponse<Void> apiResponse = ApiResponse.of(SecurityCode.LOGIN_FAIL, null);
+        SecurityCode responseCode = rateLimited
+                ? SecurityCode.AUTHENTICATION_RATE_LIMITED
+                : SecurityCode.LOGIN_FAIL;
+        response.setStatus(responseCode.getStatus().value());
+        ApiResponse<Void> apiResponse = ApiResponse.of(responseCode, null);
         objectMapper.writeValue(response.getOutputStream(), apiResponse);
+    }
+
+    private void recordLoginFailure(HttpServletRequest request) {
+        try {
+            abuseProtectionService.recordLoginFailure(loginIdentifier(request));
+        } catch (RuntimeException e) {
+            log.error("로그인 실패 횟수 저장 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    private void clearLoginFailures(HttpServletRequest request) {
+        try {
+            abuseProtectionService.clearLoginFailures(loginIdentifier(request));
+        } catch (RuntimeException e) {
+            log.error("로그인 실패 횟수 초기화 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    private String loginIdentifier(HttpServletRequest request) {
+        Object identifier = request.getAttribute(LOGIN_IDENTIFIER_ATTRIBUTE);
+        return identifier instanceof String value ? value : null;
     }
 
     private LoginResponse getLoginResponse(CustomUserDetails customUserDetails) {

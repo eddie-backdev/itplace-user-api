@@ -2,10 +2,12 @@ package com.itplace.userapi.security.verification.email.controller;
 
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.SecurityCode;
+import com.itplace.userapi.security.abuse.ClientAddressResolver;
 import com.itplace.userapi.security.verification.email.dto.request.EmailConfirmRequest;
 import com.itplace.userapi.security.verification.email.dto.request.EmailVerificationRequest;
 import com.itplace.userapi.security.verification.email.service.EmailService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -24,15 +26,21 @@ public class EmailController {
     private final EmailService emailService;
 
     @PostMapping("/email")
-    public ResponseEntity<ApiResponse<Void>> send(@RequestBody @Validated EmailVerificationRequest request) {
-        emailService.send(request);
+    public ResponseEntity<ApiResponse<Void>> send(
+            @RequestBody @Validated EmailVerificationRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        emailService.send(request, ClientAddressResolver.resolve(servletRequest));
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.EMAIL_SEND_SUCCESS);
         return body.toResponseEntity();
     }
 
     @PostMapping("/email/confirm")
-    public ResponseEntity<ApiResponse<Void>> confirm(@RequestBody @Validated EmailConfirmRequest request) {
-        emailService.confirm(request);
+    public ResponseEntity<ApiResponse<Void>> confirm(
+            @RequestBody @Validated EmailConfirmRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        emailService.confirm(request, ClientAddressResolver.resolve(servletRequest));
         ApiResponse<Void> body = ApiResponse.ok(SecurityCode.EMAIL_VERIFICATION_SUCCESS);
         return body.toResponseEntity();
     }
