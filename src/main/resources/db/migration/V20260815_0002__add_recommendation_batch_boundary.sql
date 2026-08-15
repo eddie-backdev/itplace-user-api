@@ -1,5 +1,4 @@
 -- Recommendation cache batch boundary for personalized AI recommendations.
--- Production uses ddl-auto=validate, so apply before deploying entity changes.
 -- Hibernate sends these camelCase identifiers unquoted, so PostgreSQL stores them lowercase.
 
 ALTER TABLE recommendations

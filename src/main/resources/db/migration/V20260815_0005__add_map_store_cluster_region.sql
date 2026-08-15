@@ -2,9 +2,7 @@
 --
 -- StoreRepository가 지도 요청마다 주소를 정규식으로 분해하지 않도록
 -- CITY/TOWN/LEGAL_DONG 요청별 최종 행정구역을 매장 단위로 저장한다.
--- 운영은 ddl-auto=validate 이므로 애플리케이션 배포 전에 실행한다.
-
-BEGIN;
+-- Flyway가 애플리케이션 시작 전에 적용한다.
 
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '120s';
@@ -37,7 +35,8 @@ ALTER TABLE map_store_cluster_region
     ADD COLUMN IF NOT EXISTS town_region_hash CHAR(32)
         GENERATED ALWAYS AS (MD5(town_region_key)) STORED,
     ADD COLUMN IF NOT EXISTS legal_dong_region_hash CHAR(32)
-        GENERATED ALWAYS AS (MD5(legal_dong_region_key)) STORED;
+        GENERATED ALWAYS AS (MD5(legal_dong_region_key)) STORED,
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 CREATE OR REPLACE FUNCTION resolve_map_store_cluster_region(
     source_address TEXT,
@@ -288,14 +287,8 @@ ON store
 FOR EACH ROW
 EXECUTE FUNCTION sync_map_store_cluster_region();
 
-COMMIT;
 
--- 트리거를 먼저 활성화하고 장시간 백필은 별도 트랜잭션에서 수행한다.
--- 백필 도중 갱신된 매장은 트리거의 더 최신 updated_at을 보존한다.
-BEGIN;
-
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '120s';
+-- 트리거를 먼저 활성화한 뒤 기존 매장을 백필한다.
 
 INSERT INTO map_store_cluster_region (
     store_id,
@@ -341,5 +334,3 @@ ON CONFLICT (store_id) DO UPDATE SET
 WHERE map_store_cluster_region.updated_at <= EXCLUDED.updated_at;
 
 ANALYZE map_store_cluster_region;
-
-COMMIT;
