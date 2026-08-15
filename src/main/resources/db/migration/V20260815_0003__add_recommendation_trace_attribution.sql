@@ -1,5 +1,4 @@
 -- Personalized recommendation attribution and rank trace persistence.
--- Production uses ddl-auto=validate, so apply before deploying entity changes.
 -- Hibernate sends these camelCase identifiers unquoted with the current StandardImpl
 -- physical naming strategy, so PostgreSQL stores them lowercase.
 

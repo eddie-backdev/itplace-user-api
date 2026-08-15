@@ -111,7 +111,8 @@ class StoreRepositoryQueryContractTest {
     @Test
     void regionAnchorMigration_preservesExistingAnchorsOnRepeatedExecution() throws IOException {
         String sql;
-        try (InputStream input = getClass().getResourceAsStream("/db/map_region_anchor.sql")) {
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20260815_0004__add_map_region_anchor.sql")) {
             assertThat(input).isNotNull();
             sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
@@ -128,7 +129,8 @@ class StoreRepositoryQueryContractTest {
     @Test
     void storeClusterRegionMigration_backfillsAndSynchronizesPrecomputedRegions() throws IOException {
         String sql;
-        try (InputStream input = getClass().getResourceAsStream("/db/map_store_cluster_region.sql")) {
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20260815_0005__add_map_store_cluster_region.sql")) {
             assertThat(input).isNotNull();
             sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }

@@ -190,7 +190,7 @@ score component key 예:
 
 운영 환경은 `ddl-auto=validate`이므로 다음 SQL을 배포 전에 적용해야 한다.
 
-- `src/main/resources/db/recommendation_trace_attribution.sql`
+- `src/main/resources/db/migration/V20260815_0003__add_recommendation_trace_attribution.sql`
 
 ## 5. Rank trace 구조
 
@@ -349,4 +349,4 @@ sequenceDiagram
 | 질문 후보 guard | `src/main/java/com/itplace/userapi/ai/question/guard/BenefitCandidateGuard.java` |
 | Benefit RAG 검색 | `src/main/java/com/itplace/userapi/ai/rag/service/BenefitSearchServiceImpl.java` |
 | 문서화된 trace 계약 | `docs/recommendation-event-rank-trace-contract.md` |
-| DB migration | `src/main/resources/db/recommendation_trace_attribution.sql` |
+| DB migration | `src/main/resources/db/migration/V20260815_0003__add_recommendation_trace_attribution.sql` |

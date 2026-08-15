@@ -1,11 +1,9 @@
 -- 지도 행정구역 클러스터 고정 대표점 (PostgreSQL + PostGIS)
 --
--- 운영은 ddl-auto=validate 이므로 애플리케이션 배포 전에 실행한다.
+-- Flyway가 애플리케이션 시작 전에 적용한다.
 -- 최초 실행 시 현재 전체 매장 분포의 중심점을 지역별 대표점으로 저장한다.
 -- ON CONFLICT DO NOTHING으로 기존 대표점은 유지되므로 화면 이동이나 매장 추가로 흔들리지 않는다.
 -- 추후 공식 행정구역 경계의 ST_PointOnSurface 좌표를 확보하면 같은 PK로 UPDATE할 수 있다.
-
-BEGIN;
 
 CREATE TABLE IF NOT EXISTS map_region_anchor (
     region_type VARCHAR(20) NOT NULL,
@@ -19,6 +17,11 @@ CREATE TABLE IF NOT EXISTS map_region_anchor (
     PRIMARY KEY (region_type, region_key),
     CHECK (region_type IN ('CITY', 'TOWN', 'LEGAL_DONG'))
 );
+
+ALTER TABLE map_region_anchor
+    ADD COLUMN IF NOT EXISTS anchor_source VARCHAR(30) NOT NULL DEFAULT 'STORE_CENTROID',
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 COMMENT ON TABLE map_region_anchor IS
     '지도 행정구역 클러스터가 viewport와 무관하게 사용하는 고정 대표점';
@@ -204,5 +207,3 @@ SELECT
     'STORE_CENTROID'
 FROM region_summary
 ON CONFLICT (region_type, region_key) DO NOTHING;
-
-COMMIT;
