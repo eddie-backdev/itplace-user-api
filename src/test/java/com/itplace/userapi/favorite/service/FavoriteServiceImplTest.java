@@ -16,6 +16,7 @@ import com.itplace.userapi.favorite.dto.response.FavoriteDetailResponse;
 import com.itplace.userapi.favorite.dto.response.FavoriteResponse;
 import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
+import com.itplace.userapi.log.dto.ResponseLogCommand;
 import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.user.entity.Role;
@@ -68,14 +69,13 @@ class FavoriteServiceImplTest {
 
         favoriteService.removeFavorites(7L, List.of(100L));
 
-        verify(logService).saveResponseLog(
-                7L,
+        verify(logService).saveResponseLogs(7L, List.of(new ResponseLogCommand(
                 "favorite_remove",
                 100L,
                 200L,
                 "/api/v1/favorites",
                 "benefitId=100"
-        );
+        )));
         verify(favoriteRepository).deleteByUserAndBenefitIn(user, List.of(benefit));
     }
 

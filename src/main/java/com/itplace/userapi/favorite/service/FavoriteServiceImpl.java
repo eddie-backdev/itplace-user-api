@@ -15,6 +15,7 @@ import com.itplace.userapi.favorite.entity.Favorite;
 import com.itplace.userapi.favorite.FavoriteCode;
 import com.itplace.userapi.favorite.exception.DuplicateFavoriteException;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
+import com.itplace.userapi.log.dto.ResponseLogCommand;
 import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.security.SecurityCode;
@@ -59,14 +60,7 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .build();
 
         favoriteRepository.save(favorite);
-        logService.saveResponseLog(
-                userId,
-                "favorite_add",
-                benefitId,
-                benefit.getPartner() == null ? null : benefit.getPartner().getPartnerId(),
-                "/api/v1/favorites",
-                "benefitId=" + benefitId
-        );
+        logService.saveResponseLogs(userId, List.of(toFavoriteLogCommand("favorite_add", benefit)));
     }
 
     @Override
@@ -80,15 +74,20 @@ public class FavoriteServiceImpl implements FavoriteService {
             throw new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND);
         }
 
-        benefits.forEach(benefit -> logService.saveResponseLog(
-                userId,
-                "favorite_remove",
+        logService.saveResponseLogs(userId, benefits.stream()
+                .map(benefit -> toFavoriteLogCommand("favorite_remove", benefit))
+                .toList());
+        favoriteRepository.deleteByUserAndBenefitIn(user, benefits);
+    }
+
+    private ResponseLogCommand toFavoriteLogCommand(String event, Benefit benefit) {
+        return new ResponseLogCommand(
+                event,
                 benefit.getBenefitId(),
                 benefit.getPartner() == null ? null : benefit.getPartner().getPartnerId(),
                 "/api/v1/favorites",
                 "benefitId=" + benefit.getBenefitId()
-        ));
-        favoriteRepository.deleteByUserAndBenefitIn(user, benefits);
+        );
     }
 
 
