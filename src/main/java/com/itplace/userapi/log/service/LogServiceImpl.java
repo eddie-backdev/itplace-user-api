@@ -3,6 +3,7 @@ package com.itplace.userapi.log.service;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.log.dto.RankResult;
+import com.itplace.userapi.log.dto.ResponseLogCommand;
 import com.itplace.userapi.log.dto.response.SearchRankResponse;
 import com.itplace.userapi.log.entity.LogDocument;
 import com.itplace.userapi.log.repository.LogRepository;
@@ -17,8 +18,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -60,31 +64,67 @@ public class LogServiceImpl implements LogService {
         logRepository.save(logDocument);
     }
 
-    // 검색, 상세
+    // 검색, 상세, 관심 혜택
     @Override
-    public void saveResponseLog(Long userId, String event, Long benefitId, Long partnerId, String path, String param) {
-        Optional<Benefit> benefitOpt = benefitRepository.findById(benefitId);
-        if (benefitOpt.isEmpty()) {
+    @Async("logTaskExecutor")
+    public void saveResponseLogs(Long userId, List<ResponseLogCommand> commands) {
+        if (userId == null || commands == null || commands.isEmpty()) {
             return;
         }
-        Benefit benefit = benefitOpt.get();
-        String partnerName = benefit.getPartner().getPartnerName();
 
-        log.info("RESPONSE: {}, path={}, event={}, benefitId={}, partnerId={}",
-                userId, path, event, benefitId, partnerId);
+        try {
+            List<Long> benefitIds = commands.stream()
+                    .map(ResponseLogCommand::benefitId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (benefitIds.isEmpty()) {
+                return;
+            }
 
-        LogDocument logDocument = LogDocument.builder()
+            Map<Long, Benefit> benefitById = benefitRepository.findAllByIdWithPartner(benefitIds).stream()
+                    .collect(Collectors.toMap(Benefit::getBenefitId, Function.identity()));
+            Instant loggingAt = Instant.now();
+            List<LogDocument> documents = commands.stream()
+                    .map(command -> toResponseLogDocument(userId, command, benefitById.get(command.benefitId()), loggingAt))
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            if (documents.isEmpty()) {
+                return;
+            }
+
+            logRepository.saveAll(documents);
+            log.debug("응답 로그 일괄 저장 완료: userId={}, count={}", userId, documents.size());
+        } catch (RuntimeException e) {
+            log.warn("응답 로그 일괄 저장 실패: userId={}, requestedCount={}", userId, commands.size(), e);
+        }
+    }
+
+    private LogDocument toResponseLogDocument(
+            Long userId,
+            ResponseLogCommand command,
+            Benefit benefit,
+            Instant loggingAt
+    ) {
+        if (benefit == null) {
+            return null;
+        }
+
+        Partner partner = benefit.getPartner();
+        Long partnerId = command.partnerId() != null
+                ? command.partnerId()
+                : partner == null ? null : partner.getPartnerId();
+        return LogDocument.builder()
                 .userId(userId)
-                .event(event)
-                .benefitId(benefitId)
+                .event(command.event())
+                .benefitId(command.benefitId())
                 .benefitName(benefit.getBenefitName())
                 .partnerId(partnerId)
-                .partnerName(partnerName)
-                .path(path)
-                .param(param)
-                .loggingAt(Instant.now())
+                .partnerName(partner == null ? null : partner.getPartnerName())
+                .path(command.path())
+                .param(command.param())
+                .loggingAt(loggingAt)
                 .build();
-        logRepository.save(logDocument);
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
 import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.common.ApiResponse;
+import com.itplace.userapi.log.dto.ResponseLogCommand;
 import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import jakarta.servlet.http.HttpServletRequest;
@@ -72,14 +73,13 @@ public class BenefitLogAdvice implements ResponseBodyAdvice<Object> {
 
                 log.info("data : {}", data.toString());
                 long benefitId = detail.getBenefitId();
-                logService.saveResponseLog(
-                        userId,
+                logService.saveResponseLogs(userId, List.of(new ResponseLogCommand(
                         event,
                         benefitId,
                         partnerId,
                         path,
                         param
-                );
+                )));
             }
             return body;
         }
@@ -87,21 +87,20 @@ public class BenefitLogAdvice implements ResponseBodyAdvice<Object> {
         Object content = dataRes.getContent();
         String keyword = req.getParameter("keyword");
         if (content instanceof List<?> list && keyword != null && !keyword.isBlank()) {
-            for (Object item : list) {
-                if (item instanceof BenefitListResponse benefit) {
-                    log.info("==== saveResonseLog(search) 저장 ====");
-                    long benefitId = benefit.getBenefitId();
-                    partnerId = benefit.getPartnerId();
-
-                    logService.saveResponseLog(
-                            userId,
+            List<ResponseLogCommand> commands = list.stream()
+                    .filter(BenefitListResponse.class::isInstance)
+                    .map(BenefitListResponse.class::cast)
+                    .map(benefit -> new ResponseLogCommand(
                             "search",
-                            benefitId,
-                            partnerId,
+                            benefit.getBenefitId(),
+                            benefit.getPartnerId(),
                             path,
                             param
-                    );
-                }
+                    ))
+                    .toList();
+            if (!commands.isEmpty()) {
+                log.info("검색 응답 로그 {}건 저장 요청", commands.size());
+                logService.saveResponseLogs(userId, commands);
             }
         }
         return body;
