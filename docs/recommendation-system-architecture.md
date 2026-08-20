@@ -20,7 +20,13 @@
   - `@AuthenticationPrincipal PrincipalDetails`에서 `userId`를 가져와 서비스 호출.
 - `recommend/service/RecommendationServiceImpl.java`
   - 개인화 추천 orchestration 담당.
-  - 캐시 조회, invalidation 판단, 사용자 feature 로딩, 후보 검색, 재랭킹, 저장, trace 기록을 수행.
+  - 캐시 조회, invalidation 판단, single-flight 조율, 사용자 feature 로딩, 후보 검색, 재랭킹, trace 기록을 수행.
+- `recommend/service/RedisRecommendationGenerationLock.java`
+  - 사용자별 Redis lock으로 동시 cache miss의 중복 embedding/검색/LLM 호출을 막는다.
+  - 고유 token과 TTL을 사용하고 Lua compare-and-delete로 소유자만 lock을 해제한다.
+- `recommend/service/RecommendationPersistenceService.java`
+  - source DB 기반 active batch 조회와 persistent invalidation 확인을 담당한다.
+  - 기존 batch 비활성화와 새 batch 저장을 외부 호출과 분리된 짧은 transaction으로 처리한다.
 - `recommend/service/UserFeatureServiceImpl.java`
   - 사용자 profile, Mongo 행동 로그, 즐겨찾기를 `UserFeature`로 조립.
 - `recommend/service/OpenAIServiceImpl.java`
@@ -61,30 +67,40 @@ sequenceDiagram
     participant Client
     participant Controller as RecommendationController
     participant Service as RecommendationServiceImpl
-    participant Cache as RecommendationRepository
+    participant Store as RecommendationPersistenceService
+    participant Lock as RedisRecommendationGenerationLock
     participant Feature as UserFeatureServiceImpl
     participant RAG as OpenAIServiceImpl + BenefitSearchService
     participant Trace as RecommendationTraceRecorder
 
     Client->>Controller: GET /api/v1/recommendations?topK=...
     Controller->>Service: recommend(userId, topK)
-    Service->>Cache: 최근 active batch 조회
+    Service->>Store: source DB 최근 active batch 조회
     alt cache hit and no invalidating signal
-        Cache-->>Service: saved recommendations
+        Store-->>Service: saved recommendations
         Service->>Service: 새 requestId/impressionId 부여
         Service->>Trace: recordCached(...)
         Service-->>Controller: cached recommendations
     else cache miss / refresh
-        Service->>Feature: loadUserFeature(userId)
-        Feature-->>Service: UserFeature
-        Service->>RAG: vectorSearch(UserFeature, candidateSize)
-        RAG-->>Service: Candidate list
-        Service->>RAG: rerankAndExplain(UserFeature, candidates, topK)
-        RAG-->>Service: Recommendations
-        Service->>Service: requestId/impressionId/algorithmVersion 부여
-        Service->>Cache: 기존 active 비활성화 + 새 추천 저장
-        Service->>Trace: recordGenerated(...)
-        Service-->>Controller: generated recommendations
+        Service->>Lock: recommendation:generation:{userId} 획득
+        Lock-->>Service: lease
+        Service->>Store: source DB active batch 재확인
+        alt 대기 중 다른 요청이 저장함
+            Store-->>Service: saved recommendations
+            Service->>Trace: recordCached(...)
+        else 여전히 cache miss / refresh
+            Service->>Feature: loadUserFeature(userId)
+            Feature-->>Service: UserFeature
+            Service->>RAG: vectorSearch(UserFeature, candidateSize)
+            RAG-->>Service: Candidate list
+            Service->>RAG: rerankAndExplain(UserFeature, candidates, topK)
+            RAG-->>Service: Recommendations
+            Service->>Service: requestId/impressionId/algorithmVersion 부여
+            Service->>Store: 짧은 transaction으로 active batch 교체
+            Service->>Trace: recordGenerated(...)
+        end
+        Service->>Lock: token 일치 시 lease 해제
+        Service-->>Controller: cached or generated recommendations
     end
     Controller-->>Client: ApiResponse<List<Recommendations>>
 ```
@@ -98,6 +114,10 @@ sequenceDiagram
   - Favorite 생성일 변경
   - User profile `lastModifiedDate` 변경
 - cache hit 응답도 요청별 새 `requestId`와 `impressionId`를 부여하고 `cached_recommendation` fallback flag를 남긴다.
+- cache miss는 사용자별 Redis single-flight lock을 획득한 뒤 source DB에서 다시 확인한다. 이 재확인은 replica lag 때문에 동일 추천을 중복 생성하는 상황을 막는다.
+- lock lease는 90초, 대기는 최대 35초이며 대기 초과 또는 Redis 오류는 `RECOMMENDATION_GENERATION_BUSY`(HTTP 503)로 응답한다.
+- MongoDB 행동 집계, OpenAI embedding, Elasticsearch, OpenAI chat 호출은 PostgreSQL transaction 밖에서 실행한다.
+- `RecommendationPersistenceService#replaceActiveBatch`만 기존 active 비활성화와 신규 batch 저장을 하나의 짧은 transaction으로 묶는다.
 
 ### 3.2 UserFeature 생성
 
