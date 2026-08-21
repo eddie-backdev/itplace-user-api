@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,7 @@ public class RedisRecommendationGenerationLock implements RecommendationGenerati
     private final Duration waitTimeout;
     private final Duration retryInterval;
 
+    @Autowired
     public RedisRecommendationGenerationLock(StringRedisTemplate redisTemplate) {
         this(redisTemplate, DEFAULT_LEASE_DURATION, DEFAULT_WAIT_TIMEOUT, DEFAULT_RETRY_INTERVAL);
     }
