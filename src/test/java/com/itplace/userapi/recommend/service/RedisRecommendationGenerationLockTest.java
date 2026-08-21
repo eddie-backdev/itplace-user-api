@@ -1,5 +1,6 @@
 package com.itplace.userapi.recommend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -12,12 +13,12 @@ import static org.mockito.Mockito.when;
 import com.itplace.userapi.recommend.exception.RecommendationGenerationBusyException;
 import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -34,9 +35,16 @@ class RedisRecommendationGenerationLockTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
-    @BeforeEach
-    void setUp() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    @Test
+    void component_usesRedisTemplateConstructor() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(StringRedisTemplate.class, () -> redisTemplate);
+            context.register(RedisRecommendationGenerationLock.class);
+
+            assertThatCode(context::refresh).doesNotThrowAnyException();
+            assertThat(context.getBean(RecommendationGenerationLock.class))
+                    .isInstanceOf(RedisRecommendationGenerationLock.class);
+        }
     }
 
     @Test
@@ -91,6 +99,7 @@ class RedisRecommendationGenerationLockTest {
     }
 
     private RedisRecommendationGenerationLock lock(Duration waitTimeout) {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         return new RedisRecommendationGenerationLock(
                 redisTemplate,
                 LEASE_DURATION,

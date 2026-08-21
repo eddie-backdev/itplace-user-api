@@ -51,19 +51,47 @@ OLD_CONTAINER="userapi-${ACTIVE}"
 IMAGE="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 LOCAL_IMAGE="${LOCAL_IMAGE_NAME}:${IMAGE_TAG}"
 SWITCHED_TO_NEW="false"
+UPSTREAM_UPDATE_STARTED="false"
+UPSTREAM_BACKUP=""
 
-cleanup_old_container() {
-  if [[ "${SWITCHED_TO_NEW}" != "true" ]]; then
-    return 0
-  fi
-
-  if docker ps -a --format '{{.Names}}' | grep -qx "${OLD_CONTAINER}"; then
-    echo "[userapi] removing old container ${OLD_CONTAINER}"
-    docker rm -f "${OLD_CONTAINER}" >/dev/null 2>&1 || true
-  fi
+print_new_container_diagnostics() {
+  echo "[userapi] new container diagnostics: ${NEW_CONTAINER}" >&2
+  docker inspect -f \
+    'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} restartCount={{.RestartCount}}' \
+    "${NEW_CONTAINER}" >&2 || true
+  docker logs --tail 200 "${NEW_CONTAINER}" >&2 || true
 }
 
-trap cleanup_old_container EXIT
+cleanup_containers() {
+  local exit_code=$?
+
+  if [[ "${SWITCHED_TO_NEW}" == "true" ]]; then
+    if docker ps -a --format '{{.Names}}' | grep -qx "${OLD_CONTAINER}"; then
+      echo "[userapi] removing old container ${OLD_CONTAINER}"
+      docker rm -f "${OLD_CONTAINER}" >/dev/null 2>&1 || true
+    fi
+    return "${exit_code}"
+  fi
+
+  if [[ "${exit_code}" -ne 0 ]]; then
+    if [[ "${UPSTREAM_UPDATE_STARTED}" == "true" && -f "${UPSTREAM_BACKUP}" ]]; then
+      echo "[userapi] restoring previous Nginx upstream"
+      cp "${UPSTREAM_BACKUP}" "${UPSTREAM_FILE}"
+      docker exec "${NGINX_CONTAINER}" nginx -t >/dev/null 2>&1 || true
+      docker exec "${NGINX_CONTAINER}" nginx -s reload >/dev/null 2>&1 || true
+    fi
+
+    if docker ps -a --format '{{.Names}}' | grep -qx "${NEW_CONTAINER}"; then
+      echo "[userapi] removing failed container ${NEW_CONTAINER}"
+      docker rm -f "${NEW_CONTAINER}" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  [[ -z "${UPSTREAM_BACKUP}" ]] || rm -f "${UPSTREAM_BACKUP}"
+  return "${exit_code}"
+}
+
+trap cleanup_containers EXIT
 
 echo "[userapi] active=${ACTIVE}, inactive=${INACTIVE}"
 echo "[userapi] deploying image=${IMAGE}"
@@ -104,14 +132,27 @@ for ((i=1; i<=HEALTH_CHECK_MAX_ATTEMPTS; i++)); do
     break
   fi
 
+  CONTAINER_STATUS="$(docker inspect -f '{{.State.Status}}' "${NEW_CONTAINER}")"
+  CONTAINER_RESTART_COUNT="$(docker inspect -f '{{.RestartCount}}' "${NEW_CONTAINER}")"
+  if [[ "${CONTAINER_STATUS}" != "running" || "${CONTAINER_RESTART_COUNT}" -gt 0 ]] \
+      || docker logs "${NEW_CONTAINER}" 2>&1 | grep -q 'Application run failed'; then
+    echo "[userapi] new container failed during startup"
+    print_new_container_diagnostics
+    exit 1
+  fi
+
   if [[ "${i}" -eq "${HEALTH_CHECK_MAX_ATTEMPTS}" ]]; then
     echo "[userapi] health check failed"
-    docker logs "${NEW_CONTAINER}" || true
+    print_new_container_diagnostics
     exit 1
   fi
 
   sleep "${HEALTH_CHECK_INTERVAL_SECONDS}"
 done
+
+UPSTREAM_BACKUP="$(mktemp "${UPSTREAM_FILE}.backup.XXXXXX")"
+cp "${UPSTREAM_FILE}" "${UPSTREAM_BACKUP}"
+UPSTREAM_UPDATE_STARTED="true"
 
 cat > "${UPSTREAM_FILE}" <<EOF
 upstream userapi_active {
@@ -125,7 +166,10 @@ docker exec "${NGINX_CONTAINER}" nginx -s reload
 echo "[userapi] switched traffic to ${NEW_CONTAINER}"
 
 SWITCHED_TO_NEW="true"
-cleanup_old_container
+UPSTREAM_UPDATE_STARTED="false"
+rm -f "${UPSTREAM_BACKUP}"
+UPSTREAM_BACKUP=""
+cleanup_containers
 
 if docker ps -a --format '{{.Names}}' | grep -qx "${OLD_CONTAINER}"; then
   echo "[userapi] old container still exists after cleanup: ${OLD_CONTAINER}" >&2
