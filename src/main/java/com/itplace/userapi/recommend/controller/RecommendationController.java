@@ -5,6 +5,8 @@ import com.itplace.userapi.recommend.dto.response.Recommendations;
 import com.itplace.userapi.recommend.RecommendationCode;
 import com.itplace.userapi.recommend.service.RecommendationServiceImpl;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,12 +27,11 @@ public class RecommendationController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Recommendations>>> recommend(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @RequestParam(defaultValue = "10") int topK) {
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int topK) {
 
         Long userId = principalDetails.getUserId();
         List<Recommendations> result = recommendationService.recommend(userId, topK);
         return ResponseEntity.ok(ApiResponse.of(RecommendationCode.RECOMMENDATION_SUCCESS, result));
     }
 }
-
 

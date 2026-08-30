@@ -12,6 +12,8 @@ import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import com.itplace.userapi.user.repository.UserRepository;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.io.IOException;
@@ -19,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,7 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/questions")
-@Validated
 @Deprecated(forRemoval = false)
 public class QuestionSearchController {
 
@@ -80,8 +80,8 @@ public class QuestionSearchController {
     @GetMapping("/recommend")
     public ResponseEntity<ApiResponse<RecommendationResponse>> recommend(
             @RequestParam @NotBlank @Size(max = 200) String question,
-            @RequestParam double lat,
-            @RequestParam double lng,
+            @RequestParam @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
             @RequestParam(required = false) Carrier carrier,
             @RequestParam(required = false) Grade grade,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {

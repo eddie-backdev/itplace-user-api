@@ -17,6 +17,7 @@ public enum BenefitCode implements BaseCode {
     BENEFIT_TYPE_NOT_FOUND("BENEFIT_TYPE_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 benefit type입니다."),
     MAIN_CATEGORY_NOT_FOUND("MAIN_CATEGORY_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 main category입니다."),
     USAGE_TYPE_NOT_FOUND("USAGE_TYPE_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 usage type입니다."),
+    INVALID_CARRIER_FILTER("INVALID_CARRIER_FILTER", HttpStatus.BAD_REQUEST, "지원하지 않는 통신사 필터입니다."),
 
     BENEFIT_OFFLINE_NOT_FOUND("BENEFIT_OFFLINE_NOT_FOUND", HttpStatus.OK, "오프라인 사용 가능한 혜택이 존재하지 않습니다."),
     INVALID_GRADE_FOR_BENEFIT("INVALID_GRADE_FOR_BENEFIT", HttpStatus.BAD_REQUEST, "해당 등급은 이 혜택을 사용할 수 없습니다."),

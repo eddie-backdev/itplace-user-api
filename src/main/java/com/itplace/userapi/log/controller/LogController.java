@@ -4,6 +4,8 @@ import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.log.LogCode;
 import com.itplace.userapi.log.dto.response.SearchRankResponse;
 import com.itplace.userapi.log.service.LogService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +23,8 @@ public class LogController {
 
     @GetMapping("/partners/search-ranking")
     public ResponseEntity<ApiResponse<List<SearchRankResponse>>> getPartnerRanking(
-            @RequestParam(defaultValue = "2") int recentDay,
-            @RequestParam(defaultValue = "3") int prevDay) {
+            @RequestParam(defaultValue = "2") @Min(1) @Max(365) int recentDay,
+            @RequestParam(defaultValue = "3") @Min(1) @Max(365) int prevDay) {
         List<SearchRankResponse> searchRank = logService.searchRank(recentDay, prevDay);
         ApiResponse<List<SearchRankResponse>> body = ApiResponse.of(LogCode.PARTNERS_SEARCH_RANKING_SUCCESS, searchRank);
 

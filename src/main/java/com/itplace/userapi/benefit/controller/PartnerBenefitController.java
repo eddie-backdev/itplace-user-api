@@ -7,15 +7,16 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.service.PartnerBenefitBrowseService;
+import com.itplace.userapi.benefit.support.CarrierFilterResolver;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
-import java.util.Arrays;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +24,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @io.swagger.v3.oas.annotations.tags.Tag(name = "Benefit", description = "제휴사 혜택 정보 조회 관련 API")
 @RestController
@@ -42,12 +42,18 @@ public class PartnerBenefitController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Carrier carrier,
             @RequestParam(required = false) List<String> carriers,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "12") @Min(1) @Max(100) int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
         PageResult<PartnerBenefitListResponse> result = partnerBenefitBrowseService.getPartners(
-                mainCategory, category, filter, sort, keyword, resolveCarriers(carrier, carriers), pageable
+                mainCategory,
+                category,
+                filter,
+                sort,
+                keyword,
+                CarrierFilterResolver.resolve(carrier, carriers),
+                pageable
         );
         return ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result).toResponseEntity();
     }
@@ -65,21 +71,4 @@ public class PartnerBenefitController {
         return ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, result).toResponseEntity();
     }
 
-    private List<Carrier> resolveCarriers(Carrier carrier, List<String> carriers) {
-        if (carriers == null || carriers.isEmpty()) {
-            return carrier == null ? List.of() : List.of(carrier);
-        }
-        try {
-            List<Carrier> parsedCarriers = carriers.stream()
-                    .flatMap(value -> Arrays.stream(value.split(",")))
-                    .map(String::trim)
-                    .filter(value -> !value.isBlank())
-                    .map(Carrier::valueOf)
-                    .distinct()
-                    .toList();
-            return parsedCarriers.isEmpty() && carrier != null ? List.of(carrier) : parsedCarriers;
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 통신사 필터입니다.", exception);
-        }
-    }
 }
