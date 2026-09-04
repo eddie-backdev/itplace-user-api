@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,7 @@ import org.springframework.data.redis.connection.RedisStringCommands;
 class CacheConfigTest {
 
     @Test
-    void partnerBenefitsCacheIsRegisteredWithStatisticsEnabled() {
+    void cachesAreRegisteredWithStatisticsAndPurposeSpecificTtl() {
         RedisConnectionFactory connectionFactory = mock(RedisConnectionFactory.class);
         RedisConnection connection = mock(RedisConnection.class);
         RedisStringCommands stringCommands = mock(RedisStringCommands.class);
@@ -30,7 +32,12 @@ class CacheConfigTest {
         CacheManager cacheManager = new CacheConfig().cacheManager(connectionFactory);
         ((RedisCacheManager) cacheManager).afterPropertiesSet();
 
-        assertThat(cacheManager.getCacheNames()).contains("partner-benefits");
+        assertThat(cacheManager.getCacheNames()).contains("partner-benefits", "map-store-clusters");
+        RedisCacheManager redisCacheManager = (RedisCacheManager) cacheManager;
+        assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits").getTtl())
+                .isEqualTo(Duration.ofHours(1));
+        assertThat(redisCacheManager.getCacheConfigurations().get("map-store-clusters").getTtl())
+                .isEqualTo(Duration.ofMinutes(1));
         RedisCache cache = (RedisCache) cacheManager.getCache("partner-benefits");
         assertThat(cache).isNotNull();
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();

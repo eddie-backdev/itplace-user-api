@@ -48,13 +48,21 @@
     </appender>
 
     <!-- 로컬 환경 -->
-    <springProfile name="local">
+    <springProfile name="local &amp; !loadtest">
         <logger name="com.itplace.userapi" level="DEBUG"/>
         <logger name="org.springframework.web" level="DEBUG"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
             <appender-ref ref="ERROR_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 부하 테스트에서는 요청 경로의 콘솔·파일 로그 I/O를 측정에서 제외한다. -->
+    <springProfile name="loadtest">
+        <logger name="com.itplace.userapi" level="WARN"/>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 

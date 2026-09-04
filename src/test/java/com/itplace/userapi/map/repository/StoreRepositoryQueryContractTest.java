@@ -38,22 +38,19 @@ class StoreRepositoryQueryContractTest {
 
         assertThat(sql)
                 .contains(
-                        "WITH visible_region AS",
-                        "JOIN map_store_cluster_region mapped ON mapped.store_id = s.storeId",
-                        "CASE :administrativeUnitType",
-                        "mapped.city_region_hash",
-                        "mapped.town_region_hash",
-                        "mapped.legal_dong_region_hash",
-                        "JOIN map_region_store_summary summary",
+                        "WITH summarized_region AS MATERIALIZED",
+                        "FROM map_region_store_summary summary",
+                        "JOIN map_region_anchor region_anchor",
                         "summary.aggregation_unit = :administrativeUnitType",
-                        "summary.region_hash = visible.region_hash",
                         "SUM(summary.store_count)",
-                        "summarized_region AS MATERIALIZED",
-                        "CAST(:minLng AS NUMERIC)",
-                        "CAST(:minLat AS NUMERIC)",
-                        "s.location && ST_MakeEnvelope"
+                        "region_anchor.longitude BETWEEN :minLng AND :maxLng",
+                        "region_anchor.latitude BETWEEN :minLat AND :maxLat"
                 )
                 .doesNotContain(
+                        "FROM store s",
+                        "JOIN map_store_cluster_region",
+                        "WITH visible_region AS",
+                        "ST_MakeEnvelope",
                         "selected_region AS MATERIALIZED",
                         "region_summary AS",
                         "regexp_split_to_array",
@@ -72,18 +69,9 @@ class StoreRepositoryQueryContractTest {
         String sql = queryValue("findStoreClustersInView");
 
         assertThat(sql).contains(
-                "FROM visible_region visible",
-                "JOIN map_region_store_summary summary",
-                "summary.region_type = visible.region_type",
-                "summary.region_hash = visible.region_hash"
-        );
-
-        String finalLookupSql = sql.substring(sql.indexOf("FROM summarized_region summarized"));
-        assertThat(finalLookupSql).doesNotContain(
-                "FROM store s",
-                "ST_MakeEnvelope",
-                "s.longitude BETWEEN",
-                "s.latitude BETWEEN"
+                "FROM map_region_store_summary summary",
+                "summary.aggregation_unit = :administrativeUnitType",
+                "CAST(SUM(summary.store_count) AS BIGINT)"
         );
     }
 
@@ -94,10 +82,10 @@ class StoreRepositoryQueryContractTest {
         assertThat(sql)
                 .contains(
                         "JOIN map_region_anchor region_anchor",
-                        "region_anchor.region_type = summarized.region_type",
-                        "region_anchor.region_key = summarized.region_key",
-                        "region_anchor.latitude AS \"latitude\"",
-                        "region_anchor.longitude AS \"longitude\""
+                        "region_anchor.region_type = summary.region_type",
+                        "region_anchor.region_key = summary.region_key",
+                        "summarized.latitude AS \"latitude\"",
+                        "summarized.longitude AS \"longitude\""
                 )
                 .doesNotContain(
                         "LEFT JOIN map_region_anchor",
@@ -171,8 +159,13 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void clusterQuery_excludesDaracPlacesOutsideStorageBusiness() {
-        String sql = queryValue("findStoreClustersInView");
+    void regionStoreSummary_excludesDaracPlacesOutsideStorageBusiness() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20260806_0001__add_map_region_store_summary.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
 
         assertThat(sql).contains(
                 "REGEXP_REPLACE(",
@@ -222,7 +215,6 @@ class StoreRepositoryQueryContractTest {
                 "findStoreIdsByCategoryWithinRadius",
                 "findDistributedStoreIdsWithinRadius",
                 "findStorePreviewsInView",
-                "findStoreClustersInView",
                 "searchNearbyStoreIds",
                 "searchNearbyStoreIdsByPartnerId",
                 "searchNearbyStoreIdsByPartnerIds"
@@ -237,6 +229,25 @@ class StoreRepositoryQueryContractTest {
                         "COALESCE(bcp.active, true) = true",
                         "bcp.usageType IN ('offline', 'both')"
                 ));
+    }
+
+    @Test
+    void clusterLookupMigration_indexesViewportAndSummaryJoin() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20260904_0001__index_map_region_cluster_lookup.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        assertThat(sql).contains(
+                "CREATE INDEX IF NOT EXISTS idx_map_region_anchor_viewport",
+                "ON map_region_anchor (latitude, longitude)",
+                "CREATE INDEX IF NOT EXISTS idx_map_region_store_summary_cluster_lookup",
+                "ON map_region_store_summary (aggregation_unit, category, region_type, region_key)",
+                "ANALYZE map_region_anchor",
+                "ANALYZE map_region_store_summary"
+        );
     }
 
     @Test

@@ -1,10 +1,14 @@
 package com.itplace.userapi.map.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MapStoreClusterResponse {
     private String clusterId;
     private String category;

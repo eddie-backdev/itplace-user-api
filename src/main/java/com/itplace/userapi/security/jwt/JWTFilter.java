@@ -43,7 +43,8 @@ public class JWTFilter extends OncePerRequestFilter {
 
         // 2) 토큰이 없으면 다음 필터로 패스
         if (token == null) {
-            log.info("쿠키에 토큰이 없습니다.");
+            // 공개 API에서는 인증 쿠키가 없는 요청이 정상 흐름이므로 요청마다 INFO 로그를 남기지 않는다.
+            log.debug("쿠키에 토큰이 없습니다.");
             filterChain.doFilter(request, response);
             return;
         }

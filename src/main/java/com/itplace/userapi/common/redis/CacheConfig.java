@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -22,6 +23,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class CacheConfig {
 
     private static final String PARTNER_BENEFITS_CACHE = "partner-benefits";
+    private static final String MAP_STORE_CLUSTERS_CACHE = "map-store-clusters";
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
@@ -39,15 +41,18 @@ public class CacheConfig {
         GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(mapper);
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(1))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(serializer));
 
         return RedisCacheManager.builder(redisConnectionFactory)
-                .cacheDefaults(config)
-                .initialCacheNames(Set.of(PARTNER_BENEFITS_CACHE))
+                .cacheDefaults(config.entryTtl(Duration.ofHours(1)))
+                .initialCacheNames(Set.of(PARTNER_BENEFITS_CACHE, MAP_STORE_CLUSTERS_CACHE))
+                .withInitialCacheConfigurations(Map.of(
+                        PARTNER_BENEFITS_CACHE, config.entryTtl(Duration.ofHours(1)),
+                        MAP_STORE_CLUSTERS_CACHE, config.entryTtl(Duration.ofMinutes(1))
+                ))
                 .enableStatistics()
                 .build();
     }
