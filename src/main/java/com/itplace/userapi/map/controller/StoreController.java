@@ -71,7 +71,7 @@ public class StoreController {
             @RequestParam(value = "category", required = false) String category,
             @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
             @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng,
-            @RequestParam(value = "limit", defaultValue = "500") @Min(1) @Max(2000) int limit,
+            @RequestParam(value = "limit", defaultValue = "300") @Min(1) @Max(2000) int limit,
             @RequestParam(value = "includeBenefits", defaultValue = "true") boolean includeBenefits
     ) {
         List<MapStorePreviewResponse> stores = storeService.findStoresInViewPreviews(

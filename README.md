@@ -79,6 +79,8 @@ KAKAO_REST_API_KEY=
 ./gradlew bootRun
 ```
 
+지도 API 성능을 재현할 때는 일반 개발 실행과 분리된 `local,loadtest` 프로필을 사용합니다. 커넥션 풀 단계별 비교와 필수 수집 지표는 [지도 API 부하 테스트 가이드](docs/map-load-testing.md)를 참고합니다.
+
 기본 프로필은 `local`이며, 사용자 API는 로컬에서 `8080` 포트를 사용합니다.
 
 ## 검증 및 빌드

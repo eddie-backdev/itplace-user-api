@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +50,7 @@ public class StoreServiceImpl implements StoreService {
     private static final int CANDIDATE_FETCH_MULTIPLIER = 3;
     private static final int STORE_CANDIDATE_FETCH_LIMIT = FINAL_LIMIT * CANDIDATE_FETCH_MULTIPLIER;
     private static final int MAP_STORES_PER_CELL = 12;
-    private static final int DEFAULT_MAP_IN_VIEW_PREVIEW_LIMIT = 500;
+    private static final int DEFAULT_MAP_IN_VIEW_PREVIEW_LIMIT = 300;
     private static final int MAX_MAP_IN_VIEW_PREVIEW_LIMIT = 2000;
     private static final int MIN_SUPPORTED_MAP_LEVEL = 1;
     private static final int MAX_SUPPORTED_MAP_LEVEL = 14;
@@ -57,6 +58,12 @@ public class StoreServiceImpl implements StoreService {
     private static final double CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 2.0;
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            value = "map-store-clusters",
+            key = "#minLat + ':' + #minLng + ':' + #maxLat + ':' + #maxLng + ':'"
+                    + " + (#category ?: 'ALL') + ':' + #mapLevel",
+            sync = true
+    )
     public List<MapStoreClusterResponse> findStoreClustersInView(double minLat, double minLng, double maxLat,
                                                                  double maxLng, String category, int mapLevel) {
         double normalizedMinLat = Math.min(minLat, maxLat);
@@ -84,7 +91,7 @@ public class StoreServiceImpl implements StoreService {
                         administrativeUnit.name()
                 ).stream()
                 .map(projection -> toMapStoreClusterResponse(projection, normalizedMapLevel))
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private int normalizeMapLevel(int mapLevel) {
