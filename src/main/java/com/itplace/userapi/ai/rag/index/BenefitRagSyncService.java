@@ -11,8 +11,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
 import com.itplace.userapi.ai.rag.service.ElasticService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
-import com.itplace.userapi.benefit.entity.Benefit;
-import com.itplace.userapi.benefit.repository.BenefitRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -36,10 +33,9 @@ public class BenefitRagSyncService {
     private static final int RECONCILIATION_PAGE_SIZE = 1000;
 
     private final ElasticsearchClient esClient;
-    private final BenefitRepository benefitRepository;
     private final ElasticService elasticService;
     private final EmbeddingService embeddingService;
-    private final BenefitRagDocumentBuilder documentBuilder;
+    private final BenefitRagSourceQueryService sourceQueryService;
 
     @Value("${app.ai.benefits.sync.enabled:false}")
     private boolean syncEnabled;
@@ -64,11 +60,11 @@ public class BenefitRagSyncService {
         }
     }
 
-    @Transactional(readOnly = true)
     public SyncResult syncAll() throws Exception {
         elasticService.createIndexIfNotExists(INDEX_NAME);
 
-        int scannedBenefits = 0;
+        BenefitRagSourceQueryService.SourceSnapshot sourceSnapshot = sourceQueryService.loadSourceSnapshot();
+        int scannedBenefits = sourceSnapshot.scannedBenefits();
         int candidateDocuments = 0;
         int upsertedDocuments = 0;
         int skippedDocuments = 0;
@@ -77,33 +73,30 @@ public class BenefitRagSyncService {
         int failedDocuments = 0;
         Set<String> currentDocumentIds = new LinkedHashSet<>();
 
-        for (Benefit benefit : benefitRepository.findAllWithPartnerAndTierBenefits()) {
-            scannedBenefits++;
-            for (BenefitRagDocumentBuilder.PendingBenefitDocument pending : documentBuilder.buildPendingDocuments(benefit)) {
-                candidateDocuments++;
-                BenefitDocument document = pending.document();
-                currentDocumentIds.add(document.getDocumentId());
-                try {
-                    if (isCurrent(document)) {
-                        skippedDocuments++;
-                        continue;
-                    }
-
-                    BenefitDocument upsertDocument = pending.withEmbedding(embeddingService.embed(pending.searchableText()));
-                    esClient.index(i -> i
-                            .index(INDEX_NAME)
-                            .id(upsertDocument.getDocumentId())
-                            .document(upsertDocument)
-                    );
-                    upsertedDocuments++;
-
-                    if (delayMs > 0) {
-                        Thread.sleep(delayMs);
-                    }
-                } catch (Exception e) {
-                    failedDocuments++;
-                    log.warn("혜택 RAG 문서 동기화 실패: documentId={}, reason={}", document.getDocumentId(), e.getMessage());
+        for (BenefitRagDocumentBuilder.PendingBenefitDocument pending : sourceSnapshot.pendingDocuments()) {
+            candidateDocuments++;
+            BenefitDocument document = pending.document();
+            currentDocumentIds.add(document.getDocumentId());
+            try {
+                if (isCurrent(document)) {
+                    skippedDocuments++;
+                    continue;
                 }
+
+                BenefitDocument upsertDocument = pending.withEmbedding(embeddingService.embed(pending.searchableText()));
+                esClient.index(i -> i
+                        .index(INDEX_NAME)
+                        .id(upsertDocument.getDocumentId())
+                        .document(upsertDocument)
+                );
+                upsertedDocuments++;
+
+                if (delayMs > 0) {
+                    Thread.sleep(delayMs);
+                }
+            } catch (Exception e) {
+                failedDocuments++;
+                log.warn("혜택 RAG 문서 동기화 실패: documentId={}, reason={}", document.getDocumentId(), e.getMessage());
             }
         }
 
