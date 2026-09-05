@@ -196,6 +196,17 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
+    void previewQuery_usesSpatialIndexEnvelopeBeforeCoordinateFilter() {
+        String sql = queryValue("findStorePreviewsInView");
+
+        assertThat(sql).contains(
+                "s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)",
+                "s.longitude BETWEEN :minLng AND :maxLng",
+                "s.latitude BETWEEN :minLat AND :maxLat"
+        );
+    }
+
+    @Test
     void candidatePartnerQueryRanksNearbyStoresForAllPartnersInOneSql() {
         String sql = queryValue("searchNearbyStoreIdsByPartnerIds");
 

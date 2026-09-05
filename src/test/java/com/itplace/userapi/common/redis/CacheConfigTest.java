@@ -41,6 +41,7 @@ class CacheConfigTest {
         RedisCache cache = (RedisCache) cacheManager.getCache("partner-benefits");
         assertThat(cache).isNotNull();
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        meterRegistry.config().meterFilter(new CacheConfig().redisCachePendingCounterFilter());
         new RedisCacheMetrics(cache, Tags.of("cache.manager", "cache")).bindTo(meterRegistry);
 
         cache.get(1L);
@@ -51,5 +52,8 @@ class CacheConfigTest {
                 .tags("cache", "partner-benefits", "result", "miss")
                 .functionCounter()
                 .count()).isEqualTo(1);
+        assertThat(meterRegistry.find("cache.gets")
+                .tags("cache", "partner-benefits", "result", "pending")
+                .meter()).isNull();
     }
 }
