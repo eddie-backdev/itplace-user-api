@@ -24,8 +24,6 @@ import co.elastic.clients.util.ObjectBuilder;
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
 import com.itplace.userapi.ai.rag.service.ElasticService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
-import com.itplace.userapi.benefit.entity.Benefit;
-import com.itplace.userapi.benefit.repository.BenefitRepository;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -46,16 +44,13 @@ class BenefitRagSyncServiceTest {
     private ElasticsearchClient esClient;
 
     @Mock
-    private BenefitRepository benefitRepository;
-
-    @Mock
     private ElasticService elasticService;
 
     @Mock
     private EmbeddingService embeddingService;
 
     @Mock
-    private BenefitRagDocumentBuilder documentBuilder;
+    private BenefitRagSourceQueryService sourceQueryService;
 
     private BenefitRagSyncService syncService;
 
@@ -63,16 +58,15 @@ class BenefitRagSyncServiceTest {
     void setUp() {
         syncService = new BenefitRagSyncService(
                 esClient,
-                benefitRepository,
                 elasticService,
                 embeddingService,
-                documentBuilder
+                sourceQueryService
         );
     }
 
     @Test
     void syncAllReportsEmptyRepositoryWithoutEmbeddingWork() throws Exception {
-        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of());
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(0));
         when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(emptySearchResponse());
 
         BenefitRagSyncService.SyncResult result = syncService.syncAll();
@@ -94,16 +88,16 @@ class BenefitRagSyncServiceTest {
         syncService.scheduledSync();
 
         verify(elasticService, never()).createIndexIfNotExists(any());
-        verify(benefitRepository, never()).findAllWithPartnerAndTierBenefits();
+        verify(sourceQueryService, never()).loadSourceSnapshot();
     }
 
     @Test
     void syncAllSkipsUnchangedContentHashEmbeddingVersionAndActiveState() throws Exception {
-        Benefit benefit = benefit(1L);
         BenefitDocument document = activeDocument("benefit:1:policy:2:tier:3", "hash-current");
-        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
-        when(documentBuilder.buildPendingDocuments(benefit))
-                .thenReturn(List.of(new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "search text")));
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(
+                1,
+                new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "search text")
+        ));
         when(esClient.get(anyGetRequest(), eq(JsonData.class))).thenReturn(currentGetResponse(document));
         when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(emptySearchResponse());
 
@@ -117,12 +111,12 @@ class BenefitRagSyncServiceTest {
 
     @Test
     void syncAllUpsertsChangedContentHashWithFreshEmbedding() throws Exception {
-        Benefit benefit = benefit(1L);
         BenefitDocument document = activeDocument("benefit:1:policy:2:tier:3", "hash-new");
         BenefitDocument previous = activeDocument("benefit:1:policy:2:tier:3", "hash-old");
-        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
-        when(documentBuilder.buildPendingDocuments(benefit))
-                .thenReturn(List.of(new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "changed text")));
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(
+                1,
+                new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "changed text")
+        ));
         when(esClient.get(anyGetRequest(), eq(JsonData.class))).thenReturn(currentGetResponse(previous));
         when(embeddingService.embed("changed text")).thenReturn(List.of(0.1f, 0.2f));
         when(esClient.index(anyIndexRequest())).thenReturn(indexResponse());
@@ -137,13 +131,13 @@ class BenefitRagSyncServiceTest {
 
     @Test
     void syncAllIndexesInactiveSourceAsInactiveTombstoneRepresentation() throws Exception {
-        Benefit benefit = benefit(1L);
         BenefitDocument document = activeDocument("benefit:1:policy:2:tier:3", "hash-inactive");
         document.setActive(false);
         document.setSyncStatus(BenefitRagDocumentBuilder.SYNC_STATUS_INACTIVE);
-        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
-        when(documentBuilder.buildPendingDocuments(benefit))
-                .thenReturn(List.of(new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "inactive text")));
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(
+                1,
+                new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "inactive text")
+        ));
         when(esClient.get(anyGetRequest(), eq(JsonData.class))).thenReturn(notFoundGetResponse());
         when(embeddingService.embed("inactive text")).thenReturn(List.of(0.3f));
         when(esClient.index(anyIndexRequest())).thenReturn(indexResponse());
@@ -159,7 +153,7 @@ class BenefitRagSyncServiceTest {
 
     @Test
     void syncAllTombstonesExistingElasticsearchDocumentWhenSourceIsMissing() throws Exception {
-        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of());
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(0));
         when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(searchResponse(mapOf(
                 "documentId", "benefit:9:policy:8:tier:7",
                 "benefitId", "9",
@@ -194,7 +188,7 @@ class BenefitRagSyncServiceTest {
 
     @Test
     void syncAllReconcilesMissingSourceDocumentsAcrossSearchAfterPages() throws Exception {
-        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of());
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(0));
         when(esClient.search(anySearchRequest(), eq(JsonData.class)))
                 .thenReturn(searchResponseWithHits(documentSources(0, 1000)))
                 .thenReturn(searchResponseWithHits(documentSources(1000, 1001)));
@@ -208,8 +202,11 @@ class BenefitRagSyncServiceTest {
         verify(esClient, times(1001)).index(anyIndexRequest());
     }
 
-    private Benefit benefit(Long id) {
-        return Benefit.builder().benefitId(id).active(true).build();
+    private BenefitRagSourceQueryService.SourceSnapshot sourceSnapshot(
+            int scannedBenefits,
+            BenefitRagDocumentBuilder.PendingBenefitDocument... pendingDocuments
+    ) {
+        return new BenefitRagSourceQueryService.SourceSnapshot(scannedBenefits, List.of(pendingDocuments));
     }
 
     private BenefitDocument activeDocument(String documentId, String contentHash) {
