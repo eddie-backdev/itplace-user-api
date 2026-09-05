@@ -3,6 +3,7 @@ package com.itplace.userapi.map.service;
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
@@ -27,8 +28,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -44,6 +45,9 @@ public class StoreServiceImpl implements StoreService {
     //       Redis 캐시를 통해 조회하는 방식으로 전환하여 DB 부하 절감.
     private final PartnerBenefitCacheService partnerBenefitCacheService;
     private final StoreSearchService storeSearchService;
+    private final StoreClusterCacheService storeClusterCacheService;
+    private final StoreClusterQueryService storeClusterQueryService;
+    private final StorePreviewQueryService storePreviewQueryService;
 
     private static final int DISTRIBUTED_GRID_SIZE = 5;
     private static final int FINAL_LIMIT = 300;
@@ -57,13 +61,7 @@ public class StoreServiceImpl implements StoreService {
     private static final double TOWN_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 0.25;
     private static final double CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 2.0;
     @Override
-    @Transactional(readOnly = true)
-    @Cacheable(
-            value = "map-store-clusters",
-            key = "#minLat + ':' + #minLng + ':' + #maxLat + ':' + #maxLng + ':'"
-                    + " + (#category ?: 'ALL') + ':' + #mapLevel",
-            sync = true
-    )
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MapStoreClusterResponse> findStoreClustersInView(double minLat, double minLng, double maxLat,
                                                                  double maxLng, String category, int mapLevel) {
         double normalizedMinLat = Math.min(minLat, maxLat);
@@ -81,17 +79,39 @@ public class StoreServiceImpl implements StoreService {
         );
         ClusterAdministrativeUnit administrativeUnit = resolveClusterAdministrativeUnit(aggregationMapLevel);
 
-        return storeRepository.findStoreClustersInView(
-                        normalizedMinLat,
-                        normalizedMaxLat,
-                        normalizedMinLng,
-                        normalizedMaxLng,
-                        normalizedCategory,
-                        normalizedMapLevel,
-                        administrativeUnit.name()
-                ).stream()
-                .map(projection -> toMapStoreClusterResponse(projection, normalizedMapLevel))
-                .collect(Collectors.toCollection(ArrayList::new));
+        String cacheKey = createClusterCacheKey(
+                normalizedMinLat,
+                normalizedMinLng,
+                normalizedMaxLat,
+                normalizedMaxLng,
+                normalizedCategory,
+                normalizedMapLevel
+        );
+        return storeClusterCacheService.getOrLoad(cacheKey, () ->
+                storeClusterQueryService.findStoreClustersInView(
+                                normalizedMinLat,
+                                normalizedMaxLat,
+                                normalizedMinLng,
+                                normalizedMaxLng,
+                                normalizedCategory,
+                                normalizedMapLevel,
+                                administrativeUnit.name()
+                        ).stream()
+                        .map(projection -> toMapStoreClusterResponse(projection, normalizedMapLevel))
+                        .collect(Collectors.toCollection(ArrayList::new))
+        );
+    }
+
+    private String createClusterCacheKey(
+            double minLat,
+            double minLng,
+            double maxLat,
+            double maxLng,
+            String category,
+            int mapLevel
+    ) {
+        return minLat + ":" + minLng + ":" + maxLat + ":" + maxLng + ":"
+                + (category == null ? "ALL" : category) + ":" + mapLevel;
     }
 
     private int normalizeMapLevel(int mapLevel) {
@@ -163,7 +183,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MapStorePreviewResponse> findStoresInViewPreviews(double minLat, double minLng, double maxLat,
                                                                   double maxLng, String category, double userLat,
                                                                   double userLng, int limit, boolean includeBenefits) {
@@ -175,7 +195,7 @@ public class StoreServiceImpl implements StoreService {
         double centerLng = (normalizedMinLng + normalizedMaxLng) / 2;
         String normalizedCategory = normalizeCategory(category);
 
-        List<StorePreviewProjection> previews = storeRepository.findStorePreviewsInView(
+        List<StorePreviewProjection> previews = storePreviewQueryService.findStorePreviewsInView(
                 normalizedMinLat,
                 normalizedMaxLat,
                 normalizedMinLng,
@@ -197,6 +217,80 @@ public class StoreServiceImpl implements StoreService {
     private int normalizeMapInViewPreviewLimit(int requestedLimit) {
         int effectiveLimit = requestedLimit > 0 ? requestedLimit : DEFAULT_MAP_IN_VIEW_PREVIEW_LIMIT;
         return Math.min(effectiveLimit, MAX_MAP_IN_VIEW_PREVIEW_LIMIT);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public MapStorePreviewBatchResponse findStoresInViewPreviewBatch(double minLat, double minLng, double maxLat,
+                                                                     double maxLng, String category, int limit) {
+        double normalizedMinLat = Math.min(minLat, maxLat);
+        double normalizedMaxLat = Math.max(minLat, maxLat);
+        double normalizedMinLng = Math.min(minLng, maxLng);
+        double normalizedMaxLng = Math.max(minLng, maxLng);
+        double centerLat = (normalizedMinLat + normalizedMaxLat) / 2;
+        double centerLng = (normalizedMinLng + normalizedMaxLng) / 2;
+
+        List<StorePreviewProjection> matchedPreviews = storePreviewQueryService.findStorePreviewsInView(
+                        normalizedMinLat,
+                        normalizedMaxLat,
+                        normalizedMinLng,
+                        normalizedMaxLng,
+                        centerLat,
+                        centerLng,
+                        normalizeCategory(category),
+                        normalizeMapInViewPreviewLimit(limit)
+                ).stream()
+                .filter(this::isStoreMatchedToPartner)
+                .toList();
+        if (matchedPreviews.isEmpty()) {
+            return MapStorePreviewBatchResponse.builder()
+                    .stores(List.of())
+                    .partners(List.of())
+                    .build();
+        }
+
+        Map<Long, List<BenefitCacheDto>> benefitsByPartner = partnerBenefitCacheService.getBenefitsBatch(
+                matchedPreviews.stream()
+                        .map(StorePreviewProjection::getPartnerId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList()
+        );
+
+        Map<Long, MapStorePreviewBatchResponse.PartnerPreview> partnersById = new LinkedHashMap<>();
+        for (StorePreviewProjection preview : matchedPreviews) {
+            partnersById.computeIfAbsent(preview.getPartnerId(), partnerId ->
+                    MapStorePreviewBatchResponse.PartnerPreview.builder()
+                            .partnerId(partnerId)
+                            .partnerName(preview.getPartnerName())
+                            .category(preview.getCategory() != null ? preview.getCategory().trim() : null)
+                            .image(preview.getImage())
+                            .tierBenefit(toDistinctTierBenefits(selectBenefits(
+                                    benefitsByPartner.getOrDefault(partnerId, List.of()),
+                                    preview.getStoreName()
+                            )))
+                            .build()
+            );
+        }
+
+        List<MapStorePreviewBatchResponse.StorePreview> stores = matchedPreviews.stream()
+                .map(preview -> MapStorePreviewBatchResponse.StorePreview.builder()
+                        .storeId(preview.getStoreId())
+                        .partnerId(preview.getPartnerId())
+                        .storeName(preview.getStoreName())
+                        .latitude(preview.getLatitude())
+                        .longitude(preview.getLongitude())
+                        .address(preview.getAddress())
+                        .roadAddress(preview.getRoadAddress())
+                        .postCode(preview.getPostCode())
+                        .hasCoupon(Boolean.TRUE.equals(preview.getHasCoupon()))
+                        .build())
+                .toList();
+
+        return MapStorePreviewBatchResponse.builder()
+                .stores(stores)
+                .partners(new ArrayList<>(partnersById.values()))
+                .build();
     }
 
     @Override

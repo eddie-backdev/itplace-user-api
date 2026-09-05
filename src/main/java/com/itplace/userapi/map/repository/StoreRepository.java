@@ -183,6 +183,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                           OR s.business LIKE '%보관%'
                           OR s.business LIKE '%저장%'
                       )
+                      AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                       AND s.longitude BETWEEN :minLng AND :maxLng
                       AND s.latitude BETWEEN :minLat AND :maxLat
                     ORDER BY

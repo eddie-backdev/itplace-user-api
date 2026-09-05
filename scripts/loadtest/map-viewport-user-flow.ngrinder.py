@@ -18,7 +18,7 @@ CENTERS = [
     (37.5400, 126.9500),
 ]
 
-test1 = Test(1, "map level 4 preview 300")
+test1 = Test(1, "map level 4 compact preview 300")
 test2 = Test(2, "map level 5 legal-dong cluster")
 test3 = Test(3, "map level 7 town cluster")
 test4 = Test(4, "map level 10 city cluster")
@@ -58,17 +58,15 @@ class TestRunner:
     def get_level4_preview(self, lat, lng):
         self._get(
             (
-                "/api/v1/maps/stores/in-view/previews"
+                "/api/v1/maps/stores/in-view/previews/compact"
                 "?minLat=%s&minLng=%s&maxLat=%s&maxLng=%s"
-                "&userLat=%s&userLng=%s&limit=%s&includeBenefits=true"
+                "&limit=%s"
             )
             % (
                 lat - 0.015,
                 lng - 0.020,
                 lat + 0.015,
                 lng + 0.020,
-                lat,
-                lng,
                 PREVIEW_LIMIT,
             )
         )

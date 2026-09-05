@@ -3,6 +3,7 @@ package com.itplace.userapi.map.controller;
 import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.ReverseGeocodeResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
@@ -14,6 +15,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,6 +81,26 @@ public class StoreController {
         ApiResponse<List<MapStorePreviewResponse>> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, stores);
 
         return body.toResponseEntity();
+    }
+
+    // 현재 지도 화면 영역 기반 지점 목록 - 제휴처/혜택 중복을 제거한 웹 지도용 응답
+    @GetMapping("/stores/in-view/previews/compact")
+    public ResponseEntity<ApiResponse<MapStorePreviewBatchResponse>> getStoresInViewPreviewBatch(
+            @RequestParam("minLat") @DecimalMin("-90.0") @DecimalMax("90.0") double minLat,
+            @RequestParam("minLng") @DecimalMin("-180.0") @DecimalMax("180.0") double minLng,
+            @RequestParam("maxLat") @DecimalMin("-90.0") @DecimalMax("90.0") double maxLat,
+            @RequestParam("maxLng") @DecimalMin("-180.0") @DecimalMax("180.0") double maxLng,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "limit", defaultValue = "300") @Min(1) @Max(2000) int limit
+    ) {
+        MapStorePreviewBatchResponse previews = storeService.findStoresInViewPreviewBatch(
+                minLat, minLng, maxLat, maxLng, category, limit);
+        ApiResponse<MapStorePreviewBatchResponse> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, previews);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL,
+                        "public, max-age=30, s-maxage=60, stale-while-revalidate=30")
+                .body(body);
     }
 
     // 사용자 위치 기반 전체 지점 목록 - 지도 카드 표시용 경량 응답

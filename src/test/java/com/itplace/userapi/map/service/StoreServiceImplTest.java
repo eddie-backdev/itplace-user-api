@@ -3,12 +3,15 @@ package com.itplace.userapi.map.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
@@ -22,7 +25,9 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -52,9 +57,27 @@ class StoreServiceImplTest {
     @Mock
     private StoreSearchService storeSearchService;
 
+    @Mock
+    private StoreClusterCacheService storeClusterCacheService;
+
+    @Mock
+    private StoreClusterQueryService storeClusterQueryService;
+
+    @Mock
+    private StorePreviewQueryService storePreviewQueryService;
+
     @InjectMocks
     private StoreServiceImpl storeService;
 
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    void useCacheLoaderDirectly() {
+        lenient().when(storeClusterCacheService.getOrLoad(anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> {
+                    Supplier<List<MapStoreClusterResponse>> loader = invocation.getArgument(1);
+                    return loader.get();
+                });
+    }
 
     @Test
     void findNearbyPreviews_returnsFlatBenefitPreviewPayload() {
@@ -172,7 +195,7 @@ class StoreServiceImplTest {
         StoreClusterProjection secondCluster = cluster(
                 "a:7:TOWN:two", "전체", "TOWN", "송파구", 37.502, 127.002, 27L);
 
-        when(storeRepository.findStoreClustersInView(
+        when(storeClusterQueryService.findStoreClustersInView(
                 37.49, 37.52, 126.99, 127.02, null, 7, "TOWN"))
                 .thenReturn(List.of(firstCluster, secondCluster));
 
@@ -217,7 +240,7 @@ class StoreServiceImplTest {
             int expectedMapLevel,
             String expectedAdministrativeUnitType
     ) {
-        when(storeRepository.findStoreClustersInView(
+        when(storeClusterQueryService.findStoreClustersInView(
                 37.49,
                 37.52,
                 126.99,
@@ -236,7 +259,7 @@ class StoreServiceImplTest {
                 mapLevel
         );
 
-        verify(storeRepository).findStoreClustersInView(
+        verify(storeClusterQueryService).findStoreClustersInView(
                 37.49,
                 37.52,
                 126.99,
@@ -264,7 +287,7 @@ class StoreServiceImplTest {
         StoreClusterProjection projection = cluster(
                 "cluster", "전체", returnedAdministrativeUnitType, "테스트 지역",
                 37.5, 127.0, 10L);
-        when(storeRepository.findStoreClustersInView(
+        when(storeClusterQueryService.findStoreClustersInView(
                 37.49,
                 37.52,
                 126.99,
@@ -294,7 +317,7 @@ class StoreServiceImplTest {
             double maxLng,
             String expectedAdministrativeUnitType
     ) {
-        when(storeRepository.findStoreClustersInView(
+        when(storeClusterQueryService.findStoreClustersInView(
                 minLat,
                 maxLat,
                 minLng,
@@ -307,7 +330,7 @@ class StoreServiceImplTest {
         storeService.findStoreClustersInView(
                 minLat, minLng, maxLat, maxLng, null, 5);
 
-        verify(storeRepository).findStoreClustersInView(
+        verify(storeClusterQueryService).findStoreClustersInView(
                 minLat,
                 maxLat,
                 minLng,
@@ -372,7 +395,7 @@ class StoreServiceImplTest {
                 true
         );
 
-        when(storeRepository.findStorePreviewsInView(
+        when(storePreviewQueryService.findStorePreviewsInView(
                 37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 900))
                 .thenReturn(List.of(farPreview, stalePreview, nearPreview));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
@@ -413,7 +436,7 @@ class StoreServiceImplTest {
                 true
         );
 
-        when(storeRepository.findStorePreviewsInView(
+        when(storePreviewQueryService.findStorePreviewsInView(
                 37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 900))
                 .thenReturn(List.of(preview));
 
@@ -423,6 +446,48 @@ class StoreServiceImplTest {
         assertThat(result).singleElement()
                 .satisfies(storePreview -> assertThat(storePreview.getTierBenefit()).isEmpty());
         verify(partnerBenefitCacheService, never()).getBenefitsBatch(anyList());
+    }
+
+    @Test
+    void findStoresInViewPreviewBatch_deduplicatesPartnerBenefitsAcrossStores() {
+        TierBenefitDto benefit = TierBenefitDto.builder()
+                .benefitId(100L)
+                .carrier(Carrier.SKT)
+                .grade(Grade.SKT_VIP)
+                .context("1천원 할인")
+                .build();
+        StorePreviewProjection first = preview(
+                1L, 10L, "GS25 강남점", "GS25", "생활/편의", "https://example.com/gs25.png",
+                37.501, 127.001, "서울 강남구 역삼동", "테헤란로",
+                "서울 강남구 테헤란로 1", "06234", true
+        );
+        StorePreviewProjection second = preview(
+                2L, 10L, "GS25 역삼점", "GS25", "생활/편의", "https://example.com/gs25.png",
+                37.502, 127.002, "서울 강남구 역삼동", "테헤란로",
+                "서울 강남구 테헤란로 2", "06235", false
+        );
+
+        when(storePreviewQueryService.findStorePreviewsInView(
+                37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 300))
+                .thenReturn(List.of(first, second));
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L)))
+                .thenReturn(Map.of(10L,
+                        List.of(new BenefitCacheDto(100L, "GS25 오프라인 혜택", List.of(benefit)))));
+
+        MapStorePreviewBatchResponse result = storeService.findStoresInViewPreviewBatch(
+                37.49, 126.99, 37.52, 127.02, null, 300);
+
+        assertThat(result.getStores())
+                .extracting(MapStorePreviewBatchResponse.StorePreview::getStoreId)
+                .containsExactly(1L, 2L);
+        assertThat(result.getPartners()).singleElement()
+                .satisfies(partner -> {
+                    assertThat(partner.getPartnerId()).isEqualTo(10L);
+                    assertThat(partner.getPartnerName()).isEqualTo("GS25");
+                    assertThat(partner.getTierBenefit()).containsExactly(benefit);
+                });
+        verify(partnerBenefitCacheService).getBenefitsBatch(List.of(10L));
+        verify(storeRepository, never()).findAllByStoreIdInWithPartner(anyList());
     }
 
     @Test
@@ -460,7 +525,7 @@ class StoreServiceImplTest {
                 false
         );
 
-        when(storeRepository.findStorePreviewsInView(
+        when(storePreviewQueryService.findStorePreviewsInView(
                 37.64, 37.67, 127.05, 127.08, 37.655, 127.065, null, 900))
                 .thenReturn(List.of(careCenter, validStorage));
 

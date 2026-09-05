@@ -17,7 +17,7 @@ CENTERS = [
     (37.5400, 126.9500),
 ]
 
-test1 = Test(1, "map level 4 preview 300")
+test1 = Test(1, "map level 4 compact preview 300")
 test2 = Test(2, "map level 5 legal-dong cluster")
 test3 = Test(3, "map level 7 town cluster")
 test4 = Test(4, "map level 10 city cluster")
@@ -35,26 +35,36 @@ class TestRunner:
         grinder.statistics.delayReports = True
 
     def _get(self, path):
-        response = request.GET(BASE_URL + path, [], [])
-        assert response.statusCode == 200, "HTTP %s for %s" % (
-            response.statusCode,
-            path,
-        )
+        try:
+            response = request.GET(BASE_URL + path, [], [])
+            assert response.statusCode == 200, "HTTP %s for %s" % (
+                response.statusCode,
+                path,
+            )
+        except BaseException as error:
+            grinder.logger.error(
+                "REQUEST_FAILED process=%s thread=%s path=%s error=%r"
+                % (
+                    grinder.processNumber,
+                    grinder.threadNumber,
+                    path,
+                    error,
+                )
+            )
+            raise
 
     def get_level4_preview(self):
         self._get(
             (
-                "/api/v1/maps/stores/in-view/previews"
+                "/api/v1/maps/stores/in-view/previews/compact"
                 "?minLat=%s&minLng=%s&maxLat=%s&maxLng=%s"
-                "&userLat=%s&userLng=%s&limit=%s&includeBenefits=true"
+                "&limit=%s"
             )
             % (
                 self.lat - 0.015,
                 self.lng - 0.020,
                 self.lat + 0.015,
                 self.lng + 0.020,
-                self.lat,
-                self.lng,
                 PREVIEW_LIMIT,
             )
         )

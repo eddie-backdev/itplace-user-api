@@ -24,6 +24,7 @@
 - 반복되는 파트너 혜택을 Redis에 캐시하고 변경 시 관련 key 무효화
 - MySQL에서 PostgreSQL로 전환한 뒤 PostGIS `geometry`, `ST_DWithin`, GiST 공간 인덱스 적용
 - 실제 viewport API와 projection 기반 preview를 도입하고 상세 반환 수에 상한 설정
+- preview의 반복 파트너·혜택 데이터를 `stores`와 `partners`로 분리한 compact 응답으로 전환
 - 넓은 지도는 법정동·읍면동·시도 단위 전체 개수만 반환하도록 응답 경로 분리
 - 행정구역 매핑, 고정 anchor와 매장 수를 materialized summary로 사전 계산
 
@@ -39,6 +40,7 @@
 SPRING_PROFILES_ACTIVE=local,loadtest \
 SERVER_PORT=18080 \
 PG_REPLICA_MAX_POOL_SIZE=20 \
+SERVER_TOMCAT_MAX_KEEP_ALIVE_REQUESTS=100000 \
 ./gradlew bootRun
 ```
 
@@ -84,10 +86,12 @@ Hikari 지표의 `pool` 태그는 `source-pool`, `replica-pool`로 구분한다.
 과거 비교용 시나리오는 서울 5개 좌표에서 `/api/v1/maps/nearby`의 500m, 1km, 3km, 5km를 순차 호출한다. 이 API는 최대 300개의 상세 응답을 반환하는 호환 경로이며 지도 viewport 이동의 주 경로가 아니다. 현재 사용자 체감 성능은 `scripts/loadtest/map-viewport-levels.ngrinder.py`로 아래 경로에 VUser를 같은 비율로 분산해 측정한다. VUser 1,000에서는 경로별 250명, VUser 500에서는 경로별 125명이다.
 
 - `/api/v1/maps/stores/in-view/clusters`
-- `/api/v1/maps/stores/in-view/previews`
+- `/api/v1/maps/stores/in-view/previews/compact`
 - `/api/v1/mobile/map/nearby`
 
-프런트는 mapLevel 1~4에서 실제 제휴처 preview를, 5 이상에서 행정구역 cluster를 조회한다. cluster 집계는 동일 bounds·category·mapLevel 요청을 1분 Redis 캐시에 저장하고 `sync=true`로 첫 요청의 중복 DB 실행을 합친다. 1분 TTL은 5분 주기의 materialized view 갱신보다 짧게 유지한다.
+프런트는 mapLevel 1~4에서 실제 제휴처 preview를, 5 이상에서 행정구역 cluster를 조회한다. compact preview는 매장별로 반복되던 파트너 이미지와 등급별 혜택을 파트너 단위로 한 번만 반환하고, 브라우저에서 매장과 결합한다. 동일 DB 스냅샷의 290개 매장을 비교했을 때 표시 필드와 등급별 혜택 불일치는 0건이었고, JSON은 551,957 bytes에서 168,449 bytes로 약 69.5% 감소했다.
+
+cluster 집계는 동일 bounds·category·mapLevel 요청을 1분 Redis 캐시에 저장한다. Spring Data Redis의 non-locking writer에서는 `@Cacheable(sync = true)`만으로 value loader가 key별 직렬화되지 않았다. 현재는 캐시 오케스트레이션을 DB 트랜잭션 밖에서 실행하고, 단일 호스트의 동일 viewport key에만 single-flight를 적용한다. 서로 다른 영역은 병렬로 조회하되 같은 영역의 동시 miss는 DB 조회와 cache put 한 번으로 합친다. 1분 TTL은 5분 주기의 materialized view 갱신보다 짧게 유지한다.
 
 장시간 안정성 검증은 `scripts/loadtest/map-viewport-user-flow.ngrinder.py`를 사용한다. 기존 진단 스크립트처럼 같은 viewport를 대기 없이 무한 재호출하지 않고, 500명의 시작 viewport를 분산한 뒤 네 방향의 작은 이동을 순환한다. 프런트의 동일 viewport 중복 호출 차단과 mapLevel 1~4의 350ms debounce를 고려해 요청 완료 후 3초의 지도 탐색 시간을 둔다. 이 값은 운영 로그에서 산출한 사용 간격이 아니라 장시간 부하를 위한 보수적 가정이므로 결과와 함께 명시한다.
 
@@ -109,5 +113,44 @@ preview 300 실행에서 mapLevel 1~4 경로는 평균 558KB, 2,256.10ms와 약 
 VUser 500 재측정에서는 전체 208,697건을 오류 없이 처리했다. 경로별 125 VUser 조건에서 preview는 1,721건·약 30.67 TPS·평균 3,872.84ms·평균 558KB였고, `LEGAL_DONG`, `TOWN`, `CITY` cluster는 각각 약 1,186.70, 1,240.06, 1,262.25 TPS와 평균 94~100ms였다. 전체 3,719.69 TPS는 빠른 cluster 경로가 요청 수의 대부분을 차지한 혼합 지표이므로, 300개 상세 preview 자체가 같은 처리량을 낸 것으로 해석하지 않는다.
 
 따라서 실제 화면처럼 넓은 지도에서 행정구역 집계로 전환한다면 300개 상한을 유지할 수 있다. 남은 병목은 개수 하나가 아니라 혜택이 포함된 preview 응답 크기이며, 300개 상세 조회만으로 높은 TPS가 필요한 경우에는 목록 필드 축소나 혜택 지연 조회가 추가로 필요하다. Redis 장애나 고유 bounds만 계속 들어오는 cold-cache 성능은 별도 시나리오로 검증한다.
+
+## 500 VUser·5분 cache stampede 재검증
+
+MacBook 한 대에서 API와 nGrinder agent를 함께 실행하고, 서울 5개 중심 좌표의 compact preview 1개 경로와 행정구역 cluster 3개 경로에 VUser 500을 같은 비율로 분산했다. 모든 비교는 replica 풀 20, HTTP keep-alive, 5분으로 고정했다. 따라서 아래 수치는 운영 서버 용량이 아니라 같은 로컬 환경에서 변경 효과와 시간 경과 안정성을 비교한 결과다.
+
+| 단계 | TPS | 평균 응답시간 | Peak TPS | 2초 샘플 최저 TPS | 오류 | 판정 |
+|---|---:|---:|---:|---:|---:|---|
+| 기존 Redis cache load | 3,886.7 | 126.98ms | 5,144 | 157 | 0 | 1분 주기로 cache miss와 DB pool 대기 집중 |
+| 트랜잭션 경계만 분리 | 3,993.2 | 115.59ms | 5,412 | 61.5 | 0 | wait 중 커넥션 점유는 줄였지만 중복 DB load 지속 |
+| Redis cache 전체 잠금 | 1,513.4 | 258.73ms | 3,754 | 0.5 | 1,269 | 서로 다른 key까지 직렬화하고 Reactor overflow 발생, 기각 |
+| viewport key별 single-flight | 4,868.2 | 93.01ms | 5,475 | 1,944 | 0 | 최종안 |
+
+최종안은 기존 단계 대비 TPS가 약 25.2% 증가하고 평균 응답시간이 약 26.8% 감소했다. 147개 시계열 샘플 중 TPS 1,000 미만 구간은 10개에서 0개로 줄었다. 캐시 만료 주기마다 miss는 동시에 약 120~160건 발생했지만 실제 cache put은 11건만 증가해, 시나리오의 11개 viewport key마다 DB 조회가 한 번만 실행됐음을 확인했다.
+
+최종 5분 동안 replica 풀은 최대 active 16/20, pending 0, connection timeout 0이었다. connection acquire 누적 시간 증가량도 10.617초/10,863회로 건당 약 0.98ms였다. 반면 중복 load가 남아 있던 단계는 최대 active 20/20, pending 178, acquire 누적 8,455.538초/11,604회였다. 풀 20에서 구조적 대기열이 사라졌으므로 현재 시나리오를 근거로 풀 30이나 50을 기본값으로 올리지 않는다.
+
+부하 중 시스템 CPU는 반복적으로 100%에 도달했지만 최종안에서는 처리량 붕괴가 재현되지 않았다. 이전의 순간 드롭은 CPU 100% 자체가 아니라 1분 cache expiry에 맞춰 중복 집계 쿼리가 DB 풀로 몰린 것이 직접 원인이었다. API와 부하 발생기를 같은 MacBook에서 실행했으므로 4,868.2 TPS를 운영 용량으로 주장하지 않고, 원격 부하 발생기와 운영과 동일한 DB 환경에서 별도 용량 시험을 수행한다.
+
+## 500 VUser·30분 연결 안정성 재검증
+
+5분 검증을 30분으로 늘렸을 때 약 5분과 15분 지점에 HTTP 응답을 받기 전 `java.net.ConnectException: Operation timed out`이 짧게 집중됐다. 같은 시각 애플리케이션의 지도 API 응답 상태는 모두 200이었고, nGrinder `Response_errors`와 replica pool connection timeout도 0이었다. 따라서 DB pool 고갈이나 API 5xx가 아니라 부하 발생기에서 TCP 연결을 새로 만드는 단계의 실패로 분리했다.
+
+Tomcat 10.1의 기본 `maxKeepAliveRequests=100`과 nGrinder의 thread별 HTTP client 조합에서는 500개 고정 VUser가 비슷한 속도로 100번째 요청을 소진한다. 연결이 같은 구간에 대량으로 닫히고 재생성되면서 macOS listen backlog 한도와 경쟁해 connect timeout이 발생한 것으로 판단했다. `server.tomcat.max-keep-alive-requests`를 환경 변수로 조정할 수 있게 만들고, 이번 검증에서는 `100000`으로 설정해 30분 안에 연결이 주기적으로 교체되지 않도록 했다.
+
+| 조건 | VUser | 프로세스×스레드 | 시간 | TPS | 평균 응답시간 | Peak TPS | 성공/실행 | 오류 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 기본 keep-alive 상한 100 | 500 | 5×100 | 6분 | 5,382.50 | 86.26ms | 5,969.5 | 1,921,192/1,921,284 | 92 |
+| keep-alive 상한 100000 | 500 | 5×100 | 6분 | 5,188.82 | 86.27ms | 5,688.0 | 1,854,600/1,854,600 | 0 |
+| 최종 장시간 검증 | 500 | 5×100 | 30분 | 5,272.78 | 85.00ms | 5,879.0 | 9,464,784/9,464,784 | 0 |
+
+최종 테스트의 894개 TPS 샘플 평균은 5,293.50, 중앙값은 5,387.0, p95는 5,595.5였다. replica pool은 active 최대 20/20, pending 최대 12였지만 pending이 관측된 샘플은 181개 중 2개뿐이었고 connection timeout은 끝까지 0이었다. 이 결과는 pool 20이 이번 시나리오를 오류 없이 처리했음을 뜻하며, pool을 더 키우면 TPS가 늘어난다는 근거로 사용하지 않는다.
+
+API와 nGrinder agent를 같은 MacBook에서 실행해 시스템 CPU가 대부분의 구간에서 포화됐다. 그래프의 짧은 TPS 하락은 이 공유 자원 경쟁을 포함하므로 운영 서버의 절대 용량으로 해석하지 않는다. 이 테스트가 검증한 범위는 현재 지도 조회 구조가 고정된 로컬 조건에서 500 VUser를 30분 동안 연결 오류와 DB connection timeout 없이 처리하는지 여부다.
+
+원본 nGrinder test ID는 `66`이며, 결과 화면·시계열 CSV·nGrinder raw report는 workspace의 `output/portfolio/assets/v25/performance`에 보존한다.
+
+장시간 수집 중 지도 API와 무관하게 `/actuator/prometheus`가 `counters cannot have a negative value`로 실패하는 구간도 확인했다. Spring Data Redis의 로컬 cache 통계는 get, hit, miss를 각각 읽어 `pending = get - hit - miss`를 계산한다. 높은 동시성에서 세 counter의 snapshot 시점이 어긋나면 pending이 순간적으로 `-1`이 될 수 있고, Prometheus는 음수 FunctionCounter 때문에 전체 scrape를 거부한다. cache hit·miss·put은 유지하되 파생 `cache.gets{result="pending"}` meter만 `MeterFilter`로 제외해 관측성 경로가 부하 중에도 실패하지 않도록 했다.
+
+필터 적용 후 같은 지도 혼합 시나리오를 VUser 500·5×100 threads·6분으로 다시 실행했다. 1,680,335건을 모두 성공 처리했고 오류는 0건이었으며, 평균 TPS 4,740.0, 평균 응답시간 103.03ms, Peak TPS 5,805.5였다. 부하 전후를 포함해 `/actuator/prometheus`를 1초 간격으로 420회 요청한 결과도 모두 HTTP 200이었고, `pending` meter 재등장과 음수 counter 오류는 각각 0회였다. 같은 scrape에서 cache hit·miss counter는 계속 누적돼 필요한 관측 정보가 유지되는 것도 확인했다. 원본 nGrinder test ID는 `67`이며 결과 화면, 상세 CSV, agent log와 scrape CSV를 `output/portfolio/assets/v25/performance`에 보존한다.
 
 캐시를 예열하고 같은 DB 스냅샷을 사용한 뒤 최소 세 번 반복한다. API와 부하 발생기를 같은 호스트에서 실행한 결과는 로컬 처리량 상한으로만 기록하고 운영 처리량으로 해석하지 않는다.
