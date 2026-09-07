@@ -198,7 +198,7 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(9);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(10);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
@@ -216,6 +216,8 @@ class FlywayMigrationIntegrationTest {
             assertThat(columnExists(connection, "recommendations", "requestid")).isTrue();
             assertThat(indexExists(connection, "idx_store_location")).isTrue();
             assertThat(indexExists(connection, "idx_inquiries_status_created")).isTrue();
+            assertThat(indexExists(connection, "idx_map_region_anchor_viewport")).isTrue();
+            assertThat(indexExists(connection, "idx_map_region_store_summary_cluster_lookup")).isTrue();
             assertThat(longValue(connection, "SELECT COUNT(*) FROM authCredential")).isEqualTo(2L);
             assertThat(stringValue(connection, "SELECT nickname FROM users WHERE userId = 1"))
                     .isEqualTo("테스터");
@@ -242,7 +244,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20260815.0006");
+                    """)).isEqualTo("20260904.0001");
 
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("UPDATE store SET active = false WHERE storeId = 1");
