@@ -17,6 +17,7 @@ public class BenefitDetailResponse {
     private String benefitLimit;
     private String manual;
     private String url;
+    private String sourceUrl;
     private Carrier carrier;
     private Boolean active;
 

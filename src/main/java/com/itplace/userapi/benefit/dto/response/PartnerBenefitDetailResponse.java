@@ -39,6 +39,7 @@ public class PartnerBenefitDetailResponse {
         private String benefitLimit;
         private String manual;
         private String url;
+        private String sourceUrl;
         private UsageType usageType;
         private List<TierBenefitInfo> tierBenefits;
         private Boolean isFavorite;

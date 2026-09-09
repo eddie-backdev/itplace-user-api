@@ -104,6 +104,9 @@ class PartnerBenefitBrowseServiceTest {
         assertThat(result.getCarrierGroups().get(0).getBenefits()).singleElement().satisfies(item -> {
             assertThat(item.getBenefitId()).isEqualTo(20L);
             assertThat(item.getBenefitName()).isEqualTo("SKT GS25 할인");
+            assertThat(item.getUrl()).isEqualTo("https://example.com");
+            assertThat(item.getSourceUrl()).isEqualTo("https://carrier.example/detail");
+            assertThat(item.getBenefitLimit()).isEqualTo("이용 방법에서 횟수·한도 확인");
             assertThat(item.getTierBenefits()).singleElement().satisfies(tier -> {
                 assertThat(tier.getGrade()).isEqualTo(Grade.SKT_VIP);
                 assertThat(tier.getContext()).isEqualTo("1천원당 100원 할인");
@@ -143,6 +146,7 @@ class PartnerBenefitBrowseServiceTest {
                 .description("설명")
                 .manual("이용 방법")
                 .url("https://example.com")
+                .sourceUrl("https://carrier.example/detail")
                 .build();
     }
 
