@@ -1,11 +1,32 @@
 package com.itplace.userapi.ai.question.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
+import com.itplace.userapi.ai.question.service.ElasticQuestionService;
+import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class QuestionIndexerTest {
+
+    @Test
+    void defaultContextDoesNotCreateOfflineSeederOrRequireItsDependencies() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(QuestionIndexer.class)
+                .run(context -> assertThat(context).doesNotHaveBean(QuestionIndexer.class));
+    }
+
+    @Test
+    void explicitSeedSettingCreatesOfflineSeeder() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(QuestionIndexer.class)
+                .withBean(EmbeddingService.class, () -> mock(EmbeddingService.class))
+                .withBean(ElasticQuestionService.class, () -> mock(ElasticQuestionService.class))
+                .withPropertyValues("app.ai.questions.seed.enabled=true")
+                .run(context -> assertThat(context).hasSingleBean(QuestionIndexer.class));
+    }
 
     @Test
     void parseCsvLine_keepsCommasInsideQuotedColumns() {

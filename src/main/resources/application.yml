@@ -19,9 +19,6 @@ spring:
     baseline-description: existing-schema-before-flyway
 
   ai:
-    chat:
-      categorizePrompt: classpath:prompt/categorizePrompt.txt
-      reasonPrompt: classpath:prompt/reasonPrompt.txt
     openai:
       base-url: https://api.openai.com/
       chat:

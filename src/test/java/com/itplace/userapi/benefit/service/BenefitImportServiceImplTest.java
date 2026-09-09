@@ -191,9 +191,6 @@ class BenefitImportServiceImplTest {
         assertThat(carrierTiers.get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
 
         verify(partnerRepository, never()).findByPartnerName(any(String.class));
-        verify(benefitRepository, never()).findByPartner_PartnerIdAndCanonicalKey(any(Long.class), any(String.class));
-        verify(benefitCarrierPolicyRepository, never()).findByCarrierAndSourceKey(any(Carrier.class), any(String.class));
-        verify(carrierTierBenefitRepository, never()).findAllByBenefitCarrierPolicy(any(BenefitCarrierPolicy.class));
     }
 
     @Test

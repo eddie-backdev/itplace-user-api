@@ -19,10 +19,6 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
             """)
     Optional<Benefit> findDetailById(@Param("benefitId") Long benefitId);
 
-    List<Benefit> findAllByPartner_PartnerId(Long PartnerId);
-
-    Optional<Benefit> findByPartner_PartnerIdAndCanonicalKey(Long partnerId, String canonicalKey);
-
     @Query("""
                 SELECT b
                 FROM Benefit b
@@ -150,8 +146,6 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 JOIN FETCH b.partner
             """)
     List<Benefit> findAllWithPartnerAndTierBenefits();
-
-    List<Benefit> findByPartner_PartnerId(Long partnerId);
 
     @Query("""
                 SELECT DISTINCT b

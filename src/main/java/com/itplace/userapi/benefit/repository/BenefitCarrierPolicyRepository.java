@@ -12,8 +12,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface BenefitCarrierPolicyRepository extends JpaRepository<BenefitCarrierPolicy, Long> {
 
-    Optional<BenefitCarrierPolicy> findByCarrierAndSourceKey(Carrier carrier, String sourceKey);
-
     @Query("""
                 SELECT p
                 FROM BenefitCarrierPolicy p

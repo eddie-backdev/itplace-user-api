@@ -15,8 +15,6 @@ public interface AuthCredentialRepository extends JpaRepository<AuthCredential, 
 
     Optional<AuthCredential> findByUser_IdAndType(Long userId, AuthCredentialType type);
 
-    boolean existsByUser_IdAndType(Long userId, AuthCredentialType type);
-
     boolean existsByUser_IdAndTypeAndProviderAndProviderUserId(
             Long userId,
             AuthCredentialType type,

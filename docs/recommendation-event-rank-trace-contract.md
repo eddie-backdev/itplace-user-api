@@ -2,6 +2,8 @@
 
 This contract is the Phase 1 ES-only foundation for AI recommendation quality work. It defines the durable event and rank-trace shape used by the question recommendation and personalized recommendation lanes before any pgvector production cutover.
 
+Implementation status: `CanonicalRecommendationEvent` and `RecommendationEventType` live under `src/test/java` as contract fixtures; no runtime canonical event ingestion or storage is implemented. Runtime personalized rank traces remain implemented separately by `RecommendationTraceRecorder` and `RecommendationRankTrace`.
+
 ## Scope and invariants
 
 - Target service: `itplace-user-api`.

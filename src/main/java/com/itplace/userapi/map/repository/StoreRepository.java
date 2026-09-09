@@ -343,8 +343,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             """)
     List<Store> findAllWithPartner();
 
-    Store findByStoreName(String storeName);
-
     @Query(
             value = """
                     SELECT s.storeId
