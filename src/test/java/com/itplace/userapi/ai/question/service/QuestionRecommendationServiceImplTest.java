@@ -185,7 +185,6 @@ class QuestionRecommendationServiceImplTest {
                     assertThat(partner.getPartnerName()).isEqualTo("영화관");
                     assertThat(partner.getImgUrl()).isEqualTo("movie.png");
                 });
-        verify(openAIService, never()).categorize(org.mockito.ArgumentMatchers.any());
         verify(storeService, never()).findNearbyByKeyword(
                 org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble(),
@@ -193,10 +192,6 @@ class QuestionRecommendationServiceImplTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyInt());
-        verify(openAIService, never()).generateReasons(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test
@@ -394,7 +389,6 @@ class QuestionRecommendationServiceImplTest {
                 .satisfies(partner -> assertThat(partner.getPartnerName()).isEqualTo("빙수카페"));
         verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "상담센터", "상담", null, 37.5, 127.0);
         verify(storeService, never()).findNearbyByKeyword(37.5, 127.0, null, "상담", 0, 0);
-        verify(openAIService, never()).categorize(question);
     }
 
     @Test
@@ -509,7 +503,6 @@ class QuestionRecommendationServiceImplTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyInt());
-        verify(openAIService, never()).categorize(question);
     }
 
     @Test
@@ -600,10 +593,6 @@ class QuestionRecommendationServiceImplTest {
         verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "초심스터디카페", "독서실", null, 37.5, 127.0);
         verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "삼산회관", "식당", null, 37.5, 127.0);
         verify(storeService, never()).findNearbyByBenefitCandidate(37.5, 127.0, null, "피자헛", "피자", null, 37.5, 127.0);
-        verify(openAIService, never()).generateReasons(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test

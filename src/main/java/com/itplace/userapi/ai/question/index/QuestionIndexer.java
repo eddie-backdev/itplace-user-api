@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Component
 @Slf4j
+@ConditionalOnProperty(name = "app.ai.questions.seed.enabled", havingValue = "true")
 public class QuestionIndexer implements ApplicationRunner {
     private static final String INDEX_NAME = "questions";
     private static final List<String> DEFAULT_CSV_LOCATIONS = List.of(
@@ -34,10 +36,6 @@ public class QuestionIndexer implements ApplicationRunner {
     private final ElasticQuestionService elasticQuestionService;
     private final ResourceLoader resourceLoader;
 
-    // Offline/evaluation seed only. Default false keeps runtime recommendation routing off the questions index.
-    @Value("${app.ai.questions.seed.enabled:false}")
-    private boolean seedEnabled;
-
     @Value("${app.ai.questions.seed.csv-location:}")
     private String configuredCsvLocation;
 
@@ -46,11 +44,6 @@ public class QuestionIndexer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!seedEnabled) {
-            log.info("질문 ES 초기 색인이 비활성화되어 있습니다.");
-            return;
-        }
-
         try {
             elasticQuestionService.createQuestionIndexIfNotExists(INDEX_NAME);
             long existingDocuments = elasticQuestionService.countDocuments(INDEX_NAME);

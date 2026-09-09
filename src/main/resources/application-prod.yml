@@ -43,9 +43,6 @@ spring:
     refresh-token-validity-in-seconds: ${JWT_REFRESH_TOKEN_SECONDS:86400}
 
   ai:
-    chat:
-      categorizePrompt: ${AI_CATEGORIZE_PROMPT:file:/app/prompts/categorizePrompt.txt}
-      reasonPrompt: ${AI_REASON_PROMPT:file:/app/prompts/reasonPrompt.txt}
     openai:
       api-key: ${OPENAI_API_KEY}
       organization-id: ${OPENAI_ORGANIZATION_ID}
@@ -68,12 +65,6 @@ elasticsearch:
   port: ${ELASTICSEARCH_PORT:9200}
   username: ${ELASTICSEARCH_USERNAME}
   password: ${ELASTICSEARCH_PASSWORD}
-
-coolsms:
-  api:
-    key: ${COOLSMS_API_KEY}
-    secret: ${COOLSMS_API_SECRET}
-  fromPhone: ${COOLSMS_FROM_PHONE}
 
 google:
   recaptcha:

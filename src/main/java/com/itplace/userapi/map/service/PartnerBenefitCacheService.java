@@ -59,39 +59,11 @@ public class PartnerBenefitCacheService {
             return result;
         }
 
-        List<Benefit> benefits = benefitRepository.findAllByPartnerIdsWithPartner(uncachedIds).stream()
-                .filter(benefit -> Boolean.TRUE.equals(benefit.getActive()))
-                .toList();
-        List<BenefitCarrierPolicy> policies = benefits.isEmpty()
-                ? List.of() : benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
-                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
-                .toList();
-        List<CarrierTierBenefit> carrierTierBenefits = policies.isEmpty()
-                ? List.of() : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
-
-        Map<Long, List<BenefitCarrierPolicy>> policiesByBenefit = policies.stream()
-                .collect(Collectors.groupingBy(policy -> policy.getBenefit().getBenefitId()));
-        Map<Long, List<CarrierTierBenefit>> carrierTierMap = carrierTierBenefits.stream()
-                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
-        Map<Long, List<Benefit>> benefitsByPartner = benefits.stream()
-                .collect(Collectors.groupingBy(b -> b.getPartner().getPartnerId()));
-
-        for (Long partnerId : uncachedIds) {
-            List<Benefit> partnerBenefits = benefitsByPartner.getOrDefault(partnerId, List.of());
-            List<BenefitCacheDto> dtos = partnerBenefits.stream()
-                    .map(b -> toBenefitCacheDto(
-                            b,
-                            policiesByBenefit.getOrDefault(b.getBenefitId(), List.of()),
-                            carrierTierMap
-                    ))
-                    .collect(Collectors.toList());
-
-            if (cache != null) {
-                cache.put(partnerId, dtos);
-            }
-            result.put(partnerId, dtos);
+        Map<Long, List<BenefitCacheDto>> loaded = loadBenefits(uncachedIds);
+        if (cache != null) {
+            loaded.forEach(cache::put);
         }
-
+        result.putAll(loaded);
         return result;
     }
 
@@ -131,38 +103,43 @@ public class PartnerBenefitCacheService {
     @Cacheable(value = "partner-benefits", key = "#partnerId")
     @Transactional(readOnly = true)
     public List<BenefitCacheDto> getBenefits(Long partnerId) {
-        List<Benefit> benefits = benefitRepository.findAllByPartner_PartnerId(partnerId).stream()
+        return loadBenefits(List.of(partnerId)).get(partnerId);
+    }
+
+    // Redis NON_FINAL 타입 직렬화를 위해 빈 목록과 중첩 목록도 ArrayList로 만든다.
+    private Map<Long, List<BenefitCacheDto>> loadBenefits(List<Long> partnerIds) {
+        Map<Long, List<BenefitCacheDto>> result = new HashMap<>();
+        List<Benefit> benefits = benefitRepository.findAllByPartnerIdsWithPartner(partnerIds).stream()
                 .filter(benefit -> Boolean.TRUE.equals(benefit.getActive()))
                 .toList();
-        if (benefits.isEmpty()) {
-            // List.of() 대신 new ArrayList<>() 사용.
-            // 이유: List.of()는 final 클래스(ImmutableCollections$ListN)를 반환하므로,
-            // Jackson NON_FINAL 타입 설정에서 타입 래퍼가 생략되어 역직렬화 실패.
-            return new ArrayList<>();
-        }
-
-        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
+        List<BenefitCarrierPolicy> policies = benefits.isEmpty()
+                ? List.of() : benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
                 .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
                 .toList();
         List<CarrierTierBenefit> carrierTierBenefits = policies.isEmpty()
                 ? List.of() : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
+
         Map<Long, List<BenefitCarrierPolicy>> policiesByBenefit = policies.stream()
                 .collect(Collectors.groupingBy(policy -> policy.getBenefit().getBenefitId()));
         Map<Long, List<CarrierTierBenefit>> carrierTierMap = carrierTierBenefits.stream()
                 .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
+        Map<Long, List<Benefit>> benefitsByPartner = benefits.stream()
+                .collect(Collectors.groupingBy(b -> b.getPartner().getPartnerId()));
 
-        // .toList() 대신 .collect(Collectors.toList()) 사용 (외부/내부 리스트 모두 동일).
-        // 이유: Java 16+ Stream.toList()는 final 클래스를 반환하여 Jackson이 타입 래퍼를 붙이지 않음.
-        // 결과적으로 [[element1], [element2]] 구조로 직렬화되고,
-        // 역직렬화 시 타입 id 자리에 START_ARRAY 토큰이 오면서 MismatchedInputException 발생.
-        // Collectors.toList()는 ArrayList(non-final)를 반환하므로 타입 래퍼가 정상적으로 생성됨.
-        return benefits.stream()
-                .map(b -> toBenefitCacheDto(
-                        b,
-                        policiesByBenefit.getOrDefault(b.getBenefitId(), List.of()),
-                        carrierTierMap
-                ))
-                .collect(Collectors.toList());
+        for (Long partnerId : partnerIds) {
+            List<Benefit> partnerBenefits = benefitsByPartner.getOrDefault(partnerId, List.of());
+            List<BenefitCacheDto> dtos = partnerBenefits.stream()
+                    .map(b -> toBenefitCacheDto(
+                            b,
+                            policiesByBenefit.getOrDefault(b.getBenefitId(), List.of()),
+                            carrierTierMap
+                    ))
+                    .collect(Collectors.toCollection(ArrayList::new));
+
+            result.put(partnerId, dtos);
+        }
+
+        return result;
     }
 
     private BenefitCacheDto toBenefitCacheDto(
@@ -174,7 +151,7 @@ public class PartnerBenefitCacheService {
                 .flatMap(policy -> carrierTierMap
                         .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
                         .map(tier -> toTierBenefitDto(benefit, policy, tier)))
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new));
         return new BenefitCacheDto(
                 benefit.getBenefitId(),
                 benefit.getBenefitName(),

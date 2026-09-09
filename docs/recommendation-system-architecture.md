@@ -42,7 +42,12 @@
   - `/api/v1/questions/recommend` 진입점.
   - `/api/v1/questions/search`는 deprecated 검색 보조 API.
 - `ai/question/service/QuestionRecommendationServiceImpl.java`
-  - 질문 금칙어 검사, intent 추출, 임베딩, Benefit RAG 검색, guard 필터링, 주변 매장 조회, grounded reason 생성을 담당.
+  - 질문 금칙어 검사, intent 추출, 임베딩, Benefit RAG 검색, guard 필터링, LLM 후보 선택, 주변 매장 조회, grounded reason 생성을 담당.
+- `ai/llm/service/OpenAIService.java`
+  - guard를 통과한 후보 안에서 `benefitId`를 선택한다. 실패하거나 유효한 선택이 없으면 기존 RAG 후보 순서를 사용한다.
+- `ai/question/index/QuestionIndexer.java`
+  - `app.ai.questions.seed.enabled=true`일 때만 생성되는 오프라인 CSV seed 컴포넌트다.
+  - 관리자용 `/api/v1/questions/search`, `/api/v1/questions/save` API는 seed 설정과 무관하게 유지한다.
 - `ai/question/intent/QueryIntentExtractor.java`
   - carrier/grade, 목적 키워드, 카테고리 힌트, 제외 힌트, 위치 컨텍스트, confidence를 규칙 기반으로 추출.
 - `ai/question/guard/BenefitCandidateGuard.java`
@@ -244,6 +249,7 @@ sequenceDiagram
     participant Embedding as EmbeddingService
     participant RAG as BenefitSearchService
     participant Guard as BenefitCandidateGuard
+    participant LLM as OpenAIService
     participant Store as StoreService
 
     Client->>Controller: GET /api/v1/questions/recommend?question=&lat=&lng=&carrier=&grade=
@@ -253,12 +259,15 @@ sequenceDiagram
     Intent-->>Service: QueryIntent
     Service->>Embedding: embed(intent.retrievalText())
     Embedding-->>Service: vector
-    Service->>RAG: queryVector(intent carrier/grade, vector, 30, condition)
+    Service->>RAG: queryHybrid(intent carrier/grade, vector, retrievalText, 30, condition)
     RAG-->>Service: Candidate list
     Service->>Guard: filter(intent, candidates)
     Guard-->>Service: accepted candidates
-    loop partnerName candidates
-        Service->>Store: findNearbyByPartnerName(lat, lng, partnerName, lat, lng)
+    Service->>LLM: selectBenefitIds(question, intent, accepted candidates, limit)
+    LLM-->>Service: selected benefit IDs
+    Service->>Service: 유효한 선택이 없거나 호출 실패 시 RAG 후보 순서 사용
+    loop selected benefit candidates
+        Service->>Store: findNearbyByBenefitCandidate(...)
     end
     Store-->>Service: nearby stores
     Service->>Service: deterministic groundedReason(...)
@@ -289,12 +298,13 @@ sequenceDiagram
   - category hint와의 positive match.
   - exclusion과 충돌 여부.
   - benefitId/partnerId/name 기반 중복 제거.
-- guard 통과 후보의 partnerName별로 `StoreService.findNearbyByPartnerName`을 호출해 주변 매장을 찾는다.
+- guard 통과 후보 안에서 `OpenAIService.selectBenefitIds`가 최대 8개의 혜택 ID를 선택한다. 실패하거나 유효한 선택이 없으면 기존 RAG 후보 순서를 사용한다.
+- 선택된 혜택 후보별로 `StoreService.findNearbyByBenefitCandidate`를 호출해 주변 매장을 찾는다.
 - 반환 partner는 최대 `MAX_PARTNER_CANDIDATES = 5`개다.
 
 ### 6.3 질문형 이유 생성
 
-현재 `QuestionRecommendationServiceImpl`은 `OpenAIService` 필드를 주입받지만, 최종 이유 생성 경로에서는 LLM 호출 대신 `groundedReason(...)`으로 결정론적 문장을 만든다.
+LLM은 후보 선택에 사용하고, 최종 이유는 `groundedReason(...)`이 실제 반환 후보와 추출된 의도로 결정론적 문장을 만든다. 과거 `categorize`, `generateReasons` 메서드와 외부 프롬프트 파일 로딩은 제거되어 시작 시 별도 프롬프트 파일이나 `/app/prompts` 마운트가 필요하지 않다.
 
 - 사용자 질문/intent/category/stores/partnerNames만 사용한다.
 - partner별 첫 번째 tier benefit context를 bullet line으로 표시한다.
@@ -346,7 +356,7 @@ sequenceDiagram
 3. 질문형 추천은 현재 개인화 rank trace 저장 흐름에 연결되어 있지 않다.
    - trace contract 문서는 question lane까지 포함하지만 구현된 `RecommendationTraceRecorder`는 개인화 추천 경로에서 사용된다.
 4. 질문형 추천은 주변 매장 조회를 partner 후보별로 반복 호출한다.
-5. canonical recommendation event 모델은 존재하지만, 현재 이벤트 mart 저장소로 직접 적재하는 구현은 없다.
+5. canonical recommendation event 모델과 enum은 `src/test/java`의 계약 검증 fixture이며, 현재 이벤트 mart 저장소로 직접 적재하는 구현은 없다.
    - 현재 새로 연결된 것은 개인화 추천의 rank trace RDB 저장이다.
 6. 운영 DB에는 `recommendation_trace_attribution.sql` 적용이 선행되어야 새 trace/attribution 컬럼을 사용할 수 있다.
 

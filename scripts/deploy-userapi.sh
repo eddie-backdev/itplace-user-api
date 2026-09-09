@@ -24,7 +24,6 @@ GHCR_USERNAME="${GHCR_USERNAME:-}"
 GHCR_TOKEN="${GHCR_TOKEN:-}"
 LOCAL_IMAGE_NAME="${LOCAL_IMAGE_NAME:-itplace-user-api}"
 LOGS_DIR="${LOGS_DIR:-/home/ubuntu/app/logs/userapi}"
-PROMPTS_DIR="${PROMPTS_DIR:-/home/ubuntu/prompts}"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "[userapi] env file not found: ${ENV_FILE}"
@@ -116,7 +115,6 @@ docker run -d \
   -e "MANAGEMENT_SERVER_PORT=${MANAGEMENT_PORT}" \
   --env-file "${ENV_FILE}" \
   -v "${LOGS_DIR}:/app/logs" \
-  -v "${PROMPTS_DIR}:/app/prompts" \
   "${LOCAL_IMAGE}"
 
 NEW_CONTAINER_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NEW_CONTAINER}")"
