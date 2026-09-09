@@ -1,6 +1,5 @@
 package com.itplace.userapi.security.jwt;
 
-import com.itplace.userapi.user.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -29,25 +28,6 @@ public class JWTUtil {
         this.refreshTokenValidityInMS = refreshTokenValidity * 1000;
     }
 
-    public Long getUserId(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token)
-                .getPayload().get("userId", Long.class);
-    }
-
-    public Role getRole(String token) {
-        String roleString = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("role", String.class);
-        return Role.fromKey(roleString);
-    }
-
-    public String getCategory(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token)
-                .getPayload().get("category", String.class);
-    }
-
-    public Boolean isExpired(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
-    }
-
     public String createJwt(Long userId, String role, String category) {
         long now = System.currentTimeMillis();
         long validity = JWTConstants.CATEGORY_ACCESS.equals(category) ? accessTokenValidityInMS : refreshTokenValidityInMS;
@@ -60,10 +40,6 @@ public class JWTUtil {
                 .expiration(new Date(now + validity))
                 .signWith(secretKey)
                 .compact();
-    }
-
-    public String createTempJwt(String provider, String providerId) {
-        return createTempJwt(provider, providerId, null, null);
     }
 
     public String createTempJwt(String provider, String providerId, String email, String nickname) {

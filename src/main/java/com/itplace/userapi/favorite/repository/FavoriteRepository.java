@@ -81,7 +81,9 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     List<Object[]> countFavoritesByBenefitIds(@Param("benefitIds") List<Long> benefitIds);
 
 
-    void deleteByUserAndBenefitIn(User user, List<Benefit> benefits);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT f FROM Favorite f WHERE f.user = :user AND f.benefit.benefitId IN :benefitIds ORDER BY f.benefit.benefitId")
+    List<Favorite> findForRemoval(@Param("user") User user, @Param("benefitIds") List<Long> benefitIds);
 
 
     @Query("""

@@ -3,11 +3,12 @@ package com.itplace.userapi.security.jwt;
 import com.itplace.userapi.security.auth.local.dto.CustomUserDetails;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import io.jsonwebtoken.JwtException;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,24 +51,16 @@ public class JWTFilter extends OncePerRequestFilter {
         }
 
         try {
-            // 3) 만료 여부 확인 — isExpired() 내부에서 JwtException 발생 가능
-            if (jwtUtil.isExpired(token)) {
-                log.info("토큰이 만료되었습니다.");
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 4) 카테고리 확인 (access 토큰 여부)
-            String category = jwtUtil.getCategory(token);
-            if (!JWTConstants.CATEGORY_ACCESS.equals(category)) {
-                log.info("Access 토큰이 아닙니다.");
+            Claims claims = jwtUtil.getClaims(token);
+            if (!JWTConstants.CATEGORY_ACCESS.equals(claims.get(JWTConstants.CLAIM_CATEGORY, String.class))) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
-
-            // 5) 토큰에서 사용자 정보 꺼내서 Authentication 설정
-            Long userId = jwtUtil.getUserId(token);
-            Role role = jwtUtil.getRole(token);
+            Long userId = claims.get(JWTConstants.CLAIM_USER_ID, Long.class);
+            Role role = Role.fromKey(claims.get(JWTConstants.CLAIM_ROLE, String.class));
+            if (userId == null || claims.getExpiration() == null) {
+                throw new JwtException("필수 access 클레임 누락");
+            }
 
             User user = User.builder()
                     .id(userId)
@@ -81,10 +74,10 @@ public class JWTFilter extends OncePerRequestFilter {
                     );
             SecurityContextHolder.getContext().setAuthentication(authToken);
 
-            filterChain.doFilter(request, response);
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.warn("유효하지 않은 토큰: {}", e.getMessage());
-            filterChain.doFilter(request, response);
+            SecurityContextHolder.clearContext();
         }
+        filterChain.doFilter(request, response);
     }
 }

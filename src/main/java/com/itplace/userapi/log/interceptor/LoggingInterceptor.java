@@ -1,6 +1,8 @@
 package com.itplace.userapi.log.interceptor;
 
 import com.itplace.userapi.log.service.LogService;
+import com.itplace.userapi.log.dto.ResponseLogCommand;
+import java.util.List;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,7 +31,11 @@ public class LoggingInterceptor implements HandlerInterceptor {
         String params = request.getQueryString();
 
         if (userId != null && benefitId != null) {
-            logService.saveRequestLog(userId, event, benefitId, path, params);
+            try {
+                logService.saveResponseLogs(userId, List.of(new ResponseLogCommand(event, benefitId, null, path, params)));
+            } catch (RuntimeException e) {
+                log.warn("클릭 로그 제출 실패: benefitId={}", benefitId, e);
+            }
         }
 
         return true;

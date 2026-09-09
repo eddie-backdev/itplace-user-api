@@ -10,6 +10,7 @@ import com.itplace.userapi.benefit.entity.BenefitPolicy;
 import com.itplace.userapi.benefit.entity.BenefitSnapshotImportState;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
@@ -110,6 +111,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         List<BenefitCarrierPolicy> policiesToSave = new ArrayList<>(rows.size());
         Map<String, ImportRow> latestRowBySourceKey = new LinkedHashMap<>();
 
+        Map<BenefitPolicyCode, BenefitPolicy> benefitPolicies = new LinkedHashMap<>();
         for (int i = 0; i < rows.size(); i++) {
             ImportRow row = rows.get(i);
             Benefit savedBenefit = savedBenefits.get(i);
@@ -118,7 +120,8 @@ public class BenefitImportServiceImpl implements BenefitImportService {
                     savedBenefit,
                     request.getCarrier(),
                     row.item(),
-                    crawledAt
+                    crawledAt,
+                    benefitPolicies
             );
             policiesToSave.add(policy);
             latestRowBySourceKey.put(row.item().getSourceKey(), new ImportRow(row.item(), savedBenefit, policy));
@@ -290,7 +293,8 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             Benefit benefit,
             Carrier carrier,
             BenefitSnapshotImportRequest.BenefitSnapshotItem item,
-            LocalDateTime crawledAt
+            LocalDateTime crawledAt,
+            Map<BenefitPolicyCode, BenefitPolicy> benefitPolicies
     ) {
         BenefitCarrierPolicy target = policy == null
                 ? BenefitCarrierPolicy.builder()
@@ -311,7 +315,8 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         target.setType(item.getType());
         target.setDescription(item.getDescription());
         target.setManual(item.getManual());
-        target.setBenefitPolicy(resolveBenefitPolicy(item.getBenefitPolicyCode()));
+        BenefitPolicyCode code = item.getBenefitPolicyCode() == null ? BenefitPolicyCode.UNLIMITED : item.getBenefitPolicyCode();
+        target.setBenefitPolicy(benefitPolicies.computeIfAbsent(code, this::resolveBenefitPolicy));
         target.setUsageType(item.getUsageType());
         target.setUrl(resolveBenefitUrl(item));
 
@@ -330,7 +335,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             LocalDateTime crawledAt
     ) {
         List<BenefitCarrierPolicy> missingPolicies = benefitCarrierPolicyRepository.findAllByCarrier(carrier).stream()
-                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
+                .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
                 .filter(policy -> !incomingSourceKeys.contains(policy.getSourceKey()))
                 .peek(policy -> {
                     policy.setActive(false);
@@ -351,23 +356,39 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         }
 
         List<CarrierTierBenefit> existingTiers = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(savedPolicies);
-        if (!existingTiers.isEmpty()) {
-            carrierTierBenefitRepository.deleteAll(existingTiers);
-        }
-
+        Map<Long, List<CarrierTierBenefit>> tiersByPolicy = existingTiers.stream()
+                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
+        List<CarrierTierBenefit> removals = new ArrayList<>();
         List<CarrierTierBenefit> replacements = new ArrayList<>();
         Map<String, BenefitCarrierPolicy> savedPolicyBySourceKey = savedPolicies.stream()
                 .collect(Collectors.toMap(BenefitCarrierPolicy::getSourceKey, Function.identity(), (first, second) -> second));
         latestRowBySourceKey.forEach((sourceKey, row) -> {
             BenefitCarrierPolicy savedPolicy = savedPolicyBySourceKey.get(sourceKey);
             if (savedPolicy != null) {
-                replacements.addAll(createCarrierTierBenefits(savedPolicy, row.item().getTierBenefits()));
+                List<CarrierTierBenefit> current = tiersByPolicy.getOrDefault(savedPolicy.getBenefitCarrierPolicyId(), List.of());
+                List<CarrierTierBenefit> incoming = createCarrierTierBenefits(savedPolicy, row.item().getTierBenefits());
+                if (!tierCounts(current).equals(tierCounts(incoming))) {
+                    removals.addAll(current);
+                    replacements.addAll(incoming);
+                }
             }
         });
+        if (!removals.isEmpty()) {
+            carrierTierBenefitRepository.deleteAll(removals);
+        }
         if (!replacements.isEmpty()) {
             carrierTierBenefitRepository.saveAll(replacements);
         }
     }
+
+    private Map<TierContent, Long> tierCounts(List<CarrierTierBenefit> tiers) {
+        return tiers.stream().map(tier -> new TierContent(tier.getGrade(), tier.getContext(),
+                        Boolean.TRUE.equals(tier.getIsAll()), tier.getDiscountValue()))
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    }
+
+    private record TierContent(Grade grade, String context,
+                               boolean all, Integer discountValue) {}
 
     private List<CarrierTierBenefit> createCarrierTierBenefits(
             BenefitCarrierPolicy policy,

@@ -5,14 +5,9 @@ import com.itplace.userapi.ai.forbiddenword.entity.ForbiddenWord;
 import com.itplace.userapi.ai.forbiddenword.repository.ExceptionWordRepository;
 import com.itplace.userapi.ai.forbiddenword.repository.ForbiddenWordRepository;
 import jakarta.annotation.PostConstruct;
-import java.util.ArrayDeque;
 import org.springframework.scheduling.annotation.Scheduled;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -28,124 +23,39 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
     private final ForbiddenWordRepository forbiddenWordRepository;
     private final ExceptionWordRepository exceptionWordRepository;
 
-    // 노드 정의
-    private static class TrieNode {
-        Map<Character, TrieNode> children = new HashMap<>();
-        TrieNode fail = null;       // 실패 링크
-        boolean isEnd = false;      // 금칙어 끝 표시
-    }
+    private record Rules(Set<String> normalized, Set<String> special, Set<String> exceptions) {}
 
-    private final TrieNode root = new TrieNode();
-
-    private final Set<String> specialForbiddenWords = new HashSet<>();  // 특수문자 금칙어 저장
-    private final Set<String> normalizedForbiddenWords = new HashSet<>();
-
-    private Set<String> exceptionWords = new HashSet<>();
+    private volatile Rules rules = new Rules(Set.of(), Set.of(), Set.of());
 
     @PostConstruct
     public void init() {
-        List<String> forbiddenWords = forbiddenWordRepository.findAll()
-                .stream()
-                .map(ForbiddenWord::getWord)
-                .toList();
-
-        List<ExceptionWord> exceptionWordList = exceptionWordRepository.findAll();
-        exceptionWords = exceptionWordList.stream()
-                .map(ExceptionWord::getWord)
-                .map(this::normalize)
-                .filter(word -> !word.isBlank())
-                .collect(Collectors.toSet());
-
-        log.debug("=== 금칙어 init() ===");
-        for (String w : forbiddenWords) {
-            insert(w);
-        }
-        buildFailureLinks();
+        reloadForbiddenWords();
     }
 
     @Scheduled(fixedDelay = 600_000)
     @Override
-    public void reloadForbiddenWords() {
-        synchronized (root) {
-            root.children.clear();
-            root.fail = root;
-            root.isEnd = false;
-            specialForbiddenWords.clear();
-            normalizedForbiddenWords.clear();
-
-            List<String> forbiddenWords = forbiddenWordRepository.findAll()
-                    .stream()
-                    .map(ForbiddenWord::getWord)
-                    .toList();
-
-            for (String w : forbiddenWords) {
-                insert(w);
-            }
-            buildFailureLinks();
-
-            List<ExceptionWord> exceptionWordList = exceptionWordRepository.findAll();
-            exceptionWords = exceptionWordList.stream()
-                    .map(word -> normalize(word.getWord()))
-                    .collect(Collectors.toSet());
-
-            log.info("금칙어 및 예외 단어 재로딩 완료");
-        }
-    }
-
-    private void insert(String word) {
-        if (isSpecialWord(word)) {
-            specialForbiddenWords.add(word);  // 특수문자 금칙어는 Set에 저장
-        }
-
-        String normalized = normalize(word);
-
-        if (normalized.isEmpty()) {
-            return;  // 정규화 후 빈 문자열 무시
-        }
-        normalizedForbiddenWords.add(normalized);
-
-        TrieNode node = root;
-        for (char c : normalized.toCharArray()) {
-            node = node.children.computeIfAbsent(c, k -> new TrieNode());
-        }
-        node.isEnd = true;
-    }
-
-    private void buildFailureLinks() {
-        Queue<TrieNode> q = new ArrayDeque<>();
-        root.fail = root;
-
-        for (TrieNode child : root.children.values()) {
-            child.fail = root;
-            q.add(child);
-        }
-
-        while (!q.isEmpty()) {
-            TrieNode curr = q.poll();
-            for (Map.Entry<Character, TrieNode> e : curr.children.entrySet()) {
-                char c = e.getKey();
-                TrieNode next = e.getValue();
-
-                TrieNode f = curr.fail;
-                while (f != root && !f.children.containsKey(c)) {
-                    f = f.fail;
-                }
-                next.fail = f.children.getOrDefault(c, root);
-                next.isEnd |= next.fail.isEnd;
-                q.add(next);
-            }
-        }
+    public synchronized void reloadForbiddenWords() {
+        List<String> words = forbiddenWordRepository.findAll().stream().map(ForbiddenWord::getWord).toList();
+        Set<String> normalized = words.stream().map(this::normalize).filter(word -> !word.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+        Set<String> special = words.stream().filter(this::isSpecialWord).collect(Collectors.toUnmodifiableSet());
+        Set<String> exceptions = exceptionWordRepository.findAll().stream().map(ExceptionWord::getWord)
+                .map(this::normalize).filter(word -> !word.isBlank()).collect(Collectors.toUnmodifiableSet());
+        // 두 조회가 모두 성공한 뒤 교체하므로 실패 중에도 마지막 정상 규칙으로 검사한다.
+        rules = new Rules(normalized, special, exceptions);
+        log.info("금칙어 및 예외 단어 재로딩 완료");
     }
 
     @Override
     public boolean containsForbiddenWord(String text) {
+        Rules snapshot = rules;
         String normalized = normalize(text);
 
         // 기존 금칙어 검사
-        String matchedWord = findForbiddenWord(text, normalized);
+        String matchedWord = findForbiddenWord(text, normalized, snapshot);
         if (matchedWord != null) {
             // 예외 단어 포함 시 욕설 아님 처리
-            for (String exception : exceptionWords) {
+            for (String exception : snapshot.exceptions()) {
                 if (normalized.contains(exception)) {
                     return false;
                 }
@@ -158,8 +68,8 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
     }
 
     private String normalize(String text) {
-        return text.replaceAll("[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]", "")
-                .toLowerCase()
+        return (text == null ? "" : text).replaceAll("[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]", "")
+                .toLowerCase(java.util.Locale.ROOT)
                 .replaceAll("\\s+", "");
     }
 
@@ -168,29 +78,14 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
     }
 
 
-    private boolean checkTrieForbiddenWord(String normalized) {
-        TrieNode node = root;
-
-        for (char c : normalized.toCharArray()) {
-            while (node != root && !node.children.containsKey(c)) {
-                node = node.fail;
-            }
-            node = node.children.getOrDefault(c, root);
-            if (node.isEnd) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String findForbiddenWord(String original, String normalized) {
+    private String findForbiddenWord(String original, String normalized, Rules snapshot) {
         Set<String> tokens = normalizedTokens(original);
-        for (String forbidden : normalizedForbiddenWords) {
+        for (String forbidden : snapshot.normalized()) {
             if (matchesForbiddenWord(normalized, tokens, forbidden)) {
                 return forbidden;
             }
         }
-        for (String forbidden : specialForbiddenWords) {
+        for (String forbidden : snapshot.special()) {
             if (original != null && original.contains(forbidden)) {
                 return forbidden;
             }
@@ -219,15 +114,6 @@ public class ForbiddenWordServiceImpl implements ForbiddenWordService {
                 .map(this::normalize)
                 .filter(token -> !token.isBlank())
                 .collect(Collectors.toSet());
-    }
-
-    private boolean checkSpecialForbiddenWord(String normalized) {
-        for (String forbidden : specialForbiddenWords) {
-            if (normalized.contains(forbidden)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override

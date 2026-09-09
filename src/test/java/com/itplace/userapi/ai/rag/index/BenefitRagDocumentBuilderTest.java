@@ -1,7 +1,6 @@
 package com.itplace.userapi.ai.rag.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
 import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
@@ -13,24 +12,35 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
-import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
-import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BenefitRagDocumentBuilderTest {
 
-    @Mock
-    private BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
 
-    @Mock
-    private CarrierTierBenefitRepository carrierTierBenefitRepository;
+    @Test
+    void embeddingHashDependsOnTextInsteadOfCrawlTimeOrDatabaseId() {
+        Benefit benefit = Benefit.builder().benefitId(1L).benefitName("커피")
+                .partner(Partner.builder().partnerId(2L).partnerName("카페").build()).build();
+        BenefitCarrierPolicy policy = BenefitCarrierPolicy.builder().benefitCarrierPolicyId(3L)
+                .benefit(benefit).carrier(Carrier.SKT).description("10% 할인").build();
+        var builder = new BenefitRagDocumentBuilder(new BenefitRagMetadataClassifier());
+        var original = builder.buildPendingDocuments(benefit, List.of(policy), List.of()).get(0).document();
+        policy.setLastCrawledAt(LocalDateTime.of(2026, 9, 9, 12, 0));
+        policy.setBenefitCarrierPolicyId(4L);
+        var refreshed = builder.buildPendingDocuments(benefit, List.of(policy), List.of()).get(0).document();
+        assertThat(refreshed.getContentHash()).isEqualTo(original.getContentHash());
+        assertThat(refreshed.getDocumentId()).isNotEqualTo(original.getDocumentId());
+        assertThat(refreshed.getSourceUpdatedAt()).isNotEqualTo(original.getSourceUpdatedAt());
+        policy.setDescription("20% 할인");
+        assertThat(builder.buildPendingDocuments(benefit, List.of(policy), List.of()).get(0).document().getContentHash())
+                .isNotEqualTo(original.getContentHash());
+    }
 
     @Test
     void buildPendingDocumentsIndexesCarrierPolicyAndTierMetadataSeparately() {
@@ -69,16 +79,12 @@ class BenefitRagDocumentBuilderTest {
                 .isAll(false)
                 .build();
 
-        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(sktPolicy));
-        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(sktPolicy))).thenReturn(List.of(vipTier));
 
         BenefitRagDocumentBuilder builder = new BenefitRagDocumentBuilder(
-                benefitCarrierPolicyRepository,
-                carrierTierBenefitRepository,
                 new BenefitRagMetadataClassifier()
         );
 
-        List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = builder.buildPendingDocuments(benefit);
+        List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = builder.buildPendingDocuments(benefit, List.of(sktPolicy), List.of(vipTier));
 
         assertThat(pendingDocuments)
                 .singleElement()
@@ -137,16 +143,12 @@ class BenefitRagDocumentBuilderTest {
                 .isAll(false)
                 .build();
 
-        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
-        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of(tier));
 
         BenefitRagDocumentBuilder builder = new BenefitRagDocumentBuilder(
-                benefitCarrierPolicyRepository,
-                carrierTierBenefitRepository,
                 new BenefitRagMetadataClassifier()
         );
 
-        List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = builder.buildPendingDocuments(benefit);
+        List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = builder.buildPendingDocuments(benefit, List.of(policy), List.of(tier));
 
         assertThat(pendingDocuments)
                 .singleElement()

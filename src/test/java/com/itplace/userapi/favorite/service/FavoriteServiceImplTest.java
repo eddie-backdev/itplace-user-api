@@ -56,8 +56,46 @@ class FavoriteServiceImplTest {
     @InjectMocks
     private FavoriteServiceImpl favoriteService;
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void favoriteEventsWaitForCommitAndDisappearOnRollback(boolean commit) {
+        User user = User.builder().id(7L).build();
+        Benefit benefit = Benefit.builder().benefitId(100L).build();
+        Favorite favorite = Favorite.builder().user(user).benefit(benefit).build();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(benefitRepository.findAllByIdWithPartner(List.of(100L))).thenReturn(List.of(benefit));
+        when(favoriteRepository.findForRemoval(user, List.of(100L))).thenReturn(List.of(favorite));
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            favoriteService.addFavorite(7L, 100L);
+            favoriteService.removeFavorites(7L, List.of(100L));
+            org.mockito.Mockito.verifyNoInteractions(logService);
+            var callbacks = org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            if (commit) {
+                callbacks.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+                verify(logService, org.mockito.Mockito.times(2)).saveResponseLogs(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.anyList());
+            } else {
+                callbacks.forEach(callback -> callback.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK));
+                org.mockito.Mockito.verifyNoInteractions(logService);
+            }
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
     @Test
-    void removeFavoritesWritesFavoriteRemoveEventBeforeCacheInvalidationChecks() {
+    void repeatedRemovalDoesNotCreateNegativeSignal() {
+        User user = User.builder().id(7L).build();
+        Benefit benefit = Benefit.builder().benefitId(100L).build();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(benefitRepository.findAllByIdWithPartner(List.of(100L))).thenReturn(List.of(benefit));
+        favoriteService.removeFavorites(7L, List.of(100L));
+        org.mockito.Mockito.verifyNoInteractions(logService);
+        verify(favoriteRepository, org.mockito.Mockito.never()).deleteAll(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void removeFavoritesLogsOnlyExistingFavorites() {
         User user = User.builder().id(7L).role(Role.USER).build();
         Benefit benefit = Benefit.builder()
                 .benefitId(100L)
@@ -67,7 +105,9 @@ class FavoriteServiceImplTest {
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
         when(benefitRepository.findAllByIdWithPartner(List.of(100L))).thenReturn(List.of(benefit));
 
-        favoriteService.removeFavorites(7L, List.of(100L));
+        Favorite favorite = Favorite.builder().user(user).benefit(benefit).build();
+        when(favoriteRepository.findForRemoval(user, List.of(100L))).thenReturn(List.of(favorite));
+        favoriteService.removeFavorites(7L, List.of(100L, 100L));
 
         verify(logService).saveResponseLogs(7L, List.of(new ResponseLogCommand(
                 "favorite_remove",
@@ -76,7 +116,7 @@ class FavoriteServiceImplTest {
                 "/api/v1/favorites",
                 "benefitId=100"
         )));
-        verify(favoriteRepository).deleteByUserAndBenefitIn(user, List.of(benefit));
+        verify(favoriteRepository).deleteAll(List.of(favorite));
     }
 
     @Test

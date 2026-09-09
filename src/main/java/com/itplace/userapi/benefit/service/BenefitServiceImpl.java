@@ -18,6 +18,7 @@ import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.benefit.support.BenefitContextSplitter;
+import com.itplace.userapi.benefit.support.BenefitPolicySelector;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.entity.Store;
@@ -104,12 +105,12 @@ public class BenefitServiceImpl implements BenefitService {
                 );
                 BenefitPage<Benefit> benefitPage = sliceBenefits(
                         orderedBenefits,
-                        pageable,
-                        Math.max(hybridResult.totalElements(), orderedBenefits.size())
+                        pageable
                 );
                 return toBenefitListPage(
                         benefitPage.content(),
                         carrierFilters,
+                    filter,
                         userId,
                         benefitPage.currentPage(),
                         benefitPage.totalPages(),
@@ -147,12 +148,12 @@ public class BenefitServiceImpl implements BenefitService {
                 );
                 BenefitPage<Benefit> slicedPage = sliceBenefits(
                         expandedBenefits,
-                        pageable,
-                        Math.max(lexicalResult.totalElements(), expandedBenefits.size())
+                        pageable
                 );
                 return toBenefitListPage(
                         slicedPage.content(),
                         carrierFilters,
+                    filter,
                         userId,
                         slicedPage.currentPage(),
                         slicedPage.totalPages(),
@@ -185,12 +186,12 @@ public class BenefitServiceImpl implements BenefitService {
         if (normalizedKeyword != null) {
             BenefitPage<Benefit> slicedPage = sliceBenefits(
                     benefitContent,
-                    pageable,
-                    Math.max(benefitPage.getTotalElements(), benefitContent.size())
+                    pageable
             );
             return toBenefitListPage(
                     slicedPage.content(),
                     carrierFilters,
+                    filter,
                     userId,
                     slicedPage.currentPage(),
                     slicedPage.totalPages(),
@@ -202,6 +203,7 @@ public class BenefitServiceImpl implements BenefitService {
         return toBenefitListPage(
                 benefitContent,
                 carrierFilters,
+                filter,
                 userId,
                 benefitPage.getNumber(),
                 benefitPage.getTotalPages(),
@@ -214,13 +216,14 @@ public class BenefitServiceImpl implements BenefitService {
         return PageRequest.of(0, SEARCH_EXPANSION_FETCH_LIMIT);
     }
 
-    private <T> BenefitPage<T> sliceBenefits(List<T> benefits, Pageable pageable, long totalElementsFloor) {
+    private <T> BenefitPage<T> sliceBenefits(List<T> benefits, Pageable pageable) {
         List<T> safeBenefits = benefits == null ? List.of() : benefits;
         int pageSize = Math.max(pageable.getPageSize(), 1);
         long offset = pageable.getOffset();
         int fromIndex = (int) Math.min(offset, safeBenefits.size());
         int toIndex = Math.min(fromIndex + pageSize, safeBenefits.size());
-        long totalElements = Math.max(totalElementsFloor, safeBenefits.size());
+        // ponytail: keyword search pages the bounded candidate set; use DB pagination if exhaustive search is required.
+        long totalElements = safeBenefits.size();
         int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
         boolean hasNext = offset + pageSize < totalElements;
         return new BenefitPage<>(
@@ -235,6 +238,7 @@ public class BenefitServiceImpl implements BenefitService {
     private PageResult<BenefitListResponse> toBenefitListPage(
             List<Benefit> benefitList,
             List<Carrier> carrierFilters,
+            UsageType filter,
             Long userId,
             int currentPage,
             int totalPages,
@@ -273,7 +277,7 @@ public class BenefitServiceImpl implements BenefitService {
         // DTO 변환
         List<BenefitListResponse> result = benefitList.stream()
                 .map(b -> {
-                    BenefitCarrierPolicy policy = selectListPolicy(policyMap.getOrDefault(b.getBenefitId(), List.of()), carrierFilters);
+                    BenefitCarrierPolicy policy = selectListPolicy(policyMap.getOrDefault(b.getBenefitId(), List.of()), carrierFilters, filter);
                     if (policy == null) {
                         return null;
                     }
@@ -292,7 +296,7 @@ public class BenefitServiceImpl implements BenefitService {
                             .mainCategory(b.getMainCategory())
                             .usageType(policy.getUsageType())
                             .carrier(policy.getCarrier())
-                            .active(Boolean.TRUE.equals(policy.getActive()))
+                            .active(!Boolean.FALSE.equals(policy.getActive()))
                             .partnerId(b.getPartner().getPartnerId())
                             .category(Optional.ofNullable(b.getPartner().getCategory()).map(String::trim).orElse(null))
                             .image(b.getPartner().getImage())
@@ -422,9 +426,13 @@ public class BenefitServiceImpl implements BenefitService {
                         Collectors.toList()
                 ));
 
+        Set<Long> eligibleIds = siblingsByPartnerId.values().stream().flatMap(List::stream)
+                .map(Benefit::getBenefitId).collect(Collectors.toSet());
         Map<Long, Benefit> expanded = new LinkedHashMap<>();
         for (Benefit rankedBenefit : rankedBenefits) {
-            expanded.putIfAbsent(rankedBenefit.getBenefitId(), rankedBenefit);
+            if (eligibleIds.contains(rankedBenefit.getBenefitId())) {
+                expanded.putIfAbsent(rankedBenefit.getBenefitId(), rankedBenefit);
+            }
             Long partnerId = rankedBenefit.getPartner() == null ? null : rankedBenefit.getPartner().getPartnerId();
             if (partnerId == null) {
                 continue;
@@ -444,6 +452,7 @@ public class BenefitServiceImpl implements BenefitService {
             return Integer.MAX_VALUE;
         }
         return benefit.getCarrierPolicies().stream()
+                .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
                 .map(BenefitCarrierPolicy::getCarrier)
                 .filter(carrier -> effectiveCarriers == null || effectiveCarriers.contains(carrier))
                 .mapToInt(this::carrierSortIndex)
@@ -515,7 +524,7 @@ public class BenefitServiceImpl implements BenefitService {
                 .manual(trimNullable(policy.getManual()))
                 .url(trimNullable(policy.getUrl()))
                 .carrier(policy.getCarrier())
-                .active(Boolean.TRUE.equals(policy.getActive()))
+                .active(!Boolean.FALSE.equals(policy.getActive()))
                 .partnerName(benefit.getPartner().getPartnerName())
                 .image(benefit.getPartner().getImage())
                 .build();
@@ -576,7 +585,7 @@ public class BenefitServiceImpl implements BenefitService {
         }
 
         List<BenefitCarrierPolicy> policies = foundPolicies.stream()
-                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
+                .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
                 .filter(policy -> policy.getUsageType() == UsageType.OFFLINE || policy.getUsageType() == UsageType.BOTH)
                 .sorted(Comparator
                         .comparingInt((BenefitCarrierPolicy policy) -> carrierSortIndex(policy.getCarrier()))
@@ -681,23 +690,8 @@ public class BenefitServiceImpl implements BenefitService {
         return value == null ? null : value.trim();
     }
 
-    private BenefitCarrierPolicy selectListPolicy(List<BenefitCarrierPolicy> policies, List<Carrier> requestedCarriers) {
-        if (policies == null || policies.isEmpty()) {
-            return null;
-        }
-        if (requestedCarriers != null && !requestedCarriers.isEmpty()) {
-            for (Carrier requestedCarrier : requestedCarriers) {
-                Optional<BenefitCarrierPolicy> matchingPolicy = policies.stream()
-                        .filter(policy -> policy.getCarrier() == requestedCarrier)
-                        .findFirst();
-                if (matchingPolicy.isPresent()) {
-                    return matchingPolicy.get();
-                }
-            }
-        }
-        return policies.stream()
-                .min(Comparator.comparingInt(policy -> carrierSortIndex(policy.getCarrier())))
-                .orElse(policies.get(0));
+    private BenefitCarrierPolicy selectListPolicy(List<BenefitCarrierPolicy> policies, List<Carrier> carriers, UsageType usageType) {
+        return BenefitPolicySelector.eligible(policies, carriers, usageType).stream().findFirst().orElse(null);
     }
 
     private BenefitCarrierPolicy representativePolicy(Benefit benefit) {
@@ -705,7 +699,7 @@ public class BenefitServiceImpl implements BenefitService {
         if (policies == null || policies.isEmpty()) {
             policies = benefit.getCarrierPolicies();
         }
-        return policies.stream()
+        return BenefitPolicySelector.eligible(policies, List.of(), null).stream()
                 .findFirst()
                 .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
     }

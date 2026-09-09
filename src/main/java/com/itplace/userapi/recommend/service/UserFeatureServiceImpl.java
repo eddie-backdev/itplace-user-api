@@ -1,6 +1,5 @@
 package com.itplace.userapi.recommend.service;
 
-import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.favorite.entity.Favorite;
@@ -51,7 +50,6 @@ public class UserFeatureServiceImpl implements UserFeatureService {
     );
 
     private final UserRepository userRepo;
-    private final EmbeddingService embeddingService;
     private final LogRepository logRepository;
     private final FavoriteRepository favoriteRepository;
 
@@ -61,15 +59,20 @@ public class UserFeatureServiceImpl implements UserFeatureService {
         Carrier carrier = user.getCarrier();
         Grade profileGrade = user.getMembershipGradeCode();
 
-        // 로그 기반 정보 수집 (클릭,상세,검색)
-        List<String> clickPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "click", SIGNAL_PARTNER_LIMIT);
-        List<String> searchPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "search", SIGNAL_PARTNER_LIMIT);
-        List<String> detailPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "detail", SIGNAL_PARTNER_LIMIT);
-        List<String> impressionPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "impression", NEGATIVE_PARTNER_LIMIT);
-        List<String> dismissedPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "dismiss", NEGATIVE_PARTNER_LIMIT);
-        List<String> skippedPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "skip", NEGATIVE_PARTNER_LIMIT);
-        List<String> favoriteRemovedPartners = logRepository.aggregateTopPartnerNamesByEvent(userId, "favorite_remove", NEGATIVE_PARTNER_LIMIT);
-        List<String> negativeFeedbackPartners = aggregateEventFamily(userId, EXPLICIT_NEGATIVE_EVENTS, NEGATIVE_PARTNER_LIMIT);
+        Map<String, Integer> limits = new LinkedHashMap<>();
+        List.of("click", "search", "detail").forEach(event -> limits.put(event, SIGNAL_PARTNER_LIMIT));
+        List.of("impression", "dismiss", "skip", "favorite_remove").forEach(event -> limits.put(event, NEGATIVE_PARTNER_LIMIT));
+        EXPLICIT_NEGATIVE_EVENTS.forEach(event -> limits.put(event, NEGATIVE_PARTNER_LIMIT));
+        Map<String, List<String>> signals = logRepository.aggregateTopPartnerNamesByEvents(userId, limits);
+        List<String> clickPartners = signals.getOrDefault("click", List.of());
+        List<String> searchPartners = signals.getOrDefault("search", List.of());
+        List<String> detailPartners = signals.getOrDefault("detail", List.of());
+        List<String> impressionPartners = signals.getOrDefault("impression", List.of());
+        List<String> dismissedPartners = signals.getOrDefault("dismiss", List.of());
+        List<String> skippedPartners = signals.getOrDefault("skip", List.of());
+        List<String> favoriteRemovedPartners = signals.getOrDefault("favorite_remove", List.of());
+        List<String> negativeFeedbackPartners = EXPLICIT_NEGATIVE_EVENTS.stream()
+                .flatMap(event -> signals.getOrDefault(event, List.of()).stream()).distinct().limit(NEGATIVE_PARTNER_LIMIT).toList();
         String locationContext = resolveLocationContext(userId);
         List<String> favoritePartners = favoriteRepository.findByUserIdWithBenefitAndPartner(userId).stream()
                 .map(Favorite::getBenefit)
@@ -112,14 +115,6 @@ public class UserFeatureServiceImpl implements UserFeatureService {
 
     }
 
-
-    public List<Float> embedUserFeatures(UserFeature uf) {
-        return embeddingService.embed(uf.getEmbeddingText());
-    }
-
-    public String getUserEmbeddingContext(UserFeature uf) {
-        return uf.getEmbeddingText(); // UserFeature 내부 메서드 사용
-    }
 
     static Map<String, Double> buildPartnerScores(List<String> clickPartners,
                                                   List<String> searchPartners,
@@ -194,14 +189,6 @@ public class UserFeatureServiceImpl implements UserFeatureService {
         return partners.stream()
                 .filter(partner -> partner != null && !partner.isBlank())
                 .toList();
-    }
-
-    private List<String> aggregateEventFamily(Long userId, List<String> events, int topK) {
-        LinkedHashSet<String> partners = new LinkedHashSet<>();
-        for (String event : events) {
-            partners.addAll(safeList(logRepository.aggregateTopPartnerNamesByEvent(userId, event, topK)));
-        }
-        return partners.stream().limit(topK).toList();
     }
 
     private String resolveLocationContext(Long userId) {

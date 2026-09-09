@@ -8,6 +8,8 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
 import com.itplace.userapi.ai.rag.service.ElasticService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
@@ -36,6 +38,7 @@ public class BenefitRagSyncService {
     private final ElasticService elasticService;
     private final EmbeddingService embeddingService;
     private final BenefitRagSourceQueryService sourceQueryService;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.ai.benefits.sync.enabled:false}")
     private boolean syncEnabled;
@@ -78,12 +81,15 @@ public class BenefitRagSyncService {
             BenefitDocument document = pending.document();
             currentDocumentIds.add(document.getDocumentId());
             try {
-                if (isCurrent(document)) {
+                JsonNode existing = loadExisting(document);
+                List<Float> embedding = reusableEmbedding(document, existing);
+                if (!embedding.isEmpty() && isCurrent(document, existing)) {
                     skippedDocuments++;
                     continue;
                 }
 
-                BenefitDocument upsertDocument = pending.withEmbedding(embeddingService.embed(pending.searchableText()));
+                BenefitDocument upsertDocument = pending.withEmbedding(
+                        embedding.isEmpty() ? embeddingService.embed(pending.searchableText()) : embedding);
                 esClient.index(i -> i
                         .index(INDEX_NAME)
                         .id(upsertDocument.getDocumentId())
@@ -238,29 +244,42 @@ public class BenefitRagSyncService {
                 .build();
     }
 
-    private boolean isCurrent(BenefitDocument document) {
-        try {
-            GetResponse<JsonData> response = esClient.get(g -> g
-                            .index(INDEX_NAME)
-                            .id(document.getDocumentId()),
-                    JsonData.class);
-            if (!response.found() || response.source() == null) {
+    private JsonNode loadExisting(BenefitDocument document) throws IOException {
+        GetResponse<JsonData> response = esClient.get(g -> g.index(INDEX_NAME).id(document.getDocumentId()), JsonData.class);
+        return response.found() && response.source() != null ? response.source().to(JsonNode.class) : null;
+    }
+
+    private List<Float> reusableEmbedding(BenefitDocument document, JsonNode existing) {
+        if (existing == null || !textOrBlank(existing, "contentHash").equals(document.getContentHash())
+                || !textOrBlank(existing, "embeddingVersion").equals(document.getEmbeddingVersion())) {
+            return List.of();
+        }
+        JsonNode vector = existing.path("embedding");
+        if (!vector.isArray() || vector.isEmpty()) {
+            return List.of();
+        }
+        List<Float> values = new ArrayList<>(vector.size());
+        for (JsonNode value : vector) {
+            if (!value.isNumber() || !Float.isFinite(value.floatValue())) {
+                return List.of();
+            }
+            values.add(value.floatValue());
+        }
+        return values;
+    }
+
+    private boolean isCurrent(BenefitDocument document, JsonNode existing) {
+        ObjectNode expected = objectMapper.valueToTree(document);
+        expected.remove(List.of("embedding", "indexedAt", "deletedAt"));
+        var fields = expected.fields();
+        while (fields.hasNext()) {
+            var field = fields.next();
+            JsonNode actual = existing.get(field.getKey());
+            if (field.getValue().isNull() ? actual != null && !actual.isNull() : !field.getValue().equals(actual)) {
                 return false;
             }
-
-            JsonNode node = response.source().to(JsonNode.class);
-            return textOrBlank(node, "contentHash").equals(document.getContentHash())
-                    && textOrBlank(node, "embeddingVersion").equals(document.getEmbeddingVersion())
-                    && booleanOrDefault(node, "active", false) == Boolean.TRUE.equals(document.getActive());
-        } catch (IOException e) {
-            log.debug("혜택 RAG 기존 문서 조회 실패로 재색인합니다. documentId={}, reason={}",
-                    document.getDocumentId(), e.getMessage());
-            return false;
-        } catch (RuntimeException e) {
-            log.debug("혜택 RAG 기존 문서 파싱 실패로 재색인합니다. documentId={}, reason={}",
-                    document.getDocumentId(), e.getMessage());
-            return false;
         }
+        return true;
     }
 
     private static String textOrBlank(JsonNode node, String fieldName) {

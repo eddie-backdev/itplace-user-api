@@ -144,6 +144,17 @@ class BenefitImportServiceImplTest {
     }
 
     @Test
+    void resolvesEachBenefitPolicyCodeOncePerSnapshot() {
+        var request = request();
+        var second = request().getBenefits().get(0);
+        second.setSourceKey("skt-benefit-2");
+        second.setBenefitName("두번째 혜택");
+        request.setBenefits(List.of(request.getBenefits().get(0), second));
+        service.importSnapshot(request, "internal-key");
+        verify(benefitPolicyRepository).findByCode(BenefitPolicyCode.DAILY_ONCE);
+    }
+
+    @Test
     void importsSanitizedCarrierScopedSnapshotWithoutMembershipArtifacts() {
         BenefitSnapshotImportRequest request = request();
         BenefitSnapshotImportState importState = new BenefitSnapshotImportState(Carrier.SKT, null);
@@ -191,6 +202,46 @@ class BenefitImportServiceImplTest {
         assertThat(carrierTiers.get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
 
         verify(partnerRepository, never()).findByPartnerName(any(String.class));
+    }
+
+    @Test
+    void unchangedTiersRetainDatabaseIdentity() {
+        BenefitSnapshotImportRequest request = request();
+        Partner partner = Partner.builder().partnerId(7L).partnerName("제휴사").build();
+        Benefit existingBenefit = Benefit.builder()
+                .benefitId(11L)
+                .partner(partner)
+                .canonicalKey("7:기존혜택")
+                .build();
+        BenefitCarrierPolicy existingPolicy = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(31L)
+                .carrier(Carrier.SKT)
+                .sourceKey("skt-benefit-1")
+                .benefit(existingBenefit)
+                .build();
+        CarrierTierBenefit existingTier = CarrierTierBenefit.builder()
+                .benefitCarrierPolicy(existingPolicy)
+                .grade(Grade.SKT_VIP)
+                .carrierTierBenefitId(99L)
+                .context("VIP 20% 할인")
+                .build();
+
+        when(partnerRepository.findAllByPartnerNameIn(List.of("제휴사"))).thenReturn(List.of(partner));
+        when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(Carrier.SKT, List.of("skt-benefit-1")))
+                .thenReturn(List.of(existingPolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(existingPolicy)))
+                .thenReturn(List.of(existingTier));
+
+        service.importSnapshot(request, "internal-key");
+
+        ArgumentCaptor<Iterable<Benefit>> benefitCaptor = iterableCaptor();
+        verify(benefitRepository).saveAll(benefitCaptor.capture());
+        assertThat(toList(benefitCaptor.getValue()).get(0)).isSameAs(existingBenefit);
+        assertThat(existingBenefit.getBenefitName()).isEqualTo("할인 혜택");
+
+        verify(carrierTierBenefitRepository, never()).deleteAll(any());
+        verify(carrierTierBenefitRepository, never()).saveAll(any());
+        assertThat(existingTier.getCarrierTierBenefitId()).isEqualTo(99L);
     }
 
     @Test

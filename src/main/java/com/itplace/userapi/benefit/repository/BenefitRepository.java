@@ -89,7 +89,7 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                   CASE WHEN :sort = 'NAME_ASC' THEN LOWER(b.benefitName) END ASC,
                   CASE WHEN :sort = 'NAME_DESC' THEN LOWER(b.benefitName) END DESC,
                   CASE WHEN :sort = 'LATEST' THEN b.benefitId END DESC,
-                  COUNT(f.benefitId) DESC,
+                  COUNT(DISTINCT f.userId) DESC,
                   b.benefitId ASC
             """,
             countQuery = """

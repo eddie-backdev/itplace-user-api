@@ -244,8 +244,8 @@ class OAuthServiceImplTest {
     private void mockTempClaims(String providerId) {
         Claims claims = org.mockito.Mockito.mock(Claims.class);
 
-        when(jwtUtil.isExpired("temp-token")).thenReturn(false);
-        when(jwtUtil.getCategory("temp-token")).thenReturn("temp");
+        when(claims.get("category", String.class)).thenReturn("temp");
+        when(claims.getExpiration()).thenReturn(new java.util.Date(System.currentTimeMillis() + 60_000));
         when(jwtUtil.getClaims("temp-token")).thenReturn(claims);
         when(claims.get("provider", String.class)).thenReturn("kakao");
         when(claims.get("providerId", String.class)).thenReturn(providerId);

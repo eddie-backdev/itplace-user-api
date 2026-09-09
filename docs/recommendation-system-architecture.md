@@ -317,9 +317,13 @@ LLM은 후보 선택에 사용하고, 최종 이유는 `groundedReason(...)`이 
 1. 사용자 feature 또는 질문 intent text를 embedding vector로 만든다.
 2. ES `benefit` 인덱스에서 KNN 검색한다.
 3. ES hit에는 `benefitId`, `policyId`, `tierBenefitId`, metadata, score가 포함되어야 한다.
-4. DB에서 Benefit/Partner/Policy/TierBenefit을 hydrate해 `Candidate`를 만든다.
-5. ES가 실패하거나 결과가 비면 DB fallback 후보를 만든다.
+4. DB에서 Benefit/Partner/Policy/TierBenefit을 batch 조회한다. ES policy/tier ID의 소유 관계·활성·통신사·등급을 확인하고 현재 DB 내용으로 `Candidate`를 만든다.
+5. ES I/O 및 runtime 오류(404/503 포함), 또는 유효 후보가 없으면 DB fallback 후보를 만든다. DB hydration 실패는 ES 오류로 삼키지 않는다.
 6. fallback 후보는 `candidateSource = db_fallback`, `semanticScore = 0.0`, `source_db_fallback = 1.0` score component를 가진다.
+
+RAG 동기화는 원천 혜택 200개 단위로 policy/tier를 조회해 transaction 안에서 문서 snapshot을 만든다. `contentHash`는 embedding version과 검색 텍스트로 계산하며, 같은 hash/version의 벡터를 재사용해 메타데이터 변경을 반영한다. 최초 hash 식 전환 시 기존 문서는 한 번 재임베딩된다. ES 문서 조회 실패 시 추가 임베딩 호출을 생략한다.
+
+개인화 `rerankAndExplain`은 후보가 없으면 LLM을 호출하지 않는다.
 
 ## 8. 행동 로그와 추천 feedback loop
 
@@ -339,11 +343,11 @@ LLM은 후보 선택에 사용하고, 최종 이유는 `groundedReason(...)`이 
 
 로그 생성 경로:
 
-- `LoggingInterceptor`: benefit detail류 request click 로그.
+- `LoggingInterceptor`: benefit detail류 request click 로그를 기존 bounded async batch logger로 제출. Mongo 실패와 제출 실패를 요청과 격리.
 - `BenefitLogAdvice`: benefit 검색/상세 응답 기반 `search`, `detail` 로그.
-- `FavoriteServiceImpl`: `favorite_add`, `favorite_remove` 로그.
+- `FavoriteServiceImpl`: DB commit 후 `favorite_add`, `favorite_remove` 로그를 제출. 삭제는 잠금 조회한 실제 즐겨찾기만 대상으로 하므로 재시도·중복 ID·rollback이 허위 부정 신호를 만들지 않음.
 
-개인화 추천은 `CustomLogRepositoryImpl`의 aggregation으로 partnerName별 상위 이벤트를 읽어 feature를 만든다.
+개인화 추천은 `CustomLogRepositoryImpl`의 단일 facet aggregation으로 11개 event의 partnerName 순위를 읽어 feature를 만든다. event별 limit과 기존 점수 가중치를 유지하고, 같은 빈도의 partner는 이름으로 순서를 고정한다. 최신 위치 문맥은 별도 조회한다.
 
 ## 9. 현재 아키텍처의 명시적 한계
 

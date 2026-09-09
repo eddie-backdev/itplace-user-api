@@ -2,16 +2,16 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
-import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
-import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.exception.StoreKeywordException;
 import com.itplace.userapi.map.repository.StoreRepository;
-import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import com.itplace.userapi.map.repository.projection.StoreClusterProjection;
+import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import com.itplace.userapi.partner.PartnerCode;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
@@ -20,10 +20,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -538,11 +540,10 @@ public class StoreServiceImpl implements StoreService {
             return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
         }
 
-        // 2단계: DB에서 매장 데이터 일괄 로드
-        List<Long> allIds = Stream.concat(
-                searchResult.brandMatchIds().stream(),
-                searchResult.nameMatchIds().stream()
-        ).distinct().toList();
+        // 전국 ES 후보 제한 밖의 가까운 정확 일치 매장도 지리 검색으로 보충한다.
+        List<Long> nearbyIds = storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword);
+        List<Long> allIds = Stream.of(nearbyIds, searchResult.brandMatchIds(), searchResult.nameMatchIds())
+                .flatMap(List::stream).distinct().toList();
 
         List<Store> allStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(allIds));
         if (allStores.isEmpty()) {
@@ -576,10 +577,13 @@ public class StoreServiceImpl implements StoreService {
                         }
                 ));
 
-        List<Long> strictBrandMatchIds = searchResult.brandMatchIds().stream()
+        List<Long> strictBrandMatchIds = Stream.concat(nearbyIds.stream(), searchResult.brandMatchIds().stream()).distinct()
                 .filter(id -> isStrictPartnerKeywordMatch(dtoMap.get(id), normalizedKeyword))
                 .toList();
-        if (strictBrandMatchIds.isEmpty() && searchResult.nameMatchIds().isEmpty()) {
+        Set<Long> brandIds = new HashSet<>(strictBrandMatchIds);
+        List<Long> nameMatchIds = Stream.concat(nearbyIds.stream(), searchResult.nameMatchIds().stream())
+                .distinct().filter(id -> !brandIds.contains(id)).toList();
+        if (strictBrandMatchIds.isEmpty() && nameMatchIds.isEmpty()) {
             log.info("ES 브랜드 검색 결과가 키워드와 정확히 맞지 않아 DB 키워드 검색으로 대체: keyword={}, category={}",
                     normalizedKeyword, category);
             return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
@@ -593,7 +597,7 @@ public class StoreServiceImpl implements StoreService {
                         .map(dtoMap::get)
                         .filter(Objects::nonNull)
                         .sorted(Comparator.comparing(StoreDetailResponse::getDistance)),
-                searchResult.nameMatchIds().stream()
+                nameMatchIds.stream()
                         .map(dtoMap::get)
                         .filter(Objects::nonNull)
                         .sorted(Comparator.comparing(StoreDetailResponse::getDistance))

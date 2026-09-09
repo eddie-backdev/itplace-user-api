@@ -70,6 +70,36 @@ class BenefitServiceImplTest {
     private BenefitServiceImpl benefitService;
 
     @Test
+    void staleEsPoliciesAreExcludedBeforeCountingAndPagination() {
+        Benefit benefit = Benefit.builder().benefitId(20L).active(true)
+                .partner(Partner.builder().partnerId(10L).build()).build();
+        when(benefitHybridSearchService.search(any(), any(), any(), any(), anyList(), any()))
+                .thenReturn(new BenefitHybridSearchResult(List.of(20L), 1, 0, 1, false));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
+        // No active policy for the DB benefit, despite the old ES match.
+        var result = benefitService.getBenefitList(null, null, null, null, "커피", List.of(), null, PageRequest.of(0, 20));
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.isHasNext()).isFalse();
+    }
+
+    @Test
+    void boundedKeywordResultsDoNotAdvertiseUnreachablePages() {
+        Partner partner = Partner.builder().partnerId(10L).partnerName("카페").build();
+        List<Benefit> benefits = java.util.stream.LongStream.rangeClosed(1, 500)
+                .mapToObj(id -> Benefit.builder().benefitId(id).partner(partner).build()).toList();
+        when(benefitRepository.findFilteredBenefits(any(), any(), any(), eq("커피"), anyBoolean(), anyList(), any(), any()))
+                .thenReturn(new PageImpl<>(benefits, PageRequest.of(0, 500), 600));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(anyList(), any(), any(), any(), anyList()))
+                .thenReturn(benefits);
+        var result = benefitService.getBenefitList(null, null, null, null, "커피", List.of(), null, PageRequest.of(25, 20));
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isEqualTo(500);
+        assertThat(result.getTotalPages()).isEqualTo(25);
+        assertThat(result.isHasNext()).isFalse();
+    }
+
+    @Test
     void getBenefitList_usesHybridSearchForKeywordAndPreservesRankOrder() {
         Partner partner = Partner.builder()
                 .partnerId(10L)
@@ -85,6 +115,8 @@ class BenefitServiceImplTest {
                 eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU)), any(PageRequest.class)))
                 .thenReturn(new BenefitHybridSearchResult(List.of(20L), 1, 0, 1, false));
         when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
+        when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(anyList(), any(), any(), any(), anyList()))
+                .thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of(tier));
         when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L))).thenReturn(java.util.Collections.singletonList(new Object[]{20L, 3L}));

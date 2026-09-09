@@ -68,6 +68,9 @@ public class OpenAIServiceImpl implements OpenAIService {
 
     @Override
     public List<Recommendations> rerankAndExplain(UserFeature uf, List<Candidate> cands, int topK) {
+        if (cands == null || cands.isEmpty()) {
+            return List.of();
+        }
         String url = baseUrl + "/v1/chat/completions";
         int recommendationCount = Math.min(Math.max(topK, 1), MAX_RECOMMENDATION_COUNT);
         List<Candidate> rankedCandidates = deterministicRank(uf, cands);

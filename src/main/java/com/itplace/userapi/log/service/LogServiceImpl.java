@@ -9,14 +9,12 @@ import com.itplace.userapi.log.entity.LogDocument;
 import com.itplace.userapi.log.repository.LogRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.repository.PartnerRepository;
-import jakarta.transaction.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,42 +25,12 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 public class LogServiceImpl implements LogService {
 
     private final LogRepository logRepository;
     private final BenefitRepository benefitRepository;
     private final PartnerRepository partnerRepository;
-
-    // 클릭
-    @Override
-    public void saveRequestLog(Long userId, String event, Long benefitId, String path, String param) {
-        Optional<Benefit> benefitOpt = benefitRepository.findById(benefitId);
-        if (benefitOpt.isEmpty()) {
-            return;
-        }
-        Benefit benefit = benefitOpt.get();
-
-        Long partnerId = benefit.getPartner().getPartnerId();
-        String partnerName = benefit.getPartner().getPartnerName();
-
-        log.info("REQUEST: {}, path={}, event={}, benefitId={}, partnerId={}",
-                userId, path, event, benefitId, partnerId);
-
-        LogDocument logDocument = LogDocument.builder()
-                .userId(userId)
-                .event(event)
-                .benefitId(benefitId)
-                .benefitName(benefit.getBenefitName())
-                .partnerId(partnerId)
-                .partnerName(partnerName)
-                .path(path)
-                .param(param)
-                .loggingAt(Instant.now())
-                .build();
-        logRepository.save(logDocument);
-    }
 
     // 검색, 상세, 관심 혜택
     @Override

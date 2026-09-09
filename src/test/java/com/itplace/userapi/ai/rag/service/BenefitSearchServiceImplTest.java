@@ -59,6 +59,49 @@ class BenefitSearchServiceImplTest {
     @InjectMocks
     private BenefitSearchServiceImpl benefitSearchService;
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {404, 503})
+    void vectorFallsBackOnElasticsearchRuntimeFailure(int status) throws IOException {
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenThrow(
+                new co.elastic.clients.elasticsearch._types.ElasticsearchException("search",
+                        co.elastic.clients.elasticsearch._types.ErrorResponse.of(e -> e.status(status)
+                                .error(error -> error.type("index_unavailable").reason("unavailable")))));
+        assertThat(benefitSearchService.queryVector(null, null, List.of(0.1f), 5)).isEmpty();
+        org.mockito.Mockito.verify(benefitRepository).findAllWithPartnerAndTierBenefits();
+    }
+
+    @Test
+    void vectorDoesNotMaskDatabaseHydrationFailure() throws IOException {
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(searchResponse(mapOf(
+                "benefitId", "20", "policyId", "30", "active", true, "score", 0.9)));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenThrow(new IllegalStateException("DB down"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> benefitSearchService.queryVector(null, null, List.of(0.1f), 5))
+                .hasMessage("DB down");
+        org.mockito.Mockito.verify(benefitRepository, org.mockito.Mockito.never()).findAllWithPartnerAndTierBenefits();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"inactive", "deleted_policy", "wrong_owner", "wrong_carrier", "deleted_tier", "wrong_grade"})
+    void vectorRejectsStalePolicyAndTier(String scenario) throws IOException {
+        Benefit benefit = Benefit.builder().benefitId(20L).partner(Partner.builder().partnerId(10L).build()).build();
+        BenefitCarrierPolicy policy = BenefitCarrierPolicy.builder().benefitCarrierPolicyId(30L)
+                .benefit(scenario.equals("wrong_owner") ? Benefit.builder().benefitId(21L).build() : benefit)
+                .carrier(scenario.equals("wrong_carrier") ? Carrier.KT : Carrier.SKT)
+                .active(!scenario.equals("inactive")).build();
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(searchResponse(mapOf(
+                "benefitId", "20", "policyId", "30", "tierBenefitId", "40", "carrier", "SKT",
+                "grade", "SKT_VIP", "active", true, "score", 0.9)));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList()))
+                .thenReturn(scenario.equals("deleted_policy") ? List.of() : List.of(policy));
+        if (List.of("wrong_owner", "deleted_tier", "wrong_grade").contains(scenario)) {
+            when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(
+                    scenario.equals("deleted_tier") ? List.of() : List.of(CarrierTierBenefit.builder()
+                            .carrierTierBenefitId(40L).benefitCarrierPolicy(policy).grade(Grade.SKT_GOLD).build()));
+        }
+        assertThat(benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, List.of(0.1f), 5)).isEmpty();
+    }
+
     @Test
     void queryVector_fallsBackToDbCandidatesWhenElasticsearchSearchFails() throws IOException {
         Partner partner = Partner.builder()
@@ -112,7 +155,7 @@ class BenefitSearchServiceImplTest {
     }
 
     @Test
-    void queryVector_hydratesChannelContextsFromElasticsearchDocument() throws IOException {
+    void queryVectorUsesCurrentDatabaseChannelContexts() throws IOException {
         Partner partner = Partner.builder()
                 .partnerId(10L)
                 .partnerName("피자집")
@@ -143,16 +186,22 @@ class BenefitSearchServiceImplTest {
                         "score", 0.91
                 )));
         when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(benefit));
-        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of());
+        BenefitCarrierPolicy policy = BenefitCarrierPolicy.builder().benefitCarrierPolicyId(30L)
+                .benefit(benefit).carrier(Carrier.SKT).active(true).description("새 설명").build();
+        CarrierTierBenefit tier = CarrierTierBenefit.builder().carrierTierBenefitId(40L)
+                .benefitCarrierPolicy(policy).grade(Grade.SKT_VIP)
+                .context("온라인: 방문포장 30% 할인 / 오프라인: 매장 30% 할인").build();
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy))).thenReturn(List.of(tier));
 
         List<Candidate> candidates = benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, List.of(0.1f), 5);
 
         assertThat(candidates)
                 .singleElement()
                 .satisfies(candidate -> {
-                    assertThat(candidate.getContext()).isEqualTo("온라인: 방문포장 25% 할인 / 오프라인: 매장 25% 할인");
-                    assertThat(candidate.getOnlineContext()).isEqualTo("방문포장 25% 할인");
-                    assertThat(candidate.getOfflineContext()).isEqualTo("매장 25% 할인");
+                    assertThat(candidate.getContext()).isEqualTo("온라인: 방문포장 30% 할인 / 오프라인: 매장 30% 할인");
+                    assertThat(candidate.getOnlineContext()).isEqualTo("방문포장 30% 할인");
+                    assertThat(candidate.getOfflineContext()).isEqualTo("매장 30% 할인");
                 });
     }
 
@@ -369,7 +418,14 @@ class BenefitSearchServiceImplTest {
                 ))));
         when(benefitRepository.findAllByIdWithPartner(anyList()))
                 .thenReturn(List.of(lexicalBenefit, vectorBenefit));
-        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of());
+        BenefitCarrierPolicy first = BenefitCarrierPolicy.builder().benefitCarrierPolicyId(30L)
+                .benefit(vectorBenefit).carrier(Carrier.SKT).active(true).build();
+        BenefitCarrierPolicy second = BenefitCarrierPolicy.builder().benefitCarrierPolicyId(31L)
+                .benefit(lexicalBenefit).carrier(Carrier.SKT).active(true).build();
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(first, second));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of(
+                CarrierTierBenefit.builder().carrierTierBenefitId(40L).benefitCarrierPolicy(first).grade(Grade.SKT_VIP).build(),
+                CarrierTierBenefit.builder().carrierTierBenefitId(41L).benefitCarrierPolicy(second).grade(Grade.SKT_VIP).build()));
 
         List<Candidate> candidates = benefitSearchService.queryHybrid(
                 Carrier.SKT,

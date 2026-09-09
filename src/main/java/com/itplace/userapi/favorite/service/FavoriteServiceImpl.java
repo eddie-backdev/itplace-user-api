@@ -8,29 +8,34 @@ import com.itplace.userapi.benefit.exception.BenefitNotFoundException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.benefit.support.BenefitPolicySelector;
+import com.itplace.userapi.favorite.FavoriteCode;
+import com.itplace.userapi.favorite.dto.TierBenefitDetail;
 import com.itplace.userapi.favorite.dto.response.FavoriteDetailResponse;
 import com.itplace.userapi.favorite.dto.response.FavoriteResponse;
-import com.itplace.userapi.favorite.dto.TierBenefitDetail;
 import com.itplace.userapi.favorite.entity.Favorite;
-import com.itplace.userapi.favorite.FavoriteCode;
 import com.itplace.userapi.favorite.exception.DuplicateFavoriteException;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
 import com.itplace.userapi.log.dto.ResponseLogCommand;
 import com.itplace.userapi.log.service.LogService;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.security.SecurityCode;
-import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.entity.User;
+import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.repository.UserRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional
 public class FavoriteServiceImpl implements FavoriteService {
@@ -60,7 +65,7 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .build();
 
         favoriteRepository.save(favorite);
-        logService.saveResponseLogs(userId, List.of(toFavoriteLogCommand("favorite_add", benefit)));
+        logAfterCommit(userId, List.of(toFavoriteLogCommand("favorite_add", benefit)));
     }
 
     @Override
@@ -68,16 +73,42 @@ public class FavoriteServiceImpl implements FavoriteService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
 
-        List<Benefit> benefits = benefitRepository.findAllByIdWithPartner(benefitIds);
-
-        if (benefits.size() != benefitIds.size()) {
+        List<Long> uniqueIds = benefitIds.stream().distinct().sorted().toList();
+        if (uniqueIds.isEmpty()) {
+            return;
+        }
+        List<Benefit> benefits = benefitRepository.findAllByIdWithPartner(uniqueIds);
+        if (benefits.size() != uniqueIds.size()) {
             throw new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND);
         }
+        List<Favorite> favorites = favoriteRepository.findForRemoval(user, uniqueIds);
+        if (favorites.isEmpty()) {
+            return;
+        }
+        List<ResponseLogCommand> commands = favorites.stream()
+                .map(favorite -> toFavoriteLogCommand("favorite_remove", favorite.getBenefit())).toList();
+        favoriteRepository.deleteAll(favorites);
+        logAfterCommit(userId, commands);
+    }
 
-        logService.saveResponseLogs(userId, benefits.stream()
-                .map(benefit -> toFavoriteLogCommand("favorite_remove", benefit))
-                .toList());
-        favoriteRepository.deleteByUserAndBenefitIn(user, benefits);
+    private void logAfterCommit(Long userId, List<ResponseLogCommand> commands) {
+        Runnable submit = () -> {
+            try {
+                logService.saveResponseLogs(userId, commands);
+            } catch (RuntimeException exception) {
+                log.warn("관심 혜택 로그 제출 실패: userId={}", userId, exception);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    submit.run();
+                }
+            });
+        } else {
+            submit.run();
+        }
     }
 
     private ResponseLogCommand toFavoriteLogCommand(String event, Benefit benefit) {
@@ -168,7 +199,8 @@ public class FavoriteServiceImpl implements FavoriteService {
     public FavoriteDetailResponse getBenefitDetail(Long benefitId) {
         Benefit benefit = benefitRepository.findDetailById(benefitId)
                 .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
-        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit));
+        List<BenefitCarrierPolicy> policies = BenefitPolicySelector.eligible(
+                benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit)), List.of(), null);
         if (policies.isEmpty()) {
             throw new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND);
         }
