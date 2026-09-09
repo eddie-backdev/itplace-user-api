@@ -77,22 +77,19 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                                        int candidateSize,
                                        BenefitSearchCondition condition) {
         BenefitSearchCondition safeCondition = condition == null ? BenefitSearchCondition.none() : condition;
+        List<SearchHitSnapshot> hits;
         try {
-            List<Query> filters = metadataFilters(carrier, grade, safeCondition);
-            List<SearchHitSnapshot> hits = vectorSearch(userEmbedding, filters, candidateSize).stream()
+            hits = vectorSearch(userEmbedding, metadataFilters(carrier, grade, safeCondition), candidateSize).stream()
                     .filter(hit -> matchesHitMetadata(hit.node(), carrier, grade, safeCondition))
                     .toList();
-            List<Candidate> candidates = hydrateCandidates(carrier, grade, hits, "es_vector");
-            candidates = filterCandidates(candidates, safeCondition);
-
-            if (!candidates.isEmpty()) {
-                return candidates;
-            }
-
-            log.warn("혜택 ES 검색 결과가 비어 DB 후보로 대체합니다. carrier={}, grade={}", carrier, grade);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             log.warn("혜택 ES 유사도 검색 실패로 DB 후보로 대체합니다. carrier={}, grade={}, reason={}",
                     carrier, grade, e.getMessage());
+            return fallbackCandidates(carrier, grade, candidateSize, safeCondition);
+        }
+        List<Candidate> candidates = filterCandidates(hydrateCandidates(carrier, grade, hits, "es_vector"), safeCondition);
+        if (!candidates.isEmpty()) {
+            return candidates;
         }
 
         return fallbackCandidates(carrier, grade, candidateSize, safeCondition);
@@ -285,102 +282,36 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .map(benefits::get)
                 .filter(benefit -> benefit != null && !Boolean.FALSE.equals(benefit.getActive()))
                 .toList();
-        HydratedPolicyContext policyContext = hydratePolicyContext(carrier, grade, orderedBenefits);
-
-        return hits.stream()
-                .map(hit -> toCandidate(hit, benefits.get(hit.benefitId()), policyContext, source))
-                .filter(candidate -> candidate != null)
-                .toList();
-    }
-
-    private Candidate toCandidate(SearchHitSnapshot hit, Benefit benefit, HydratedPolicyContext policyContext, String source) {
-        if (benefit == null || Boolean.FALSE.equals(benefit.getActive()) || benefit.getPartner() == null) {
-            return null;
-        }
-
-        JsonNode node = hit.node();
-        Long benefitId = hit.benefitId();
-        return Candidate.builder()
-                .benefitId(benefitId)
-                .policyId(hit.policyId())
-                .tierBenefitId(hit.tierBenefitId())
-                .partnerId(benefit.getPartner().getPartnerId())
-                .benefitName(textOrDefault(node, "benefitName", benefit.getBenefitName()))
-                .partnerName(textOrDefault(node, "partnerName", benefit.getPartner().getPartnerName()))
-                .category(textOrDefault(node, "category", benefit.getPartner().getCategory()))
-                .mainCategory(textOrDefault(node, "mainCategory", ""))
-                .carrier(textOrDefault(node, "carrier", ""))
-                .grade(textOrDefault(node, "grade", ""))
-                .allGrade(booleanOrDefault(node, "isAllGrade", false))
-                .usageType(textOrDefault(node, "usageType", ""))
-                .benefitType(textOrDefault(node, "benefitType", ""))
-                .sourceKey(textOrDefault(node, "sourceKey", ""))
-                .sourceUrl(textOrDefault(node, "sourceUrl", ""))
-                .description(textOrDefault(node, "description", policyContext.descriptionFor(benefitId)))
-                .context(textOrDefault(node, "tierContext", textOrDefault(node, "context", policyContext.contextFor(benefitId))))
-                .onlineContext(blankToNull(textOrDefault(node, "onlineContext", policyContext.onlineContextFor(benefitId))))
-                .offlineContext(blankToNull(textOrDefault(node, "offlineContext", policyContext.offlineContextFor(benefitId))))
-                .businessType(textOrDefault(node, "businessType", "OTHER"))
-                .useCases(textList(node, "useCases"))
-                .negativeUseCases(textList(node, "negativeUseCases"))
-                .tags(textList(node, "tags"))
-                .candidateSource(source)
-                .semanticScore(hit.score())
-                .scoreComponents(Map.of(
-                        "semantic_similarity", hit.score(),
-                        "source_es_vector", "es_vector".equals(source) ? 1.0 : 0.0,
-                        "source_es_hybrid", "es_hybrid".equals(source) ? 1.0 : 0.0,
-                        "source_db_fallback", "db_fallback".equals(source) ? 1.0 : 0.0
-                ))
-                .build();
-    }
-
-    private HydratedPolicyContext hydratePolicyContext(Carrier carrier, Grade grade, List<Benefit> benefits) {
-        if (benefits.isEmpty()) {
-            return new HydratedPolicyContext(Map.of(), Map.of(), Map.of(), Map.of());
-        }
-
-        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
-                .filter(policy -> matchesPolicy(policy, carrier))
-                .toList();
-        List<CarrierTierBenefit> tierBenefits = policies.isEmpty()
-                ? List.of()
+        List<BenefitCarrierPolicy> policies = orderedBenefits.isEmpty() ? List.of()
+                : benefitCarrierPolicyRepository.findAllByBenefitIn(orderedBenefits).stream()
+                .filter(policy -> matchesPolicy(policy, carrier)).toList();
+        Map<Long, BenefitCarrierPolicy> policyById = policies.stream().collect(Collectors.toMap(
+                BenefitCarrierPolicy::getBenefitCarrierPolicyId, policy -> policy));
+        Map<Long, List<CarrierTierBenefit>> tiersByPolicy = policies.isEmpty() ? Map.of()
                 : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies).stream()
-                .filter(tierBenefit -> matchesTier(tierBenefit, grade))
-                .toList();
-
-        Map<Long, String> descriptions = new LinkedHashMap<>();
-        for (BenefitCarrierPolicy policy : policies) {
-            Long benefitId = policy.getBenefit().getBenefitId();
-            if (policy.getDescription() != null && !policy.getDescription().isBlank()) {
-                descriptions.putIfAbsent(benefitId, policy.getDescription());
+                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
+        List<Candidate> candidates = new ArrayList<>();
+        for (SearchHitSnapshot hit : hits) {
+            Benefit benefit = benefits.get(hit.benefitId());
+            BenefitCarrierPolicy policy = hit.policyId() == null ? null : policyById.get(hit.policyId());
+            if (benefit == null || Boolean.FALSE.equals(benefit.getActive()) || benefit.getPartner() == null
+                    || policy == null || !benefit.getBenefitId().equals(policy.getBenefit().getBenefitId())) {
+                continue;
             }
+            List<CarrierTierBenefit> tiers = tiersByPolicy.getOrDefault(hit.policyId(), List.of());
+            CarrierTierBenefit tier = tiers.stream()
+                    .filter(item -> java.util.Objects.equals(item.getCarrierTierBenefitId(), hit.tierBenefitId()))
+                    .filter(item -> matchesTier(item, grade)).findFirst().orElse(null);
+            if (tier == null && (hit.tierBenefitId() != null || !tiers.isEmpty())) {
+                continue;
+            }
+            Candidate candidate = toFallbackCandidate(benefit, policy, tier);
+            candidate.setCandidateSource(source);
+            candidate.setSemanticScore(hit.score());
+            candidate.setScoreComponents(Map.of("semantic_similarity", hit.score(), "source_" + source, 1.0));
+            candidates.add(candidate);
         }
-
-        Map<Long, String> contexts = new LinkedHashMap<>();
-        for (CarrierTierBenefit tierBenefit : tierBenefits) {
-            BenefitCarrierPolicy policy = tierBenefit.getBenefitCarrierPolicy();
-            Long benefitId = policy.getBenefit().getBenefitId();
-            if (tierBenefit.getContext() != null && !tierBenefit.getContext().isBlank()) {
-                contexts.putIfAbsent(benefitId, tierBenefit.getContext());
-            }
-        }
-
-        Map<Long, String> onlineContexts = new LinkedHashMap<>();
-        Map<Long, String> offlineContexts = new LinkedHashMap<>();
-        for (CarrierTierBenefit tierBenefit : tierBenefits) {
-            BenefitCarrierPolicy policy = tierBenefit.getBenefitCarrierPolicy();
-            Long benefitId = policy.getBenefit().getBenefitId();
-            BenefitContextSplitter.SplitContext splitContext = BenefitContextSplitter.split(tierBenefit.getContext());
-            if (splitContext.onlineContext() != null && !splitContext.onlineContext().isBlank()) {
-                onlineContexts.putIfAbsent(benefitId, splitContext.onlineContext());
-            }
-            if (splitContext.offlineContext() != null && !splitContext.offlineContext().isBlank()) {
-                offlineContexts.putIfAbsent(benefitId, splitContext.offlineContext());
-            }
-        }
-
-        return new HydratedPolicyContext(descriptions, contexts, onlineContexts, offlineContexts);
+        return candidates;
     }
 
     private List<Candidate> fallbackCandidates(Carrier carrier, Grade grade, int candidateSize, BenefitSearchCondition condition) {
@@ -587,10 +518,6 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         return right;
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
-    }
-
     private void mergeHybridHits(Map<String, HybridRankAccumulator> ranks,
                                  List<SearchHitSnapshot> hits,
                                  double weight) {
@@ -671,24 +598,4 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         }
     }
 
-    private record HydratedPolicyContext(Map<Long, String> descriptions,
-                                         Map<Long, String> contexts,
-                                         Map<Long, String> onlineContexts,
-                                         Map<Long, String> offlineContexts) {
-        String descriptionFor(Long benefitId) {
-            return descriptions.getOrDefault(benefitId, "설명 없음");
-        }
-
-        String contextFor(Long benefitId) {
-            return contexts.getOrDefault(benefitId, "등급별 혜택 정보 없음");
-        }
-
-        String onlineContextFor(Long benefitId) {
-            return onlineContexts.get(benefitId);
-        }
-
-        String offlineContextFor(Long benefitId) {
-            return offlineContexts.get(benefitId);
-        }
-    }
 }

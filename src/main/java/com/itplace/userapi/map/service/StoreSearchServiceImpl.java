@@ -2,18 +2,15 @@ package com.itplace.userapi.map.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.MsearchRequest;
+import co.elastic.clients.elasticsearch.core.MsearchResponse;
+import co.elastic.clients.elasticsearch.core.msearch.MultiSearchResponseItem;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,41 +19,21 @@ import org.springframework.stereotype.Service;
 public class StoreSearchServiceImpl implements StoreSearchService {
 
     private final ElasticsearchClient esClient;
-    private static final ExecutorService ES_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @Override
     public StoreSearchResult searchByKeyword(String keyword, String category) {
-        // 브랜드 검색과 매장명 검색을 병렬로 실행
-        CompletableFuture<List<Long>> brandFuture = CompletableFuture.supplyAsync(
-                () -> {
-                    try {
-                        return search(buildQuery("partnerName", keyword, category), 100);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }, ES_EXECUTOR);
-
-        CompletableFuture<List<Long>> nameFuture = CompletableFuture.supplyAsync(
-                () -> {
-                    try {
-                        return search(buildMultiQuery(List.of("storeName", "business"), keyword, category), 200);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }, ES_EXECUTOR);
-
+        MsearchRequest request = MsearchRequest.of(m -> m.index("store")
+                .searches(item -> item.header(h -> h).body(b -> b.query(buildQuery("partnerName", keyword, category)).size(100)))
+                .searches(item -> item.header(h -> h).body(b -> b.query(buildMultiQuery(List.of("storeName", "business"), keyword, category)).size(200))));
         try {
-            List<Long> brandMatchIds = brandFuture.get();
+            MsearchResponse<JsonData> response = esClient.msearch(request, JsonData.class);
+            List<Long> brandMatchIds = storeIds(response.responses().get(0));
             Set<Long> brandSet = new HashSet<>(brandMatchIds);
-            List<Long> nameMatchIds = nameFuture.get().stream()
-                    .filter(id -> !brandSet.contains(id))
-                    .toList();
+            List<Long> nameMatchIds = storeIds(response.responses().get(1)).stream()
+                    .filter(id -> !brandSet.contains(id)).toList();
             return new StoreSearchResult(brandMatchIds, nameMatchIds);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("매장 ES 검색 실패", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("매장 ES 검색 실패", e);
+        } catch (IOException e) {
+            throw new IllegalStateException("매장 ES 검색 실패", e);
         }
     }
 
@@ -78,11 +55,14 @@ public class StoreSearchServiceImpl implements StoreSearchService {
         ));
     }
 
-    private List<Long> search(Query query, int size) throws IOException {
-        SearchRequest request = SearchRequest.of(s -> s.index("store").query(query).size(size));
-        SearchResponse<JsonData> response = esClient.search(request, JsonData.class);
-        return response.hits().hits().stream()
-                .map(hit -> hit.source().to(JsonNode.class).get("storeId").asLong())
-                .toList();
+    private List<Long> storeIds(MultiSearchResponseItem<JsonData> response) {
+        if (response.isFailure()) {
+            throw new IllegalStateException("매장 ES 검색 실패: " + response.failure().error().type());
+        }
+        if (response.result().timedOut()) {
+            throw new IllegalStateException("매장 ES 검색 시간 초과");
+        }
+        return response.result().hits().hits().stream()
+                .map(hit -> hit.source().to(JsonNode.class).get("storeId").asLong()).distinct().toList();
     }
 }

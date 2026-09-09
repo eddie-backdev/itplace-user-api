@@ -6,8 +6,6 @@ import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
-import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
-import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -26,21 +24,17 @@ public class BenefitRagDocumentBuilder {
     static final String SYNC_STATUS_ACTIVE = "ACTIVE";
     static final String SYNC_STATUS_INACTIVE = "INACTIVE";
 
-    private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
-    private final CarrierTierBenefitRepository carrierTierBenefitRepository;
     private final BenefitRagMetadataClassifier metadataClassifier;
 
-    public List<PendingBenefitDocument> buildPendingDocuments(Benefit benefit) {
+    public List<PendingBenefitDocument> buildPendingDocuments(Benefit benefit, List<BenefitCarrierPolicy> policies, List<CarrierTierBenefit> tierBenefits) {
         if (benefit.getPartner() == null) {
             return List.of();
         }
 
-        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit));
         if (policies.isEmpty()) {
             return List.of();
         }
 
-        List<CarrierTierBenefit> tierBenefits = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
         return policies.stream()
                 .flatMap(policy -> pendingDocumentsForPolicy(benefit, policy, tierBenefits).stream())
                 .toList();
@@ -135,7 +129,7 @@ public class BenefitRagDocumentBuilder {
                 .lastCrawledAt(policy.getLastCrawledAt() == null ? null : policy.getLastCrawledAt().toString())
                 .sourceUpdatedAt(blankToNull(sourceUpdatedAt))
                 .embeddingVersion(EMBEDDING_VERSION)
-                .contentHash(contentHash(searchableText, sourceUpdatedAt, documentId))
+                .contentHash(contentHash(searchableText))
                 .syncStatus(active ? SYNC_STATUS_ACTIVE : SYNC_STATUS_INACTIVE)
                 .description(description)
                 .manual(manual)
@@ -165,10 +159,10 @@ public class BenefitRagDocumentBuilder {
         return "";
     }
 
-    private String contentHash(String searchableText, String sourceUpdatedAt, String documentId) {
+    private String contentHash(String searchableText) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(String.join("|", EMBEDDING_VERSION, documentId, sourceUpdatedAt, searchableText)
+            byte[] hash = digest.digest(String.join("|", EMBEDDING_VERSION, searchableText)
                     .getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {

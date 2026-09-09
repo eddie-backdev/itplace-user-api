@@ -24,7 +24,6 @@ import co.elastic.clients.util.ObjectBuilder;
 import com.itplace.userapi.ai.rag.document.BenefitDocument;
 import com.itplace.userapi.ai.rag.service.ElasticService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -60,8 +59,39 @@ class BenefitRagSyncServiceTest {
                 esClient,
                 elasticService,
                 embeddingService,
-                sourceQueryService
+                sourceQueryService, new com.fasterxml.jackson.databind.ObjectMapper()
         );
+    }
+
+    @Test
+    void syncLookupFailureDoesNotSpendOnEmbedding() throws Exception {
+        var document = activeDocument("benefit:1:policy:2:tier:3", "same-hash");
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(1,
+                new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "same text")));
+        when(esClient.get(anyGetRequest(), eq(JsonData.class))).thenThrow(new java.io.IOException("ES down"));
+        when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(emptySearchResponse());
+        assertThat(syncService.syncAll().failedDocuments()).isEqualTo(1);
+        verify(embeddingService, never()).embed(any());
+        verify(esClient, never()).index(anyIndexRequest());
+    }
+
+    @Test
+    void syncUpdatesMetadataWithoutReembeddingUnchangedText() throws Exception {
+        BenefitDocument document = activeDocument("benefit:1:policy:2:tier:3", "same-hash");
+        BenefitDocument previous = activeDocument(document.getDocumentId(), "same-hash");
+        document.setSourceUpdatedAt("2026-09-09T10:00:00");
+        document.setSourceUrl("https://example.com/new");
+        document.setActive(false);
+        document.setSyncStatus("INACTIVE");
+        when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(1,
+                new BenefitRagDocumentBuilder.PendingBenefitDocument(document, "same text")));
+        when(esClient.get(anyGetRequest(), eq(JsonData.class))).thenReturn(currentGetResponse(previous));
+        when(esClient.index(anyIndexRequest())).thenReturn(indexResponse());
+        when(esClient.search(anySearchRequest(), eq(JsonData.class))).thenReturn(emptySearchResponse());
+        assertThat(syncService.syncAll().upsertedDocuments()).isEqualTo(1);
+        verify(embeddingService, never()).embed(any());
+        assertThat(document.getEmbedding()).containsExactly(0.1f, 0.2f);
+        assertThat(document.getDeletedAt()).isNotBlank();
     }
 
     @Test
@@ -219,6 +249,7 @@ class BenefitRagSyncServiceTest {
                 .active(true)
                 .embeddingVersion(BenefitRagDocumentBuilder.EMBEDDING_VERSION)
                 .contentHash(contentHash)
+                .embedding(List.of(0.1f, 0.2f))
                 .syncStatus(BenefitRagDocumentBuilder.SYNC_STATUS_ACTIVE)
                 .build();
     }
@@ -228,12 +259,7 @@ class BenefitRagSyncServiceTest {
                 .found(true)
                 .id(document.getDocumentId())
                 .index(BenefitRagSyncService.INDEX_NAME)
-                .source(jsonData(Map.of(
-                        "documentId", document.getDocumentId(),
-                        "contentHash", document.getContentHash(),
-                        "embeddingVersion", document.getEmbeddingVersion(),
-                        "active", document.getActive()
-                )))
+                .source(JsonData.of(new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(document), jsonpMapper))
         );
     }
 

@@ -115,10 +115,15 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private Claims getVerifiedClaims(String tempToken) {
-        if (jwtUtil.isExpired(tempToken) || !"temp".equals(jwtUtil.getCategory(tempToken))) {
+        try {
+            Claims claims = jwtUtil.getClaims(tempToken);
+            if (!"temp".equals(claims.get("category", String.class)) || claims.getExpiration() == null) {
+                throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+            }
+            return claims;
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException exception) {
             throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
         }
-        return jwtUtil.getClaims(tempToken);
     }
 
     private String requireVerifiedEmail(Claims claims) {

@@ -23,6 +23,26 @@ class ForbiddenWordServiceImplTest {
     private ExceptionWordRepository exceptionWordRepository;
 
     @Test
+    void reloadKeepsLastCompleteRulesDuringLookupAndOnFailure() {
+        when(forbiddenWordRepository.findAll()).thenReturn(List.of(forbiddenWord("나쁜말")));
+        when(exceptionWordRepository.findAll()).thenReturn(List.of(exceptionWord("나쁜말아님")));
+        ForbiddenWordServiceImpl service = service();
+        when(forbiddenWordRepository.findAll()).thenAnswer(invocation -> {
+            assertThat(service.containsForbiddenWord("나쁜말")).isTrue();
+            assertThat(service.containsForbiddenWord("새금칙어")).isFalse();
+            return List.of(forbiddenWord("새금칙어"));
+        });
+        when(exceptionWordRepository.findAll()).thenThrow(new IllegalStateException("DB down"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(service::reloadForbiddenWords).hasMessage("DB down");
+        assertThat(service.containsForbiddenWord("나쁜말")).isTrue();
+        assertThat(service.containsForbiddenWord("나쁜말아님")).isFalse();
+        org.mockito.Mockito.doReturn(List.of(exceptionWord("!!!"))).when(exceptionWordRepository).findAll();
+        service.reloadForbiddenWords();
+        assertThat(service.containsForbiddenWord("새금칙어")).isTrue();
+        assertThat(service.containsForbiddenWord("나쁜말")).isFalse();
+    }
+
+    @Test
     void containsForbiddenWord_doesNotBlockNormalRecommendationQuestionByShortSubstring() {
         when(forbiddenWordRepository.findAll()).thenReturn(List.of(
                 forbiddenWord("되는"),

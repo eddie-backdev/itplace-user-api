@@ -1,17 +1,20 @@
 package com.itplace.userapi.log.repository;
 
-import com.itplace.userapi.log.dto.PartnerNameResult;
 import com.itplace.userapi.log.dto.RankResult;
 import com.itplace.userapi.log.entity.LogDocument;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
+import org.bson.Document;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.FacetOperation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.data.mongodb.core.aggregation.LimitOperation;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
@@ -51,29 +54,29 @@ public class CustomLogRepositoryImpl implements CustomLogRepository {
     }
 
     @Override
-    public List<String> aggregateTopPartnerNamesByEvent(Long userId, String event, int topK) {
-        MatchOperation match = Aggregation.match(
-                Criteria.where("userId").is(userId).and("event").is(event)
-        );
-
-        GroupOperation group = Aggregation.group("partnerName").count().as("count");
-
-        SortOperation sort = Aggregation.sort(Sort.by(Sort.Direction.DESC, "count"));
-        LimitOperation limit = Aggregation.limit(topK);
-
-        ProjectionOperation project = Aggregation.project()
-                .and("_id").as("partnerName")
-                .and("count").as("count");
-
+    public Map<String, List<String>> aggregateTopPartnerNamesByEvents(Long userId, Map<String, Integer> limits) {
+        if (limits.isEmpty()) {
+            return Map.of();
+        }
+        FacetOperation facets = Aggregation.facet();
+        for (Map.Entry<String, Integer> entry : limits.entrySet()) {
+            facets = facets.and(
+                    Aggregation.match(Criteria.where("event").is(entry.getKey())),
+                    Aggregation.group("partnerName").count().as("count"),
+                    Aggregation.sort(Sort.by(Sort.Order.desc("count"), Sort.Order.asc("_id"))),
+                    Aggregation.limit(entry.getValue())
+            ).as(entry.getKey());
+        }
         Aggregation aggregation = Aggregation.newAggregation(
-                match, group, sort, limit, project
-        );
-
-        return mongoTemplate.aggregate(aggregation, "logs", PartnerNameResult.class)
-                .getMappedResults().stream()
-                .map(PartnerNameResult::getPartnerName)
-                .filter(Objects::nonNull)
-                .toList();
+                Aggregation.match(Criteria.where("userId").is(userId).and("event").in(limits.keySet())), facets);
+        Document result = mongoTemplate.aggregate(aggregation, "logs", Document.class).getUniqueMappedResult();
+        if (result == null) {
+            return Map.of();
+        }
+        Map<String, List<String>> partners = new LinkedHashMap<>();
+        limits.keySet().forEach(event -> partners.put(event, result.getList(event, Document.class, List.of()).stream()
+                .map(row -> row.getString("_id")).filter(Objects::nonNull).toList()));
+        return partners;
     }
 
     @Override

@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
@@ -33,8 +32,6 @@ class UserFeatureServiceImplTest {
     @Mock
     private UserRepository userRepo;
 
-    @Mock
-    private EmbeddingService embeddingService;
 
     @Mock
     private LogRepository logRepository;
@@ -99,10 +96,14 @@ class UserFeatureServiceImplTest {
                 .build();
 
         when(userRepo.findById(userId)).thenReturn(Optional.of(user));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "click", 5)).thenReturn(List.of("클릭파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "search", 5)).thenReturn(List.of("검색파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "detail", 5)).thenReturn(List.of("상세파트너"));
+
+
         when(favoriteRepository.findByUserIdWithBenefitAndPartner(userId)).thenReturn(List.of(favorite));
+
+        when(logRepository.aggregateTopPartnerNamesByEvents(eq(userId), any())).thenReturn(Map.ofEntries(
+                Map.entry("click", List.of("클릭파트너")),
+                Map.entry("search", List.of("검색파트너")),
+                Map.entry("detail", List.of("상세파트너"))));
 
         UserFeature feature = userFeatureService.loadUserFeature(userId);
 
@@ -134,10 +135,14 @@ class UserFeatureServiceImplTest {
                 .build();
 
         when(userRepo.findById(userId)).thenReturn(Optional.of(user));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "click", 5)).thenReturn(List.of());
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "search", 5)).thenReturn(List.of("검색파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "detail", 5)).thenReturn(List.of());
+
+
         when(favoriteRepository.findByUserIdWithBenefitAndPartner(userId)).thenReturn(List.of());
+
+        when(logRepository.aggregateTopPartnerNamesByEvents(eq(userId), any())).thenReturn(Map.ofEntries(
+                Map.entry("click", List.of()),
+                Map.entry("search", List.of("검색파트너")),
+                Map.entry("detail", List.of())));
 
         UserFeature feature = userFeatureService.loadUserFeature(userId);
 
@@ -166,28 +171,24 @@ class UserFeatureServiceImplTest {
                 .build();
 
         when(userRepo.findById(userId)).thenReturn(Optional.of(user));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "click", 5)).thenReturn(List.of("반응파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "search", 5)).thenReturn(List.of());
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "detail", 5)).thenReturn(List.of());
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "impression", 10))
-                .thenReturn(List.of("피로파트너", "반응파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "favorite_remove", 10))
-                .thenReturn(List.of("삭제파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "dismiss", 10))
-                .thenReturn(List.of("숨김파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "skip", 10))
-                .thenReturn(List.of("건너뜀파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "negative", 10))
-                .thenReturn(List.of("부정파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "negative_feedback", 10))
-                .thenReturn(List.of("피드백파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "feedback_negative", 10))
-                .thenReturn(List.of("명시부정파트너"));
-        when(logRepository.aggregateTopPartnerNamesByEvent(userId, "not_interested", 10))
-                .thenReturn(List.of());
+
+
         when(logRepository.findLatestParamByEvents(eq(userId), any()))
                 .thenReturn(Optional.of("lat=37.5&lng=127.0&city=서울"));
         when(favoriteRepository.findByUserIdWithBenefitAndPartner(userId)).thenReturn(List.of());
+
+        when(logRepository.aggregateTopPartnerNamesByEvents(eq(userId), any())).thenReturn(Map.ofEntries(
+                Map.entry("click", List.of("반응파트너")),
+                Map.entry("search", List.of()),
+                Map.entry("detail", List.of()),
+                Map.entry("impression", List.of("피로파트너", "반응파트너")),
+                Map.entry("favorite_remove", List.of("삭제파트너")),
+                Map.entry("dismiss", List.of("숨김파트너")),
+                Map.entry("skip", List.of("건너뜀파트너")),
+                Map.entry("negative", List.of("부정파트너")),
+                Map.entry("negative_feedback", List.of("피드백파트너")),
+                Map.entry("feedback_negative", List.of("명시부정파트너")),
+                Map.entry("not_interested", List.of())));
 
         UserFeature feature = userFeatureService.loadUserFeature(userId);
 

@@ -110,11 +110,11 @@ public class PartnerBenefitCacheService {
     private Map<Long, List<BenefitCacheDto>> loadBenefits(List<Long> partnerIds) {
         Map<Long, List<BenefitCacheDto>> result = new HashMap<>();
         List<Benefit> benefits = benefitRepository.findAllByPartnerIdsWithPartner(partnerIds).stream()
-                .filter(benefit -> Boolean.TRUE.equals(benefit.getActive()))
+                .filter(benefit -> !Boolean.FALSE.equals(benefit.getActive()))
                 .toList();
         List<BenefitCarrierPolicy> policies = benefits.isEmpty()
                 ? List.of() : benefitCarrierPolicyRepository.findAllByBenefitIn(benefits).stream()
-                .filter(policy -> Boolean.TRUE.equals(policy.getActive()))
+                .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
                 .toList();
         List<CarrierTierBenefit> carrierTierBenefits = policies.isEmpty()
                 ? List.of() : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);

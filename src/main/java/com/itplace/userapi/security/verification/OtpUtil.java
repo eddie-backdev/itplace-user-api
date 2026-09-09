@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OtpUtil {
 
-    private static final String SMS_PREFIX = "sms:";
     private static final String EMAIL_PREFIX = "email:";
     private static final String ATTEMPT_SUFFIX = ":attempts";
     private static final int MAX_OTP_ATTEMPTS = 5;
@@ -54,9 +53,6 @@ public class OtpUtil {
         return otp;
     }
 
-    public String generateSmsOtp(String phoneNumber) {
-        return generateAndCacheOtp(phoneNumber, SMS_PREFIX);
-    }
 
     public String generateEmailOtp(String email) {
         return generateAndCacheOtp(email, EMAIL_PREFIX);
@@ -83,9 +79,6 @@ public class OtpUtil {
         return Long.valueOf(1L).equals(result);
     }
 
-    public boolean validateSmsOtp(String phoneNumber, String otp) {
-        return validateOtp(phoneNumber, otp, SMS_PREFIX);
-    }
 
     public boolean validateEmailOtp(String email, String otp) {
         return validateOtp(email, otp, EMAIL_PREFIX);
