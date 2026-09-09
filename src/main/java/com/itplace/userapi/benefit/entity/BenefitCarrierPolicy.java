@@ -1,6 +1,7 @@
 package com.itplace.userapi.benefit.entity;
 
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
+import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.BenefitTypeConverter;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
@@ -97,4 +98,19 @@ public class BenefitCarrierPolicy extends BaseTimeEntity {
     @Builder.Default
     @OneToMany(mappedBy = "benefitCarrierPolicy")
     private List<CarrierTierBenefit> tierBenefits = new ArrayList<>();
+
+    public String getDisplayBenefitLimit() {
+        // 수집기의 UNLIMITED는 해석하지 못한 조건에도 사용되므로 무제한 이용을 보장하지 않는다.
+        if (benefitPolicy == null || benefitPolicy.getCode() == BenefitPolicyCode.UNLIMITED) {
+            return "이용 방법에서 횟수·한도 확인";
+        }
+        return benefitPolicy.getName();
+    }
+
+    public String getPublicUrl() {
+        if (url != null && !url.isBlank()) {
+            return url.trim();
+        }
+        return sourceUrl == null || sourceUrl.isBlank() ? null : sourceUrl.trim();
+    }
 }
