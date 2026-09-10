@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class MapRegionStoreSummaryRefreshService {
 
-    private static final long REFRESH_LOCK_KEY = 4_858_250_601L;
+    static final long REFRESH_LOCK_KEY = 4_858_250_601L;
 
     private final DataSource sourceDataSource;
 

@@ -49,6 +49,7 @@ public class StoreServiceImpl implements StoreService {
     private final StoreSearchService storeSearchService;
     private final StoreClusterCacheService storeClusterCacheService;
     private final StoreClusterQueryService storeClusterQueryService;
+    private final MapClusterSnapshotCache mapClusterSnapshotCache;
     private final StorePreviewQueryService storePreviewQueryService;
 
     private static final int DISTRIBUTED_GRID_SIZE = 5;
@@ -80,6 +81,16 @@ public class StoreServiceImpl implements StoreService {
                 normalizedMaxLng
         );
         ClusterAdministrativeUnit administrativeUnit = resolveClusterAdministrativeUnit(aggregationMapLevel);
+
+        if (mapClusterSnapshotCache.isEnabled()) {
+            return mapClusterSnapshotCache.find(administrativeUnit.name(), normalizedMinLat, normalizedMaxLat,
+                            normalizedMinLng, normalizedMaxLng, normalizedCategory, normalizedMapLevel)
+                    .orElseGet(() -> storeClusterQueryService.findStoreClustersInView(normalizedMinLat,
+                            normalizedMaxLat, normalizedMinLng, normalizedMaxLng, normalizedCategory,
+                            normalizedMapLevel, administrativeUnit.name()))
+                    .stream().map(projection -> toMapStoreClusterResponse(projection, normalizedMapLevel))
+                    .collect(Collectors.toCollection(ArrayList::new));
+        }
 
         String cacheKey = createClusterCacheKey(
                 normalizedMinLat,

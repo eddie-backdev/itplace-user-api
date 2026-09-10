@@ -13,7 +13,7 @@ VIEWPORT_MODE = System.getProperty(
 )
 RANDOM_SEED = int(System.getProperty("map.viewport.seed", "20260910"))
 PAN_DELTA = 0.005
-assert VIEWPORT_MODE in ("fixed", "random"), "Unknown viewport mode"
+assert VIEWPORT_MODE in ("fixed", "random", "random-balanced", "random-paced"), "Unknown viewport mode"
 
 HTTPRequestControl.setConnectionTimeout(60000)
 HTTPRequestControl.setSocketTimeout(60000)
@@ -126,7 +126,7 @@ class TestRunner:
         )
 
     def __call__(self):
-        if VIEWPORT_MODE == "random":
+        if VIEWPORT_MODE != "fixed":
             # 화면 크기와 기준 지역은 유지하고 매 요청 좌표를 바꿔 exact-key miss를 만든다.
             self.lat_offset = self.random.uniform(-PAN_DELTA, PAN_DELTA)
             self.lng_offset = self.random.uniform(-PAN_DELTA, PAN_DELTA)
@@ -140,3 +140,9 @@ class TestRunner:
             self.get_level7_clusters()
         else:
             self.get_level10_clusters()
+        # 빠른 API의 완료 요청만 늘어나는 효과를 분리할 때 네 경로를 순환한다.
+        if VIEWPORT_MODE == "random-balanced":
+            self.scenario = (self.scenario + 1) % 4
+        # 장기 갱신/메모리 검증용 탐색 간격. 실제 운영 통계에서 산출한 값은 아니다.
+        if VIEWPORT_MODE == "random-paced":
+            grinder.sleep(3000)

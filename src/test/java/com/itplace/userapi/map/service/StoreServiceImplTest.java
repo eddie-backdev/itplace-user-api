@@ -64,6 +64,9 @@ class StoreServiceImplTest {
     private StoreClusterQueryService storeClusterQueryService;
 
     @Mock
+    private MapClusterSnapshotCache mapClusterSnapshotCache;
+
+    @Mock
     private StorePreviewQueryService storePreviewQueryService;
 
     @InjectMocks
@@ -77,6 +80,34 @@ class StoreServiceImplTest {
                     Supplier<List<MapStoreClusterResponse>> loader = invocation.getArgument(1);
                     return loader.get();
                 });
+    }
+
+    @Test
+    void snapshotHitKeepsResponseContractAndAvoidsRedisViewportCacheAndDatabase() {
+        when(mapClusterSnapshotCache.isEnabled()).thenReturn(true);
+        var row = org.mockito.Mockito.mock(com.itplace.userapi.map.repository.projection.StoreClusterProjection.class);
+        when(row.getClusterId()).thenReturn("a:7:TOWN:sample");
+        when(row.getAdministrativeUnitType()).thenReturn("TOWN");
+        when(row.getCount()).thenReturn(10L);
+        when(mapClusterSnapshotCache.find("TOWN", 37.5, 37.6, 127, 127.1, null, 7))
+                .thenReturn(java.util.Optional.of(List.of(row)));
+        assertThat(storeService.findStoreClustersInView(37.6, 127.1, 37.5, 127, null, 7))
+                .singleElement().satisfies(response -> {
+                    assertThat(response.getClusterId()).isEqualTo("a:7:TOWN:sample");
+                    assertThat(response.getTargetMapLevel()).isEqualTo(5);
+                    assertThat(response.getCount()).isEqualTo(10L);
+                });
+        org.mockito.Mockito.verifyNoInteractions(storeClusterCacheService, storeClusterQueryService, storeRepository);
+    }
+
+    @Test
+    void unavailableSnapshotUsesDatabaseDirectlyWithEffectiveAggregationUnit() {
+        when(mapClusterSnapshotCache.isEnabled()).thenReturn(true);
+        when(storeClusterQueryService.findStoreClustersInView(33, 39, 124, 130, null, 5, "CITY"))
+                .thenReturn(List.of());
+        assertThat(storeService.findStoreClustersInView(33, 124, 39, 130, null, 5)).isEmpty();
+        org.mockito.Mockito.verify(storeClusterQueryService).findStoreClustersInView(33, 39, 124, 130, null, 5, "CITY");
+        org.mockito.Mockito.verifyNoInteractions(storeClusterCacheService);
     }
 
     @Test
