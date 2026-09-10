@@ -41,10 +41,27 @@ SPRING_PROFILES_ACTIVE=local,loadtest \
 SERVER_PORT=18080 \
 PG_REPLICA_MAX_POOL_SIZE=20 \
 SERVER_TOMCAT_MAX_KEEP_ALIVE_REQUESTS=100000 \
-./gradlew bootRun
+./gradlew bootRun --args='--app.ai.benefits.seed.enabled=false --app.ai.benefits.sync.enabled=false --app.ai.stores.seed.enabled=false --app.ai.questions.seed.enabled=false'
 ```
 
 일반 로컬 실행의 replica 풀 기본값은 10으로 유지한다. 성능 프로필에서도 환경 변수로 크기를 명시해 실제 측정 조건을 결과와 함께 남긴다.
+
+로컬 `.env`에 AI 초기 적재·동기화가 켜져 있을 수 있으므로 위 실행에서는 이를 명시적으로 끈다. DB·Redis·MongoDB·Elasticsearch의 연결 호스트도 실행 전에 확인한다. `local` 프로필만으로 모든 외부 연결이 로컬이라는 뜻은 아니다.
+
+### 로컬 nGrinder 실행 런타임
+
+API는 Java 17로 실행하고, 기존 nGrinder 3.5.9-p1 controller와 agent/worker는 SDKMAN에 설치된 Java 11.0.27로 실행한다. 전역 Java 기본값을 바꾸지 않고 해당 프로세스의 실행 경로를 지정한다.
+
+```bash
+cd ../LoadTest/ngrinder
+/Users/eddie/.sdkman/candidates/java/11.0.27-tem/bin/java \
+  -Djava.io.tmpdir=/Users/eddie/dev/ITPLACE/LoadTest/ngrinder/lib \
+  -jar ngrinder-controller-3.5.9-p1.war
+```
+
+HTTP 화면/API는 `localhost:8080`, agent의 controller 연결 포트는 16001이다. 14000은 agent 포트이므로 controller HTTP 상태 확인에 쓰지 않는다. 기존 `LoadTest/ngrinder-agent/run_agent_internal.sh`도 SDKMAN Java 11을 지정한다. `net.grinder.Grinder`를 직접 실행했을 때의 버전 검사 실패로 controller/agent 경로가 불가능하다고 판단하지 않는다. 실제 worker 로그에서 Java 11과 실행 성공을 확인한다.
+
+REST API로 테스트를 생성할 때 keep-alive 비교에는 `connectionReset=false`를 명시한다. 이 옵션을 생략한 실행은 연결 재설정 조건이 달라질 수 있으므로 결과를 분리한다. 실행 방식은 [nGrinder 설치 가이드](https://github.com/naver/ngrinder/wiki/Installation-Guide)와 기존 로컬 실행 설정을 함께 따른다.
 
 ## 풀 크기 탐색
 
@@ -113,6 +130,53 @@ preview 300 실행에서 mapLevel 1~4 경로는 평균 558KB, 2,256.10ms와 약 
 VUser 500 재측정에서는 전체 208,697건을 오류 없이 처리했다. 경로별 125 VUser 조건에서 preview는 1,721건·약 30.67 TPS·평균 3,872.84ms·평균 558KB였고, `LEGAL_DONG`, `TOWN`, `CITY` cluster는 각각 약 1,186.70, 1,240.06, 1,262.25 TPS와 평균 94~100ms였다. 전체 3,719.69 TPS는 빠른 cluster 경로가 요청 수의 대부분을 차지한 혼합 지표이므로, 300개 상세 preview 자체가 같은 처리량을 낸 것으로 해석하지 않는다.
 
 따라서 실제 화면처럼 넓은 지도에서 행정구역 집계로 전환한다면 300개 상한을 유지할 수 있다. 남은 병목은 개수 하나가 아니라 혜택이 포함된 preview 응답 크기이며, 300개 상세 조회만으로 높은 TPS가 필요한 경우에는 목록 필드 축소나 혜택 지연 조회가 추가로 필요하다. Redis 장애나 고유 bounds만 계속 들어오는 cold-cache 성능은 별도 시나리오로 검증한다.
+
+## 랜덤 viewport 비교
+
+`map-viewport-levels.ngrinder.py`의 기본값은 기존 `fixed` 시나리오다. nGrinder 테스트의 `param`에 `random`을 지정하거나, 부하 발생기 worker JVM에 아래 옵션을 주면 매 요청 중심 좌표를 바꾼다. 명시적인 `map.viewport.mode`가 `param`보다 우선한다.
+
+```text
+-Dmap.viewport.mode=random -Dmap.viewport.seed=20260910
+```
+
+- 서울 5개 기준점의 위도·경도를 각각 ±0.005도 범위에서 무작위 이동한다. 화면 크기, 경로 배분, preview 상한 300은 유지한다. Level 10도 전국 bounds 전체를 같은 오프셋만큼 이동해 고정 key 재사용을 없앤다.
+- 전국의 임의 좌표를 뽑으면 바다·빈 지역 비중과 응답량까지 바뀌므로, 우선 같은 지역의 미세 이동으로 exact viewport key 재사용 한계를 비교한다. 실제 사용자 이동 분포를 재현한 시나리오는 아니다.
+- 같은 실행기·seed·process/thread 구성에서 좌표 시퀀스를 재현한다. 연속 재실행에는 다른 seed를 쓰거나 이전 키의 TTL 만료를 기다려 의도하지 않은 예열을 피한다. 비교용으로 공유 Redis를 전체 삭제하지 않는다.
+- fixed/random의 경로별 평균·p95·오류·응답량과 cluster cache hit/miss/put을 각각 기록한다. 운영 적중률이나 전체 혼합 TPS만으로 결론 내리지 않는다.
+
+### 2026-09-10 로컬 소규모 HTTP 비교
+
+첫 탐색 측정에서는 스크립트의 실제 URL 생성 메서드를 Python 3.9 표준 HTTP 클라이언트로 호출했다. **nGrinder 500 VUser 재시험이 아니다.** API는 Java 17, `local,loadtest`, replica 풀 20이며 API·부하 발생기·DB·Redis가 같은 Mac에 있다. AI 적재/동기화와 집계 갱신은 끄고 실행했다. 이후 기존 Java 11 controller/agent 경로를 복구해 nGrinder 자체 검증도 별도로 수행했다.
+
+고정 경로 예열 후 최대 20개 worker × 25회, 모드당 500건씩 3회 실행했다. 실행 순서는 fixed/random → random/fixed → fixed/random이다. 완료 요청을 경로별 25%로 고정했고, think time 없이 HTTP keep-alive·비압축 응답을 사용했다. 각 경로·모드의 표본은 375건이고, 총 3,000건은 HTTP 200이었다. worker는 자기 25회가 끝나면 종료하므로 20명 지속 부하나 최대 TPS로 해석하지 않는다.
+
+| 경로 | fixed 평균 / p95 | random 평균 / p95 |
+|---|---:|---:|
+| compact preview | 39.8 / 58.4ms | 105.1 / 162.7ms |
+| Level 5 cluster | 7.1 / 16.0ms | 535.7 / 966.7ms |
+| Level 7 cluster | 4.7 / 9.3ms | 427.0 / 757.0ms |
+| Level 10 cluster | 3.8 / 8.0ms | 393.3 / 741.7ms |
+
+fixed의 cluster 1,125건은 cache hit 1,125·put 0, random은 hit 0·put 1,125였다. random의 miss counter 2,250은 최초 조회와 single-flight 소유자의 재확인으로 요청당 두 번 증가한 값이다. 빈 응답으로 차이가 생긴 것은 아니며, Level 10은 두 조건 모두 17개 cluster를 반환했다.
+
+제휴처 혜택 캐시는 별개다. random에서 `partner-benefits` hit 22,667·miss 15·put 15로 약 99.93%가 재사용됐다. 혜택이 충분히 예열돼도 매장 위치 조회, cluster cache miss의 사전 집계 조회, 응답 조립 비용은 남는다. 클러스터 경로는 혜택 본문을 조회하는 경로도 아니다.
+
+이 결과는 원시 bounds가 계속 바뀌면 캐시와 동일 key single-flight의 재사용이 사라지고 조회 지연이 커질 수 있음을 보여준다. 운영 적중률, 실제 드래그 지연, 과거 5,272.8 TPS와의 비교 또는 제안한 고정 영역 캐시의 개선률을 입증하지 않는다. 원본 요청·응답시간·Prometheus 전후 값·재현 스크립트는 `output/random-viewport-2026-09-10/`에 보관한다.
+
+### Java 11 nGrinder 재검증
+
+controller와 기존 agent/worker를 SDKMAN Java 11.0.27로 실행해 동일 스크립트를 검증했다. test 68은 런타임 확인용으로 248,346건·오류 0이었다. 비교에는 `connectionReset=false`, 20 VUser(1 process × 20 threads), 60초, 경로별 VUser 25%로 맞춘 test 69(fixed)와 70(random)을 사용했다. 각 1회이며 운영 부하 또는 500 VUser 재시험이 아니다.
+
+| 경로 | fixed 평균 | random 평균 |
+|---|---:|---:|
+| compact preview | 64.1ms | 96.1ms |
+| Level 5 cluster | 4.3ms | 711.0ms |
+| Level 7 cluster | 2.3ms | 490.2ms |
+| Level 10 cluster | 1.9ms | 494.8ms |
+
+원본 CSV의 경로별 완료 요청 수로 평균을 가중했다. fixed는 324,629건·5,587.71 TPS·전체 평균 3.37ms, random은 4,492건·77.27 TPS·전체 평균 254.41ms이고 오류는 모두 0이다. 완료 요청 중 preview가 fixed에서는 4,523건, random에서는 2,921건이라 전체 혼합 평균과 TPS의 차이를 단일 API 개선/악화 배수로 쓰지 않는다.
+
+random 실행 전후 혜택 캐시는 hit 179,218·miss 1·put 1, cluster 캐시는 hit 0·miss 3,236·put 1,618이었다. 혜택이 거의 전부 재사용돼도 cluster의 위치별 조회가 반복되는 현상을 실제 nGrinder에서도 확인했다. Prometheus 전후 구간은 nGrinder 통계 샘플 구간과 달라 counter 합계를 CSV의 완료 요청 수와 동일시하지 않는다. 원본은 `ngrinder-69-report/`, `ngrinder-70-report/`, `ngrinder-*-result.json`, `ngrinder-*-before.prom`, `ngrinder-*-after.prom`이다.
 
 ## 500 VUser·5분 cache stampede 재검증
 
