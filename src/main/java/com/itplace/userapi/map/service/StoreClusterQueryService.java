@@ -2,6 +2,7 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.map.repository.projection.StoreClusterProjection;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoreClusterQueryService {
 
     private final StoreRepository storeRepository;
+    private final EntityManager entityManager;
 
     /**
      * 클러스터 cache miss에서 실제 DB 조회 구간만 읽기 트랜잭션으로 실행한다.
@@ -29,6 +31,8 @@ public class StoreClusterQueryService {
             int mapLevel,
             String administrativeUnitType
     ) {
+        // 좌표별 선택도를 잃는 generic plan을 피하고, 설정은 이 조회 트랜잭션에만 한정한다.
+        entityManager.createNativeQuery("SET LOCAL plan_cache_mode = force_custom_plan").executeUpdate();
         return storeRepository.findStoreClustersInView(
                         minLat,
                         maxLat,
