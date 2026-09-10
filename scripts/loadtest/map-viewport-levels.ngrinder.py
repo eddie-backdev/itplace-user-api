@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
+from random import Random
+from java.lang import System
 from net.grinder.script.Grinder import grinder
 from net.grinder.script import Test
 from org.ngrinder.http import HTTPRequest, HTTPRequestControl
 
 BASE_URL = "http://localhost:18080"
 PREVIEW_LIMIT = 300
+# 기본 fixed는 기존 포트폴리오 시나리오를 유지한다. nGrinder param 또는 JVM 옵션으로 선택한다.
+VIEWPORT_MODE = System.getProperty(
+    "map.viewport.mode", System.getProperty("param", "fixed") or "fixed"
+)
+RANDOM_SEED = int(System.getProperty("map.viewport.seed", "20260910"))
+PAN_DELTA = 0.005
+assert VIEWPORT_MODE in ("fixed", "random"), "Unknown viewport mode"
 
 HTTPRequestControl.setConnectionTimeout(60000)
 HTTPRequestControl.setSocketTimeout(60000)
@@ -26,7 +35,12 @@ request = HTTPRequest()
 
 class TestRunner:
     def __init__(self):
-        self.lat, self.lng = CENTERS[grinder.threadNumber % len(CENTERS)]
+        self.base_lat, self.base_lng = CENTERS[grinder.threadNumber % len(CENTERS)]
+        self.lat, self.lng = self.base_lat, self.base_lng
+        self.lat_offset, self.lng_offset = 0.0, 0.0
+        self.random = Random(
+            RANDOM_SEED + grinder.processNumber * 1000003 + grinder.threadNumber
+        )
         self.scenario = grinder.threadNumber % 4
         test1.record(TestRunner.get_level4_preview)
         test2.record(TestRunner.get_level5_clusters)
@@ -99,11 +113,25 @@ class TestRunner:
 
     def get_level10_clusters(self):
         self._get(
-            "/api/v1/maps/stores/in-view/clusters"
-            "?minLat=33.0&minLng=124.0&maxLat=39.0&maxLng=130.0&mapLevel=10"
+            (
+                "/api/v1/maps/stores/in-view/clusters"
+                "?minLat=%s&minLng=%s&maxLat=%s&maxLng=%s&mapLevel=10"
+            )
+            % (
+                33.0 + self.lat_offset,
+                124.0 + self.lng_offset,
+                39.0 + self.lat_offset,
+                130.0 + self.lng_offset,
+            )
         )
 
     def __call__(self):
+        if VIEWPORT_MODE == "random":
+            # 화면 크기와 기준 지역은 유지하고 매 요청 좌표를 바꿔 exact-key miss를 만든다.
+            self.lat_offset = self.random.uniform(-PAN_DELTA, PAN_DELTA)
+            self.lng_offset = self.random.uniform(-PAN_DELTA, PAN_DELTA)
+            self.lat = self.base_lat + self.lat_offset
+            self.lng = self.base_lng + self.lng_offset
         if self.scenario == 0:
             self.get_level4_preview()
         elif self.scenario == 1:
