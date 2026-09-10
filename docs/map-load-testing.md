@@ -192,6 +192,30 @@ random 실행 전후 혜택 캐시는 hit 179,218·miss 1·put 1, cluster 캐시
 
 20 VUser의 77.27 TPS보다 처리량이 늘지 않고 대기가 증가했다. API·DB·5개 부하 발생 JVM이 같은 Mac을 공유하므로 순수 사용자 수 증가 효과나 운영 최대 용량으로 일반화하지 않는다. DB 풀 확대의 근거로도 쓰지 않는다. 원본 조건·CSV·로그·metrics와 해석은 `output/random-viewport-500vu-2026-09-11/REPORT.md`에 보존했다. 코드·운영 설정 변경 없이 테스트 후 이 작업의 API·controller를 종료했다.
 
+### 2026-09-11 클러스터 custom plan 적용 후 랜덤 500 VUser
+
+로컬 SQL 진단에서 PostgreSQL PREPARE `auto` 모드가 6번째 실행부터 generic plan을 선택해 약 2~3ms에서 342ms로 느려지는 현상을 재현했다. generic plan은 viewport 안의 anchor를 실제 341개보다 적은 1개로 추정해 summary index scan을 반복했다. API의 6번째 요청에서 반드시 전환된다는 의미는 아니다.
+
+`StoreClusterQueryService`의 기존 짧은 read-only 트랜잭션에서 JPA EntityManager로 `SET LOCAL plan_cache_mode = force_custom_plan`을 실행하도록 변경했다. SQL·응답·Redis key/TTL·풀 크기는 유지한다. 이 설정은 commit/rollback 시 복원되며 전역 DB 설정을 바꾸지 않는다. PostgreSQL 통합 테스트에서 같은 pooled connection의 조회 중 설정과 정상/예외 종료 후 `auto` 복원을 검증했다.
+
+이전 test 71과 같은 random 스크립트·seed, 500 VUser(5×100)·60초·keep-alive·replica 풀 20 조건으로 test 72/73을 실행했다. 각 실행 전 API를 재기동하고 fixed 200건을 워밍업했다. API Java 17, controller/agent/worker SDKMAN Java 11.0.27이며 AI seed/sync·집계 refresh는 비활성화했다.
+
+| 실행 | TPS | 평균 응답시간 | 성공 요청 | 오류 | VUser 확인 |
+|---|---:|---:|---:|---:|---|
+| 변경 전 71 | 41.40 | 10,489.54ms | 2,324 | 0 | 28개 샘플 모두 500 |
+| 변경 후 72 | 570.61 | 856.78ms | 32,070 | 0 | 첫 1개 400, 이후 27개 500 |
+| 변경 후 재확인 73 | **578.37** | **852.33ms** | **32,513** | **0** | **28개 샘플 모두 500** |
+
+첫 실행의 시작 VUser 편차를 확인해 추가 측정했으며 두 결과를 모두 보존했다. test 73의 경로별 가중 평균은 preview 929.43ms, Level 5 cluster 837.51ms, Level 7 823.62ms, Level 10 827.26ms였다. 전체 혼합 처리량은 이전 측정보다 약 14배, 평균 지연은 약 91.9% 감소했지만 완료 요청의 경로 비중이 달라 특정 API의 속도 배수로 쓰지 않는다.
+
+test 73의 cluster cache hit 0·miss 52,118·put 26,059로 cache 적중 증가에 따른 결과가 아니다. 혜택 cache hit 468,084·miss/put 1이었다. 전후 counter 기준 connection acquire 평균은 4,193.4→261.0ms, usage 평균은 487.0→33.6ms로 줄었다. 최대 pending 177·active 20/20과 system CPU 100%는 여전히 관측됐고 connection timeout은 0이었다. 지표 수집 45회는 모두 성공했으며 부하 해소 후 active/pending 0으로 돌아왔다. cache/connection counter의 전후 구간은 nGrinder 통계 구간과 다르다.
+
+API·DB·부하 발생 JVM이 같은 Mac을 공유하는 60초 시험으로 운영 최대 용량·요청별 p95·장시간 성능을 입증하지 않는다. 풀 대기와 CPU 포화가 남아 있어 모든 병목이 해소된 것은 아니다. 고정 영역 Redis 캐시와 인덱스 재배치는 이번 변경에 포함하지 않았다.
+
+전체 테스트 345개(skip 0)와 build를 통과했고, level 5/7/10의 전체·실재/미존재 category 및 빈 viewport 10개 API 응답을 원본 SQL의 ID·좌표·개수·순서와 대조했다. Docker 29 로컬 환경에서 통합 테스트가 skip되면 Testcontainers 기본 Docker API 1.32와 엔진 최소 API 1.40의 불일치 여부를 확인한다. 이번 실행은 `JAVA_TOOL_OPTIONS=-Dapi.version=1.44 DOCKER_HOST=unix:///Users/eddie/.orbstack/run/docker.sock ./gradlew test`로 실제 PostgreSQL 통합 테스트까지 수행했다. 전역 Docker 설정·의존성은 변경하지 않았다.
+
+원본과 재현 명령은 `output/custom-plan-500vu-2026-09-11/REPORT.md`, `output/custom-plan-500vu-repeat-2026-09-11/REPORT.md`에 보존한다. 테스트 후 이번 API·controller는 종료하고 기존 agent는 유지했다. 운영 배포·푸시는 수행하지 않았다.
+
 ## 500 VUser·5분 cache stampede 재검증
 
 MacBook 한 대에서 API와 nGrinder agent를 함께 실행하고, 서울 5개 중심 좌표의 compact preview 1개 경로와 행정구역 cluster 3개 경로에 VUser 500을 같은 비율로 분산했다. 모든 비교는 replica 풀 20, HTTP keep-alive, 5분으로 고정했다. 따라서 아래 수치는 운영 서버 용량이 아니라 같은 로컬 환경에서 변경 효과와 시간 경과 안정성을 비교한 결과다.

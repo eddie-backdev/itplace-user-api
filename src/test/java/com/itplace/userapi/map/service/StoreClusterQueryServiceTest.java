@@ -6,6 +6,8 @@ import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.map.repository.projection.StoreClusterProjection;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -25,11 +27,19 @@ class StoreClusterQueryServiceTest {
     @Mock
     private StoreClusterProjection projection;
 
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
+    private Query planSettingQuery;
+
     @InjectMocks
     private StoreClusterQueryService queryService;
 
     @Test
     void findStoreClustersInViewReturnsDetachedSnapshot() {
+        when(entityManager.createNativeQuery("SET LOCAL plan_cache_mode = force_custom_plan"))
+                .thenReturn(planSettingQuery);
         when(storeRepository.findStoreClustersInView(
                 37.49, 37.52, 126.99, 127.02, null, 7, "TOWN"
         )).thenReturn(List.of(projection));
