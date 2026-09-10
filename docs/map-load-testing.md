@@ -178,6 +178,20 @@ controller와 기존 agent/worker를 SDKMAN Java 11.0.27로 실행해 동일 스
 
 random 실행 전후 혜택 캐시는 hit 179,218·miss 1·put 1, cluster 캐시는 hit 0·miss 3,236·put 1,618이었다. 혜택이 거의 전부 재사용돼도 cluster의 위치별 조회가 반복되는 현상을 실제 nGrinder에서도 확인했다. Prometheus 전후 구간은 nGrinder 통계 샘플 구간과 달라 counter 합계를 CSV의 완료 요청 수와 동일시하지 않는다. 원본은 `ngrinder-69-report/`, `ngrinder-70-report/`, `ngrinder-*-result.json`, `ngrinder-*-before.prom`, `ngrinder-*-after.prom`이다.
 
+### 2026-09-11 랜덤 500 VUser·60초
+
+사용자 요청으로 같은 random 스크립트를 500 VUser(5 process × 100 threads)·60초·keep-alive로 한 번 실행했다. test 71은 정상 종료했고 28개 통계 샘플 모두 VUser 500이었다. API Java 17, controller/agent/worker Java 11, replica 풀 20을 유지했다. API 재기동 후 고정 경로 200건을 워밍업했고 AI seed/sync·집계 갱신은 껐다.
+
+| 평균 TPS | Peak TPS | 평균 응답시간 | 성공 요청 | nGrinder 오류 |
+|---:|---:|---:|---:|---:|
+| **41.40** | 126.50 | **10,489.54ms** | 2,324 | 0 |
+
+경로별 가중 평균은 preview 10,139.1ms, Level 5 cluster 10,813.3ms, Level 7 10,455.3ms, Level 10 10,574.7ms였다. 혜택 cache hit 44,583·miss 0인 반면 cluster hit 0·put 2,143이었다. cache counter의 전후 구간은 nGrinder 통계 구간과 달라 완료 요청 합계와 동일시하지 않는다.
+
+관측 최대 replica active 20/20·pending 178, system CPU 100%였다. 전후 counter 기준 connection acquire 평균은 4,193.4ms, usage 평균은 487.0ms였다. connection timeout은 0이었다. 1초 간격으로 시도한 metrics 조회 19회 중 10회가 5초 timeout이라 관측값이 실제 최고치를 모두 포착한 것은 아니다. 종료 직후 최종 metrics 조회도 timeout으로 보조 스크립트가 비정상 종료했지만, nGrinder 결과는 이미 FINISHED·오류 0으로 저장됐다. 부하 해소 후 HTTP 200·active/pending 0으로 회복했다.
+
+20 VUser의 77.27 TPS보다 처리량이 늘지 않고 대기가 증가했다. API·DB·5개 부하 발생 JVM이 같은 Mac을 공유하므로 순수 사용자 수 증가 효과나 운영 최대 용량으로 일반화하지 않는다. DB 풀 확대의 근거로도 쓰지 않는다. 원본 조건·CSV·로그·metrics와 해석은 `output/random-viewport-500vu-2026-09-11/REPORT.md`에 보존했다. 코드·운영 설정 변경 없이 테스트 후 이 작업의 API·controller를 종료했다.
+
 ## 500 VUser·5분 cache stampede 재검증
 
 MacBook 한 대에서 API와 nGrinder agent를 함께 실행하고, 서울 5개 중심 좌표의 compact preview 1개 경로와 행정구역 cluster 3개 경로에 VUser 500을 같은 비율로 분산했다. 모든 비교는 replica 풀 20, HTTP keep-alive, 5분으로 고정했다. 따라서 아래 수치는 운영 서버 용량이 아니라 같은 로컬 환경에서 변경 효과와 시간 경과 안정성을 비교한 결과다.
