@@ -216,6 +216,49 @@ API·DB·부하 발생 JVM이 같은 Mac을 공유하는 60초 시험으로 운�
 
 원본과 재현 명령은 `output/custom-plan-500vu-2026-09-11/REPORT.md`, `output/custom-plan-500vu-repeat-2026-09-11/REPORT.md`에 보존한다. 테스트 후 이번 API·controller는 종료하고 기존 agent는 유지했다. 운영 배포·푸시는 수행하지 않았다.
 
+### 고정 구역 JVM snapshot 적용 검증 — 2026-09-11
+
+구현과 복구 설정은 [공유 snapshot 가이드](map-cluster-snapshot.md)를 따른다. 정상 cluster 요청은 JVM 집계에서 처리하며, preview 경로는 유지한다. 검증은 같은 Mac의 로컬 API/DB/Redis와 nGrinder에서 수행했다. API Java 17, controller/agent/worker SDKMAN Java 11, replica 풀 20, keep-alive, AI seed/sync 및 MV refresh 비활성화다. JVM snapshot의 30초 복사/5초 동기화는 활성화했다.
+
+`map.viewport.mode` 또는 nGrinder `param`으로 선택한다. 기존 `fixed`/`random`은 유지한다.
+
+| 모드 | 요청 흐름 | 용도 |
+|---|---|---|
+| `random` | VUser를 네 경로에 분리하고 대기 없이 반복 | 기존 random 부하와 호환 |
+| `random-balanced` | 각 VUser가 네 경로를 순환하며 매번 좌표 변경 | 완료 요청 비중을 약 25%씩 유지 |
+| `random-paced` | 경로별 VUser 분리, 매 요청 좌표 변경 후 3초 대기 | 갱신/메모리 지속 검증 |
+
+랜덤 범위는 서울 5개 기준점 주변 ±0.005도이며 전국 균일 분포나 실제 운영 로그 기반 분포가 아니다. 3초 대기도 검증용 가정이다.
+
+test 74의 기존 분리 VUser 방식은 500명 설정·60초에서 **10,387.89 TPS**, 평균 36.29ms, 584,651건·오류 0이었다. 하지만 완료 요청 중 preview는 0.30%뿐이고 preview 평균은 3,711ms였다. cluster는 level 5/7/10 각각 28.23/24.30/23.31ms였다. 초기 한 샘플은 400 VUser였고 나머지는 500이었다. **이 혼합 TPS를 전체 지도 조회의 개선 배수로 사용하지 않는다.**
+
+이에 API를 각각 재기동하고 fixed 200건으로 예열한 뒤 `random-balanced` 500 VUser·60초에서 설정 OFF(test 75) / ON(test 76)을 비교했다. OFF는 28개 샘플 모두 500명, ON은 첫 샘플 400명·이후 27개 500명이었다. 두 실행에서 동일하게 첫 샘플을 제외한 **27개 × 2초의 공통 500명 유지 구간**은 다음과 같다. TPS는 해당 구간 완료 건수/54초로 다시 계산했으며 controller 전체 집계 값과 구분한다.
+
+| 공통 500명 유지 구간 | snapshot OFF | snapshot ON |
+|---|---:|---:|
+| 완료 요청 | 30,490 | 44,742 |
+| TPS | 564.63 | 828.56 |
+| 전체 가중 평균 응답 | 895.64ms | 604.31ms |
+| preview 평균 | 984.04ms | 1,332.68ms |
+| level 5 평균 | 879.02ms | 361.30ms |
+| level 7 평균 | 861.12ms | 362.62ms |
+| level 10 평균 | 857.93ms | 359.91ms |
+| 오류 | 0 | 0 |
+
+혼합 처리량은 약 46.7% 증가하고 평균 응답은 약 32.5% 감소했다. 전체 controller 결과는 553.61→810.59 TPS, 891.11→601.37ms였다. ON에서는 preview 처리 건수도 약 46% 증가했으며 preview 지연은 증가했다. 동일 VUser를 유지하는 closed-loop 부하는 개선 뒤 도착률/경로별 동시 요청 수도 변한다. 같은 Mac의 CPU 포화와 공유 Servlet/DB 자원 영향을 포함하므로 특정 원인 하나로 단정하거나 preview까지 빨라졌다고 주장하지 않는다. 별도 호스트 부하 발생과 고정 도착률 시험은 남아 있다.
+
+`random-paced` 500명·10분(test 77)은 296개 샘플 모두 VUser 500이었다. **98,472건·오류 0**, 165.89 TPS, 평균 10.45ms였다. preview 37.57ms, level 5/7/10은 1.85/1.39/1.31ms였다. 관측 구간에 snapshot 생성/설치 각 20회, 실패 0, JVM hit 74,775·fallback 0이었다. counter 구간에는 별도 정합성 HTTP 조회와 통계 창 차이가 포함되므로 nGrinder 완료 cluster 수와 동일시하지 않는다.
+
+로컬 API에서 시작 전/120·240·360·480초/종료 후 `jcmd GC.class_histogram`으로 살아 있는 객체를 확인했다. 전체 live heap은 98.77→100.81→91.01→96.10→90.82→90.06MiB였고, 모든 표본에 snapshot/Data 각 1개, Region 7,930개, CategoryCount 17,632개가 남았다. **20번의 교체 구간에서 이전 snapshot이 누적되는 징후는 없었다.** Full GC를 포함한 로컬 진단이며 운영 JVM에 실행하지 않았다. 실제 데이터 내용이 바뀌는 장기간 운영이나 모든 누수 부재를 입증하는 결과는 아니다. 내용 교체/실패/동시성은 별도 PostgreSQL·Redis 통합 테스트로 검증했다.
+
+구현된 DTO와 인덱스를 기존 로컬 Java agent로 측정한 객체 그래프는 한 세대 4,951,872 bytes(4.72MiB), 두 세대 9,903,304 bytes(9.44MiB)였다. JSON은 약 2.5MB다. 앞선 단순 후보의 3.7MiB와 자료구조가 다르며, 이 크기들도 요청/파싱/GC/native 메모리를 포함한 최대 RSS는 아니다.
+
+설정 OFF의 `random-paced` 500명·60초(test 78)도 9,013건·오류 0으로 완료됐다. 평균 41.99ms(preview 61.32ms, cluster 40.11/33.98/32.68ms)였으며 기존 exact viewport Redis 경로의 miss/put을 확인했다. ON 10분 시험과 실행 길이/JVM 예열 이력이 달라 정밀한 개선률로 비교하지 않는다.
+
+실제 API와 기존 SQL의 전국 anchor/경계/category 비교 106건과, Testcontainers의 조합 비교 525건을 통과했다. 전체 Gradle 테스트 354개 통과·skip 0, build 통과다. 테스트 뒤 이 작업의 API/controller는 종료하고 기존 agent를 유지했다. 운영 DB 변경·배포·push는 수행하지 않았다.
+
+원본: `output/jvm-snapshot-500vu-2026-09-11/REPORT.md`, `balanced-500-steady.json`, `actual-memory.json`, `smoke-nationwide.json`, `output/snapshot-balanced-{off,on}-2026-09-11/`, `output/snapshot-soak-2026-09-11/`, `output/snapshot-paced-off-2026-09-11/`. 실제 worker 5개의 Java 11 버전은 soak의 `runtime-proof.json`에 보존한다.
+
 ## 500 VUser·5분 cache stampede 재검증
 
 MacBook 한 대에서 API와 nGrinder agent를 함께 실행하고, 서울 5개 중심 좌표의 compact preview 1개 경로와 행정구역 cluster 3개 경로에 VUser 500을 같은 비율로 분산했다. 모든 비교는 replica 풀 20, HTTP keep-alive, 5분으로 고정했다. 따라서 아래 수치는 운영 서버 용량이 아니라 같은 로컬 환경에서 변경 효과와 시간 경과 안정성을 비교한 결과다.

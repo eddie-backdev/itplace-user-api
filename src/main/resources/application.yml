@@ -87,6 +87,15 @@ app:
       login-initial-lock: ${AUTH_LOGIN_INITIAL_LOCK:30s}
       login-max-lock: ${AUTH_LOGIN_MAX_LOCK:15m}
   map:
+    cluster-snapshot:
+      enabled: ${MAP_CLUSTER_SNAPSHOT_ENABLED:true}
+      poll-interval-ms: ${MAP_CLUSTER_SNAPSHOT_POLL_INTERVAL_MS:5000}
+      refresh-interval-ms: ${MAP_CLUSTER_SNAPSHOT_REFRESH_INTERVAL_MS:30000}
+      maximum-age-ms: ${MAP_CLUSTER_SNAPSHOT_MAXIMUM_AGE_MS:60000}
+      max-regions: ${MAP_CLUSTER_SNAPSHOT_MAX_REGIONS:20000}
+      max-category-counts: ${MAP_CLUSTER_SNAPSHOT_MAX_CATEGORY_COUNTS:100000}
+      max-payload-bytes: ${MAP_CLUSTER_SNAPSHOT_MAX_PAYLOAD_BYTES:16777216}
+      query-timeout-seconds: ${MAP_CLUSTER_SNAPSHOT_QUERY_TIMEOUT_SECONDS:5}
     cluster-summary:
       refresh:
         enabled: ${MAP_CLUSTER_SUMMARY_REFRESH_ENABLED:true}
