@@ -200,10 +200,13 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(11);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(12);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
+            assertThat(columnExists(connection, "store", "mapnormalizedname")).isTrue();
+            assertThat(columnExists(connection, "store", "mapnormalizedbusiness")).isTrue();
+            assertThat(columnExists(connection, "partner", "mapnormalizedname")).isTrue();
             assertThat(columnExists(connection, "store", "healthymisscount")).isTrue();
             assertThat(indexExists(connection, "uq_store_kakao_partner_place")).isTrue();
             assertThat(indexExists(connection, "uq_map_region_store_summary_lookup")).isTrue();
@@ -248,7 +251,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20260911.0001");
+                    """)).isEqualTo("20260911.0002");
 
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("UPDATE store SET active = false WHERE storeId = 1");

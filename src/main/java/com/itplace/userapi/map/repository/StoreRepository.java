@@ -178,16 +178,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                                 AND bcp.usageType IN ('offline', 'both')
                           ))
                           AND (:category IS NULL OR p.category = :category)
-                          AND (
-                              REGEXP_REPLACE(
-                                  LOWER(COALESCE(p.partnerName, '')),
-                                  '[^가-힣a-z0-9]+',
-                                  '',
-                                  'g'
-                              ) NOT IN ('다락', '미니창고다락')
-                              OR s.business LIKE '%보관%'
-                              OR s.business LIKE '%저장%'
-                          )
+                          AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                     )
                     SELECT "storeId", "partnerId", "storeName", "business", "partnerName", "category",
@@ -460,4 +451,118 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     Optional<Store> findByIdAndPartnerId(
             @Param("storeId") Long storeId,
             @Param("partnerId") Long partnerId);
+
+    // Web previews: current eligibility is checked in SQL before limiting candidates or loading ES IDs.
+    @Transactional(readOnly = true, timeout = 5)
+    @Query(
+            value = """
+                    SELECT s.storeId
+                    FROM store s
+                    JOIN partner eligible_partner ON eligible_partner.partnerId = s.partnerId
+                    WHERE s.active = true
+                    AND s.partnerId = ANY (ARRAY(
+                        SELECT DISTINCT b.partnerId
+                        FROM benefit b
+                        JOIN partner p ON p.partnerId = b.partnerId
+                        JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
+                        WHERE (:category IS NULL OR p.category = :category)
+                          AND b.active = true
+                          AND bcp.active = true
+                          AND bcp.usageType IN ('offline', 'both')
+                    ))
+                    AND ST_DWithin(
+                        s.location::geography,
+                        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+                        :radiusMeters
+                    )
+                    AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, eligible_partner.mapNormalizedName)
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<Long> findEligibleStoreIdsWithinRadius(
+            @Param("category") String category,
+            @Param("lat") double lat,
+            @Param("lng") double lng,
+            @Param("radiusMeters") double radiusMeters,
+            @Param("limit") int limit
+    );
+
+    @Transactional(readOnly = true, timeout = 5)
+    @Query(
+            value = """
+                    WITH keyword_stores AS MATERIALIZED (
+                        SELECT s.storeId, s.partnerId, s.storeName, s.location, s.mapNormalizedName, s.mapNormalizedBusiness
+                        FROM store s
+                        WHERE s.active = true
+                          AND s.location IS NOT NULL
+                          AND (
+                              LOWER(COALESCE(s.business, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                              OR LOWER(COALESCE(s.storeName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                          )
+                        UNION
+                        SELECT s.storeId, s.partnerId, s.storeName, s.location, s.mapNormalizedName, s.mapNormalizedBusiness
+                        FROM store s
+                        WHERE s.active = true
+                          AND s.location IS NOT NULL
+                          AND s.partnerId = ANY (ARRAY(
+                              SELECT p.partnerId FROM partner p
+                              WHERE LOWER(COALESCE(p.partnerName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                              OR LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                          ))
+                    )
+
+                    SELECT s.storeId
+                    FROM keyword_stores s
+                    JOIN partner p ON s.partnerId = p.partnerId
+                    WHERE s.partnerId = ANY (ARRAY(
+                          SELECT DISTINCT b.partnerId
+                          FROM benefit b
+                          JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
+                          WHERE b.active = true
+                            AND bcp.active = true
+                            AND bcp.usageType IN ('offline', 'both')
+                      ))
+                    AND (:category IS NULL OR p.category = :category)
+                    AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
+                    ORDER BY
+                           CASE
+                               WHEN LOWER(COALESCE(s.storeName, '')) = LOWER(:keyword)
+                                    OR LOWER(COALESCE(p.partnerName, '')) = LOWER(:keyword)
+                               THEN 1 ELSE 0
+                           END DESC,
+                           ST_DistanceSphere(
+                               s.location::geometry,
+                               ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
+                           ) ASC
+                    LIMIT 30
+                    """,
+            nativeQuery = true
+    )
+    List<Long> searchEligibleNearbyStoreIds(@Param("lng") double lng, @Param("lat") double lat,
+                                    @Param("category") String category, @Param("keyword") String keyword);
+
+    @Transactional(readOnly = true, timeout = 5)
+    @Query("""
+            SELECT DISTINCT s
+            FROM Store s
+            JOIN FETCH s.partner p
+            WHERE s.storeId IN :storeIds
+              AND s.active = true
+              AND function('map_store_partner_matches', s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName) = true
+              AND EXISTS (
+                  SELECT b.benefitId
+                  FROM Benefit b
+                  JOIN b.carrierPolicies policy
+                  WHERE b.partner = p
+                    AND b.active = true
+                    AND policy.active = true
+                    AND policy.usageType IN (
+                        com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
+                        com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
+                    )
+              )
+            """)
+    List<Store> findEligibleByStoreIdInWithPartner(@Param("storeIds") List<Long> storeIds);
+
 }

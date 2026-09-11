@@ -21,6 +21,12 @@ public interface StoreService {
     MapStorePreviewBatchResponse findStoresInViewPreviewBatch(double minLat, double minLng, double maxLat,
                                                               double maxLng, String category, int limit);
 
+    MapStorePreviewBatchResponse findNearbyPreviewBatch(double lat, double lng, double radiusMeters,
+                                                       String category, double userLat, double userLng);
+
+    MapStorePreviewBatchResponse findNearbyByKeywordPreviewBatch(double lat, double lng, String category,
+                                                                 String keyword, double userLat, double userLng);
+
     List<MapStorePreviewResponse> findNearbyPreviews(double lat, double lng, double radiusMeters, double userLat, double userLng);
 
     List<StoreDetailResponse> findNearby(double lat, double lng, double radiusMeters, double userLat, double userLng);
