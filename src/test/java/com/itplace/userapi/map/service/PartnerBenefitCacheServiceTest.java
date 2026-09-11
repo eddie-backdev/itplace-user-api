@@ -19,6 +19,17 @@ import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.common.redis.CacheConfig;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.partner.entity.Partner;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import org.springframework.data.redis.cache.RedisCacheWriter;
+import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.util.ByteUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -37,6 +48,65 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 @ExtendWith(MockitoExtension.class)
 class PartnerBenefitCacheServiceTest {
+
+    @Test
+    void redisBatchDecodesExistingPayloadsOnCallerAfterDispatchingAllReads() throws Exception {
+        var originalManager = (RedisCacheManager) new CacheConfig().cacheManager(mock(RedisConnectionFactory.class));
+        originalManager.afterPropertiesSet();
+        var originalConfig = originalManager.getCacheConfigurations().get("partner-benefits");
+        var originalValues = originalConfig.getValueSerializationPair();
+        List<Thread> decodingThreads = new ArrayList<>();
+        var values = SerializationPair.fromSerializer(
+                new RedisSerializer<Object>() {
+                    @Override public byte[] serialize(Object value) {
+                        return ByteUtils.getBytes(originalValues.write(value));
+                    }
+                    @Override public Object deserialize(byte[] value) {
+                        decodingThreads.add(Thread.currentThread());
+                        return originalValues.read(ByteBuffer.wrap(value));
+                    }
+                });
+        var writer = mock(RedisCacheWriter.class);
+        var manager = RedisCacheManager.builder(writer)
+                .withInitialCacheConfigurations(Map.of("partner-benefits",
+                        originalConfig.prefixCacheNameWith("test:").serializeValuesWith(values)))
+                .build();
+        manager.afterPropertiesSet();
+        var service = new PartnerBenefitCacheService(benefitRepository, benefitCarrierPolicyRepository,
+                carrierTierBenefitRepository, manager);
+        var pending = new ConcurrentHashMap<String, CompletableFuture<byte[]>>();
+        var dispatched = new CountDownLatch(3);
+        when(writer.retrieve(org.mockito.ArgumentMatchers.eq("partner-benefits"),
+                org.mockito.ArgumentMatchers.any(byte[].class))).thenAnswer(call -> {
+                    var future = new CompletableFuture<byte[]>().orTimeout(5, TimeUnit.SECONDS);
+                    pending.put(new String(call.getArgument(1), StandardCharsets.UTF_8), future);
+                    dispatched.countDown();
+                    return future;
+                });
+        when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(3L))).thenReturn(List.of());
+        var expected = new ArrayList<>(List.of(new BenefitCacheDto(9L,"기존 캐시",new ArrayList<>())));
+        byte[] cached = ByteUtils.getBytes(originalValues.write(expected));
+        byte[] empty = ByteUtils.getBytes(originalValues.write(new ArrayList<>()));
+        var eventLoop = Executors.newSingleThreadExecutor(
+                task -> new Thread(task,"test-redis-event-loop"));
+        try {
+            var completion = eventLoop.submit(() -> {
+                assertThat(dispatched.await(5,TimeUnit.SECONDS)).isTrue();
+                pending.get("test:partner-benefits::1").complete(cached);
+                pending.get("test:partner-benefits::2").complete(empty);
+                pending.get("test:partner-benefits::3").complete(null);
+                return null;
+            });
+            var result = service.getBenefitsBatch(List.of(1L,2L,3L,1L));
+            completion.get(5,TimeUnit.SECONDS);
+            assertThat(result.get(1L)).usingRecursiveComparison().isEqualTo(expected);
+            assertThat(result.get(2L)).isEmpty();
+            assertThat(result.get(3L)).isEmpty();
+            assertThat(pending).hasSize(3);
+            assertThat(decodingThreads).containsExactly(Thread.currentThread(),Thread.currentThread());
+            verify(benefitRepository).findAllByPartnerIdsWithPartner(List.of(3L));
+        } finally { eventLoop.shutdownNow(); }
+    }
 
     @Mock
     private BenefitRepository benefitRepository;

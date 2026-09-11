@@ -163,15 +163,15 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     JOIN partner p ON s.partnerId = p.partnerId
                     WHERE s.location IS NOT NULL
                       AND s.active = true
-                      AND EXISTS (
-                          SELECT 1
+                      -- 혜택 제휴사를 한 번만 계산해 매장마다 정책을 다시 조인하지 않는다.
+                      AND s.partnerId = ANY (ARRAY(
+                          SELECT DISTINCT b.partnerId
                           FROM benefit b
                           JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                          WHERE b.partnerId = s.partnerId
-                            AND COALESCE(b.active, true) = true
+                          WHERE COALESCE(b.active, true) = true
                             AND COALESCE(bcp.active, true) = true
                             AND bcp.usageType IN ('offline', 'both')
-                      )
+                      ))
                       AND (:category IS NULL OR p.category = :category)
                       AND (
                           REGEXP_REPLACE(

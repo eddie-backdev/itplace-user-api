@@ -21,6 +21,24 @@ import org.springframework.data.redis.connection.RedisStringCommands;
 class CacheConfigTest {
 
     @Test
+    void typedBenefitSerializerReadsExistingValuesAndKeepsRollbackCompatibleBytes() {
+        var manager = (RedisCacheManager) new CacheConfig().cacheManager(mock(RedisConnectionFactory.class));
+        manager.afterPropertiesSet();
+        var typed = manager.getCacheConfigurations().get("partner-benefits").getValueSerializationPair();
+        // 다른 캐시에 유지된 generic serializer가 기존 혜택 캐시 형식이다.
+        var legacy = manager.getCacheConfigurations().get("map-store-clusters").getValueSerializationPair();
+        var tiers = new java.util.ArrayList<>(java.util.List.of(
+                com.itplace.userapi.map.dto.response.TierBenefitDto.builder().benefitId(7L).context("현장 할인").build()));
+        var populated = new java.util.ArrayList<>(java.util.List.of(new com.itplace.userapi.map.dto.BenefitCacheDto(
+                7L,"혜택",com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,null,tiers)));
+        for (var value : java.util.List.of(populated,new java.util.ArrayList<>())) {
+            assertThat(typed.read(legacy.write(value))).usingRecursiveComparison().isEqualTo(value);
+            assertThat(legacy.read(typed.write(value))).usingRecursiveComparison().isEqualTo(value);
+            assertThat(typed.write(value)).isEqualTo(legacy.write(value));
+        }
+    }
+
+    @Test
     void cachesAreRegisteredWithStatisticsAndPurposeSpecificTtl() {
         RedisConnectionFactory connectionFactory = mock(RedisConnectionFactory.class);
         RedisConnection connection = mock(RedisConnection.class);

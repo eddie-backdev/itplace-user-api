@@ -299,3 +299,42 @@ API와 nGrinder agent를 같은 MacBook에서 실행해 시스템 CPU가 대부�
 필터 적용 후 같은 지도 혼합 시나리오를 VUser 500·5×100 threads·6분으로 다시 실행했다. 1,680,335건을 모두 성공 처리했고 오류는 0건이었으며, 평균 TPS 4,740.0, 평균 응답시간 103.03ms, Peak TPS 5,805.5였다. 부하 전후를 포함해 `/actuator/prometheus`를 1초 간격으로 420회 요청한 결과도 모두 HTTP 200이었고, `pending` meter 재등장과 음수 counter 오류는 각각 0회였다. 같은 scrape에서 cache hit·miss counter는 계속 누적돼 필요한 관측 정보가 유지되는 것도 확인했다. 원본 nGrinder test ID는 `67`이며 결과 화면, 상세 CSV, agent log와 scrape CSV를 `output/portfolio/assets/v25/performance`에 보존한다.
 
 캐시를 예열하고 같은 DB 스냅샷을 사용한 뒤 최소 세 번 반복한다. API와 부하 발생기를 같은 호스트에서 실행한 결과는 로컬 처리량 상한으로만 기록하고 운영 처리량으로 해석하지 않는다.
+
+## 개별 매장 preview 후속 개선 — 2026-09-11
+
+JVM cluster snapshot 이후에도 남은 preview 지연을 진단했다. 로컬 SQL 계획에서 매장 356개에 대해 benefit/policy 조인이 356번 실행됐고, 작은 viewport의 실행 시간은 약 19~22ms였다. custom/generic 모두 발생했다. 활성 오프라인 제휴사 집합을 `ANY(ARRAY(SELECT DISTINCT ...))`로 한 번만 계산하자 같은 진단에서 약 1.6~3.0ms였다. SQL 단독 실행 시간이며 계획 수립/API 지연과 구분한다.
+
+JFR의 CPU 실행 샘플 677개 중 229개에 같은 Lettuce 이벤트 루프의 Jackson 처리 스택이 있었다. 설치된 Spring Data Redis 3.4.7 소스에서도 `RedisCache.retrieve`가 완료 콜백에서 역직렬화하는 것을 확인했다. `PartnerBenefitCacheService`는 `RedisCacheWriter.retrieve`로 raw byte를 병렬 수신하고 요청 스레드에서 해석하도록 변경했다. key 변환/prefix, writer의 통계, 1시간 TTL은 유지한다. TTI 및 Redis 이외 cache의 기존 경로도 유지하며 executor나 JVM 혜택 캐시를 추가하지 않는다.
+
+혜택 목록에만 `Jackson2JsonRedisSerializer<List<BenefitCacheDto>>`를 사용해 generic 타입 추론용 JSON tree 생성도 생략한다. 기존 generic serializer와 양방향 호환되고 저장 byte도 같음을 검증했다. 캐시 삭제/마이그레이션 없이 이전 코드로 복귀할 수 있다. bounds/category/정렬/300개 상한/활성·오프라인 조건과 compact 응답 구조는 유지한다.
+
+### 같은 조건의 3회 반복
+
+이전 패키지는 `450f211`의 JVM snapshot 구현을 포함한 jar이며, 개선 패키지는 위 SQL/Redis/serializer 수정까지 포함한다. 각 실행 전 API 재기동, 동일한 80개 응답 비교와 고정 조회 200회 예열을 수행했다. API Java 17, SDKMAN Java 11 controller/agent, 같은 Mac의 DB/Redis, replica 풀 20, keep-alive 100000, AI seed/sync·MV refresh OFF, JVM snapshot ON이다. `random-balanced`는 서울 5개 기준점에서 매 요청 좌표를 ±0.005도 이동하며 네 경로를 순환한다. 500 VUser=5×100, 휴지 시간 없이 각각 60초, 전→후 순서로 세 번 반복했다.
+
+| 반복 (전/후 test ID) | 전체 TPS 전 → 후 | 전체 평균 ms 전 → 후 | preview 평균 ms 전 → 후 | 오류 전 / 후 |
+|---|---:|---:|---:|---:|
+| 1 (82/83) | 869.88 → 2763.15 | 556.88 → 177.12 | 1239.45 → 388.52 | 0 / 0 |
+| 2 (84/85) | 956.78 → 2832.19 | 502.37 → 169.93 | 1125.49 → 375.96 | 0 / 0 |
+| 3 (86/87) | 967.14 → 2854.66 | 506.49 → 170.70 | 1125.30 → 375.74 | 0 / 0 |
+
+모든 실행에서 VUser 500이 유지된 공통 CSV index 3~26(24×2초=48초)을 별도 비교했다. 세 번의 이 구간을 합친 결과는 다음과 같다.
+
+| 지표 | 이전 | 개선 |
+|---|---:|---:|
+| 처리량 | 965.93 TPS | 2997.88 TPS |
+| 전체 평균 | 520.64ms | 166.22ms |
+| 개별 매장 preview 평균 | 1147.61ms | 363.84ms |
+| Level 5 평균 | 311.66ms | 103.37ms |
+| Level 7 평균 | 313.71ms | 100.73ms |
+| Level 10 평균 | 309.55ms | 96.87ms |
+
+처리량은 약 3.10배, 전체 평균 지연은 약 68.1% 감소했다. 전체 여섯 실행은 총 624,303건·오류 0이다. replica acquire 평균은 전 591~626ms, 후 10.2~11.3ms였고 usage 평균은 전 80.6~89.9ms, 후 17.0~17.5ms였다. 최대 pending은 전 178~179, 후 66~82였으며 connection timeout은 모두 0이었다. 초기 SQL-only 탐색에서는 pending 0이었지만 최종 수정의 더 높은 도착률에서는 대기가 다시 관측됐다.
+
+서버/부하 발생기/DB가 CPU를 공유하며 시스템 CPU 100%가 관측됐다. closed-loop 포화 시험이며 500명의 실제 탐색 행동이나 운영 서버 최대 용량/p95를 측정한 것이 아니다. 경로 비중을 유지한 반복 비교로 개선을 확인했지만 개선 후 preview 평균도 약 364ms로 남아 있다. 별도 호스트의 부하 발생과 운영 환경 검증은 필요하다.
+
+전체 테스트 358개(skip/failure/error 0), build 통과. PostgreSQL 통합 테스트는 활성·비활성·NULL·오프라인/온라인·중복 정책·경계·정렬·상한과 정책 테이블 1회 탐색을 검증한다. Redis 완료 스레드와 JSON 해석 스레드를 분리하는 테스트, 기존/new serializer 호환 테스트도 통과했다. 80가지 실제 HTTP 응답은 data/code/status/message가 일치했고 요청별 timestamp만 비교에서 제외했다.
+
+초기 비교 도구는 timestamp까지 동일하다고 가정해 중단됐고, 수정 후 모든 응답 내용이 일치했다. API 종료 직후 포트 점유를 발견한 재시도도 부하 시작 전에 중단하고 재실행했다. test 79의 JFR 진단, test 80의 SQL-only 탐색, test 81의 중간 구현 측정은 최종 비교에서 제외한다. test 81 종료 후 시작된 JFR에는 유효한 부하 구간이 없어 개선 후 프로파일 근거로 사용하지 않는다. 최종 반복 중에는 추가 테스트/프로파일링을 실행하지 않았다.
+
+작업에서 시작한 API/controller는 종료하고 기존 agent를 유지했다. 운영 DB 변경·배포·push는 하지 않았다. 원본은 `output/preview-bottleneck-2026-09-11/paired-steady.json`, `paired-results.json`, `paired-runs.py`, baseline/improved jar와 SHA, SQL 계획/JFR 및 `output/preview-paired-{1,2,3}-{before,after}-2026-09-11/`에 보존한다. worker 로그는 뒤쪽 요청 로그만 남아 이번 반복의 worker별 JVM 버전 증거로 사용하지 않는다. controller의 Java 11 시작 경로와 유지 중인 agent의 Java 11 VM.version을 별도로 확인했다.
