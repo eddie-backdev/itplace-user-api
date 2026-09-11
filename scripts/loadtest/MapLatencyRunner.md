@@ -4,6 +4,14 @@ Java11 표준 라이브러리만 사용하는 **closed-loop HTTP 부하 발생�
 
 ## 준비와 실행
 
+현재 성능 테스트는 웹 API만 대상으로 하며 모바일 aggregate는 제외한다. 기존 `mixed.tsv`에는 모바일 5%가 있으므로 새 웹 전용 입력을 생성해 사용한다. 기본 비중은 preview 50%, cluster level 5/7/10 각 10%, keyword 10%, nearby 10%다.
+
+```sh
+python3 scripts/loadtest/generate-map-corpus.py --anchors output/performance-renewal-2026-09-11/anchors.json --output output/web-map-corpus.tsv
+```
+
+`--include-mobile`은 과거 실험의 입력 재현용이다. 원본 결과에서 mobile 행만 빼서 웹 전용 재측정 결과로 해석하지 않는다. 같은 서버 자원을 공유하던 부하 자체가 달라지기 때문이다.
+
 API는 SDKMAN Java17, 이 발생기는 SDKMAN Java11을 사용한다. 전후 비교 시 같은 JAR 실행 방법·API JVM/DB 설정·발생기 JVM·corpus·seed·HTTP 압축·warmup·concurrency·duration을 유지한다.
 
 ```sh
@@ -14,7 +22,7 @@ JAVA_HOME="$JAVA_HOME" python3 scripts/loadtest/MapLatencyRunnerSelfTest.py
 
 "$JAVA_HOME/bin/java" -Xms256m -Xmx1g -cp output/map-latency-runner MapLatencyRunner \
   --base-url http://127.0.0.1:18080 \
-  --corpus output/map-corpus.tsv \
+  --corpus output/web-map-corpus.tsv \
   --concurrency 500 --duration 60 --warmup 20 \
   --seed 20260911 --timeout 10 --accept-encoding identity \
   --output output/map-result.json

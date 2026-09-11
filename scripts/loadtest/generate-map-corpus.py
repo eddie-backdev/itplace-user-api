@@ -1,4 +1,4 @@
-"""Generate seeded, unique map requests from public store coordinate anchors (JSON)."""
+"""Generate seeded, unique web map requests from public store coordinate anchors (JSON)."""
 import argparse
 import collections
 import hashlib
@@ -12,6 +12,7 @@ p.add_argument('--anchors', type=Path, required=True)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--count', type=int, default=200000)
 p.add_argument('--seed', type=int, default=20260911)
+p.add_argument('--include-mobile', action='store_true', help='Reproduce the historical mobile-inclusive corpus; excluded by default.')
 args = p.parse_args()
 assert args.count > 0
 anchors = json.loads(args.anchors.read_text())
@@ -51,10 +52,11 @@ with args.output.open('w') as out:
                 group, endpoint = 'keyword', '/api/v1/maps/nearby/search/previews'
                 q['keyword'] = rng.choice(keywords)
             else:
-                group = 'nearby' if slot == 18 else 'mobile'
-                endpoint = '/api/v1/maps/nearby/previews' if slot == 18 else '/api/v1/mobile/map/nearby'
+                mobile = args.include_mobile and slot == 19
+                group = 'mobile' if mobile else 'nearby'
+                endpoint = '/api/v1/mobile/map/nearby' if mobile else '/api/v1/maps/nearby/previews'
                 q['radiusMeters'] = rng.choice([400, 800, 1500, 3000])
-                if slot == 19:
+                if mobile:
                     q['carrier'] = rng.choice(['SKT', 'KT', 'LGU'])
         path = endpoint + '?' + urlencode(q)
         assert path not in paths
@@ -62,5 +64,6 @@ with args.output.open('w') as out:
         groups[group] += 1
         out.write(group + '\t' + path + '\n')
 meta = dict(seed=args.seed, entries=args.count, groups=dict(groups), distinct_centers=len(centers), distinct_paths=len(paths), available_store_anchors=len(anchors), selected_store_anchors=len(selected), store_anchor_fraction=.8, uniform_korea_rectangle_fraction=.2, bounds=dict(minLat=min(x[0] for x in centers), maxLat=max(x[0] for x in centers), minLng=min(x[1] for x in centers), maxLng=max(x[1] for x in centers)), anchors_sha256=hashlib.sha256(args.anchors.read_bytes()).hexdigest(), corpus_sha256=hashlib.sha256(args.output.read_bytes()).hexdigest(), warning='Synthetic mix, not observed production traffic. Uniform rectangle includes empty/sea locations. Each measurement must report actual issued unique paths and reject wraparound for diverse-request claims.')
+meta['scope'] = 'historical-mobile-inclusive' if args.include_mobile else 'web-only'
 args.output.with_suffix('.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2)+'\n')
 print(json.dumps(meta, ensure_ascii=False))
