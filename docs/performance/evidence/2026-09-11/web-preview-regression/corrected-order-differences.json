@@ -1,0 +1,138 @@
+[
+  {
+    "path": "/api/v1/maps/nearby/search/previews/compact?lat=36.4848639&lng=127.2990532&userLat=36.4848639&userLng=127.2990532&keyword=%EB%8B%A4",
+    "keyword": "다",
+    "changes": [
+      {
+        "index": 24,
+        "before": {
+          "storeId": 13666,
+          "partnerId": 112,
+          "storeName": "GS25다정제일점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 5.1,
+          "partnerName": "GS25"
+        },
+        "after": {
+          "storeId": 5199,
+          "partnerId": 93,
+          "storeName": "파리바게뜨 세종다정점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 5.1,
+          "partnerName": "파리바게뜨"
+        }
+      },
+      {
+        "index": 25,
+        "before": {
+          "storeId": 5199,
+          "partnerId": 93,
+          "storeName": "파리바게뜨 세종다정점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 5.1,
+          "partnerName": "파리바게뜨"
+        },
+        "after": {
+          "storeId": 13666,
+          "partnerId": 112,
+          "storeName": "GS25다정제일점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 5.1,
+          "partnerName": "GS25"
+        }
+      }
+    ]
+  },
+  {
+    "path": "/api/v1/maps/nearby/search/previews/compact?lat=36.3815989&lng=126.5822905&userLat=36.3815989&userLng=126.5822905&keyword=%EB%8B%A4",
+    "keyword": "다",
+    "changes": [
+      {
+        "index": 24,
+        "before": {
+          "storeId": 13666,
+          "partnerId": 112,
+          "storeName": "GS25다정제일점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 60.6,
+          "partnerName": "GS25"
+        },
+        "after": {
+          "storeId": 5199,
+          "partnerId": 93,
+          "storeName": "파리바게뜨 세종다정점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 60.6,
+          "partnerName": "파리바게뜨"
+        }
+      },
+      {
+        "index": 25,
+        "before": {
+          "storeId": 5199,
+          "partnerId": 93,
+          "storeName": "파리바게뜨 세종다정점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 60.6,
+          "partnerName": "파리바게뜨"
+        },
+        "after": {
+          "storeId": 13666,
+          "partnerId": 112,
+          "storeName": "GS25다정제일점",
+          "latitude": 36.495773,
+          "longitude": 127.243605,
+          "address": "다정동 953",
+          "roadName": "세종특별자치시 세종특별자치시 다정북로",
+          "roadAddress": "세종특별자치시 세종특별자치시 다정북로 110",
+          "postCode": "30124",
+          "hasCoupon": true,
+          "distance": 60.6,
+          "partnerName": "GS25"
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "rejected_jfr_executed": false,
+  "decision": "Skipped by root agreement: same-database EXPLAIN isolates SQL spill regression; a single rejected-only JFR cannot identify baseline difference. Proceed corrected build/equivalence then formal paired comparisons.",
+  "formal_benchmarks_started": true,
+  "formal_benchmarks_completed": true,
+  "formal_measured_requests": 294697,
+  "formal_errors": 0,
+  "baseline_speed_criterion_passed": true,
+  "source_main_tree_unchanged_during_measurement": true
+}

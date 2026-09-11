@@ -1,0 +1,1178 @@
+{
+  "date": "2026-09-11",
+  "comparison": "7cc730f rejected keyword SQL versus disjoint UNION ALL / NOT MATERIALIZED / storeId tie break",
+  "environment": "Same disposable rejected PostgreSQL database (73,715 stores, 425 partners), no API/load running during timings",
+  "timing_method": "3 alternating executions per version and plan mode; EXPLAIN ANALYZE BUFFERS FORMAT JSON; read-only transactions; SQL execution time excludes planning/client transfer",
+  "query_sha256": "52dbd4f770d60ab9bca9d3511b2e4426a0340c60f360fe338be9b14e0680479c",
+  "final_comparison": [
+    {
+      "keyword": "편의점",
+      "mode": "force_custom_plan",
+      "rejected_ms": 97.587,
+      "corrected_ms": 79.064,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 97.587,
+        "planning_ms": 7.128,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 1814,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 79.064,
+        "planning_ms": 6.804,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2668,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_generic_plan",
+      "rejected_ms": 116.723,
+      "corrected_ms": 95.096,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 116.723,
+        "planning_ms": 0.765,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 1814,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 95.096,
+        "planning_ms": 0.806,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2668,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_custom_plan",
+      "rejected_ms": 62.097,
+      "corrected_ms": 34.193,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 62.097,
+        "planning_ms": 6.989,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 4094,
+        "temp_written_blocks": 0,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 34.193,
+        "planning_ms": 6.936,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5447,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_generic_plan",
+      "rejected_ms": 92.332,
+      "corrected_ms": 95.384,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 92.332,
+        "planning_ms": 0.813,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5313,
+        "temp_written_blocks": 0,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 95.384,
+        "planning_ms": 0.913,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5312,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_custom_plan",
+      "rejected_ms": 9.817,
+      "corrected_ms": 9.878,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 9.817,
+        "planning_ms": 6.855,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 9.878,
+        "planning_ms": 7.177,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 673,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_generic_plan",
+      "rejected_ms": 16.507,
+      "corrected_ms": 16.306,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 16.507,
+        "planning_ms": 0.786,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 16.306,
+        "planning_ms": 0.801,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 673,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_custom_plan",
+      "rejected_ms": 0.435,
+      "corrected_ms": 0.89,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 0.435,
+        "planning_ms": 7.05,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 0.89,
+        "planning_ms": 7.732,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 246,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_generic_plan",
+      "rejected_ms": 6.486,
+      "corrected_ms": 6.955,
+      "same_ids_and_order": true,
+      "rejected": {
+        "execution_ms": 6.486,
+        "planning_ms": 0.808,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      },
+      "corrected": {
+        "execution_ms": 6.955,
+        "planning_ms": 0.838,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 246,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    }
+  ],
+  "auto_plan": [
+    {
+      "variant": "rejected",
+      "scenario": "corpus",
+      "executions": 24,
+      "final_counters": {
+        "round": 24,
+        "generic": 19,
+        "custom": 5
+      },
+      "followup_keyword": "다",
+      "followup_execution_ms": 83.235,
+      "followup_estimated_cost": 6500.47
+    },
+    {
+      "variant": "rejected",
+      "scenario": "categories",
+      "executions": 24,
+      "final_counters": {
+        "round": 24,
+        "generic": 19,
+        "custom": 5
+      },
+      "followup_keyword": "다",
+      "followup_execution_ms": 82.518,
+      "followup_estimated_cost": 6500.47
+    },
+    {
+      "variant": "corrected",
+      "scenario": "corpus",
+      "executions": 24,
+      "final_counters": {
+        "round": 24,
+        "generic": 19,
+        "custom": 5
+      },
+      "followup_keyword": "다",
+      "followup_execution_ms": 84.824,
+      "followup_estimated_cost": 3113.94
+    },
+    {
+      "variant": "corrected",
+      "scenario": "categories",
+      "executions": 24,
+      "final_counters": {
+        "round": 24,
+        "generic": 19,
+        "custom": 5
+      },
+      "followup_keyword": "다",
+      "followup_execution_ms": 81.814,
+      "followup_estimated_cost": 3113.94
+    }
+  ],
+  "parity": {
+    "queries": 24,
+    "identical_to_original_order_and_selection": 23,
+    "identical_with_same_storeid_tie_break": 24,
+    "tie_change": {
+      "keyword": "GS25",
+      "original_selected": 11867,
+      "stabilized_selected": 11860,
+      "both_longitude": 126.896139,
+      "both_latitude": 35.105985,
+      "both_distance_meters": 7978.34881721,
+      "reason": "Existing rank and distance tie at LIMIT boundary had unspecified selection. New storeId ASC stabilizes the choice."
+    }
+  },
+  "other_native_queries": [
+    {
+      "case": "viewport-small",
+      "mode": "force_custom_plan",
+      "old_execution_ms": 2.145,
+      "new_execution_ms": 1.98
+    },
+    {
+      "case": "viewport-small",
+      "mode": "force_generic_plan",
+      "old_execution_ms": 1.485,
+      "new_execution_ms": 1.392
+    },
+    {
+      "case": "viewport-wide",
+      "mode": "force_custom_plan",
+      "old_execution_ms": 20.472,
+      "new_execution_ms": 15.312
+    },
+    {
+      "case": "viewport-wide",
+      "mode": "force_generic_plan",
+      "old_execution_ms": 31.315,
+      "new_execution_ms": 26.914
+    },
+    {
+      "case": "radius1k",
+      "mode": "force_custom_plan",
+      "old_execution_ms": 4.466,
+      "new_execution_ms": 4.171
+    },
+    {
+      "case": "radius1k",
+      "mode": "force_generic_plan",
+      "old_execution_ms": 4.563,
+      "new_execution_ms": 4.315
+    }
+  ],
+  "variants": [
+    {
+      "keyword": "편의점",
+      "mode": "force_custom_plan",
+      "variant": "old",
+      "times": [
+        90.614,
+        94.051,
+        93.003
+      ],
+      "median": 93.003,
+      "same_ids": false,
+      "same_order": false,
+      "plan": {
+        "execution_ms": 93.003,
+        "planning_ms": 6.844,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 678,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_custom_plan",
+      "variant": "rejected",
+      "times": [
+        101.859,
+        98.418,
+        103.426
+      ],
+      "median": 101.859,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 101.859,
+        "planning_ms": 7.094,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 1814,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_custom_plan",
+      "variant": "ids_only",
+      "times": [
+        93.25,
+        92.372,
+        95.62
+      ],
+      "median": 93.25,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 93.25,
+        "planning_ms": 6.859,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 6194,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_custom_plan",
+      "variant": "disjoint_union",
+      "times": [
+        87.317,
+        84.148,
+        86.586
+      ],
+      "median": 86.586,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 86.586,
+        "planning_ms": 7.054,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 553,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_custom_plan",
+      "variant": "stream_union",
+      "times": [
+        76.738,
+        77.375,
+        79.923
+      ],
+      "median": 77.375,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 77.375,
+        "planning_ms": 7.037,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_generic_plan",
+      "variant": "old",
+      "times": [
+        108.343,
+        108.95,
+        114.796
+      ],
+      "median": 108.95,
+      "same_ids": false,
+      "same_order": false,
+      "plan": {
+        "execution_ms": 108.95,
+        "planning_ms": 0.727,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 678,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_generic_plan",
+      "variant": "rejected",
+      "times": [
+        117.9,
+        113.431,
+        113.78
+      ],
+      "median": 113.78,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 113.78,
+        "planning_ms": 0.785,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 1814,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_generic_plan",
+      "variant": "ids_only",
+      "times": [
+        111.906,
+        110.79,
+        110.782
+      ],
+      "median": 110.79,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 110.79,
+        "planning_ms": 0.871,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 7633,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_generic_plan",
+      "variant": "disjoint_union",
+      "times": [
+        101.535,
+        101.906,
+        99.455
+      ],
+      "median": 101.535,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 101.535,
+        "planning_ms": 0.798,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 553,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "편의점",
+      "mode": "force_generic_plan",
+      "variant": "stream_union",
+      "times": [
+        92.342,
+        92.215,
+        92.081
+      ],
+      "median": 92.215,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 92.215,
+        "planning_ms": 0.792,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 2665,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_custom_plan",
+      "variant": "old",
+      "times": [
+        62.938,
+        62.926,
+        64.834
+      ],
+      "median": 62.938,
+      "same_ids": false,
+      "same_order": false,
+      "plan": {
+        "execution_ms": 62.938,
+        "planning_ms": 6.821,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 4094,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_custom_plan",
+      "variant": "rejected",
+      "times": [
+        63.499,
+        65.352,
+        64.177
+      ],
+      "median": 64.177,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 64.177,
+        "planning_ms": 6.836,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 4094,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_custom_plan",
+      "variant": "ids_only",
+      "times": [
+        87.215,
+        89.583,
+        86.259
+      ],
+      "median": 87.215,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 87.215,
+        "planning_ms": 6.881,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 7686,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_custom_plan",
+      "variant": "disjoint_union",
+      "times": [
+        63.784,
+        65.129,
+        65.342
+      ],
+      "median": 65.129,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 65.129,
+        "planning_ms": 7.008,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 4094,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_custom_plan",
+      "variant": "stream_union",
+      "times": [
+        34.114,
+        33.837,
+        33.704
+      ],
+      "median": 33.837,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 33.837,
+        "planning_ms": 6.751,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5431,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_generic_plan",
+      "variant": "old",
+      "times": [
+        96.285,
+        93.532,
+        96.147
+      ],
+      "median": 96.147,
+      "same_ids": false,
+      "same_order": false,
+      "plan": {
+        "execution_ms": 96.147,
+        "planning_ms": 0.773,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5313,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_generic_plan",
+      "variant": "rejected",
+      "times": [
+        94.004,
+        96.015,
+        92.949
+      ],
+      "median": 94.004,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 94.004,
+        "planning_ms": 0.774,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5313,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_generic_plan",
+      "variant": "ids_only",
+      "times": [
+        121.319,
+        125.581,
+        123.985
+      ],
+      "median": 123.985,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 123.985,
+        "planning_ms": 0.868,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 10281,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_generic_plan",
+      "variant": "disjoint_union",
+      "times": [
+        94.571,
+        94.226,
+        93.463
+      ],
+      "median": 94.226,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 94.226,
+        "planning_ms": 0.797,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5313,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "다",
+      "mode": "force_generic_plan",
+      "variant": "stream_union",
+      "times": [
+        93.957,
+        94.55,
+        96.482
+      ],
+      "median": 94.55,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 94.55,
+        "planning_ms": 0.833,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5309,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_custom_plan",
+      "variant": "old",
+      "times": [
+        9.796,
+        9.863,
+        9.268
+      ],
+      "median": 9.796,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 9.796,
+        "planning_ms": 7.086,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_custom_plan",
+      "variant": "rejected",
+      "times": [
+        9.925,
+        10.432,
+        9.739
+      ],
+      "median": 9.925,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 9.925,
+        "planning_ms": 6.808,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_custom_plan",
+      "variant": "ids_only",
+      "times": [
+        35.256,
+        35.593,
+        34.178
+      ],
+      "median": 35.256,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 35.256,
+        "planning_ms": 7.055,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 4262,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_custom_plan",
+      "variant": "disjoint_union",
+      "times": [
+        10.361,
+        10.108,
+        9.795
+      ],
+      "median": 10.108,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 10.108,
+        "planning_ms": 7.014,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_custom_plan",
+      "variant": "stream_union",
+      "times": [
+        10.062,
+        9.599,
+        9.521
+      ],
+      "median": 9.599,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 9.599,
+        "planning_ms": 6.857,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_generic_plan",
+      "variant": "old",
+      "times": [
+        17.116,
+        16.678,
+        16.979
+      ],
+      "median": 16.979,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 16.979,
+        "planning_ms": 0.763,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_generic_plan",
+      "variant": "rejected",
+      "times": [
+        16.678,
+        16.554,
+        17.327
+      ],
+      "median": 16.678,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 16.678,
+        "planning_ms": 0.783,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_generic_plan",
+      "variant": "ids_only",
+      "times": [
+        43.937,
+        45.597,
+        45.231
+      ],
+      "median": 45.231,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 45.231,
+        "planning_ms": 0.842,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 5638,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_generic_plan",
+      "variant": "disjoint_union",
+      "times": [
+        16.53,
+        17.12,
+        17.04
+      ],
+      "median": 17.04,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 17.04,
+        "planning_ms": 0.769,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "스타벅스",
+      "mode": "force_generic_plan",
+      "variant": "stream_union",
+      "times": [
+        16.808,
+        16.212,
+        16.937
+      ],
+      "median": 16.808,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 16.808,
+        "planning_ms": 0.843,
+        "actual_rows": 30.0,
+        "shared_hit_blocks": 670,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_custom_plan",
+      "variant": "old",
+      "times": [
+        0.458,
+        0.422,
+        0.434
+      ],
+      "median": 0.434,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 0.434,
+        "planning_ms": 6.866,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_custom_plan",
+      "variant": "rejected",
+      "times": [
+        0.474,
+        0.433,
+        0.433
+      ],
+      "median": 0.433,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 0.433,
+        "planning_ms": 6.767,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_custom_plan",
+      "variant": "ids_only",
+      "times": [
+        0.42,
+        0.434,
+        0.44
+      ],
+      "median": 0.434,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 0.434,
+        "planning_ms": 6.929,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_custom_plan",
+      "variant": "disjoint_union",
+      "times": [
+        0.422,
+        0.441,
+        0.389
+      ],
+      "median": 0.422,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 0.422,
+        "planning_ms": 6.984,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_custom_plan",
+      "variant": "stream_union",
+      "times": [
+        0.77,
+        0.82,
+        0.793
+      ],
+      "median": 0.793,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 0.793,
+        "planning_ms": 7.042,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 243,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_generic_plan",
+      "variant": "old",
+      "times": [
+        6.396,
+        6.714,
+        6.708
+      ],
+      "median": 6.708,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 6.708,
+        "planning_ms": 0.699,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_generic_plan",
+      "variant": "rejected",
+      "times": [
+        6.346,
+        6.497,
+        6.359
+      ],
+      "median": 6.359,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 6.359,
+        "planning_ms": 0.776,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_generic_plan",
+      "variant": "ids_only",
+      "times": [
+        6.437,
+        6.748,
+        6.572
+      ],
+      "median": 6.572,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 6.572,
+        "planning_ms": 0.837,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_generic_plan",
+      "variant": "disjoint_union",
+      "times": [
+        6.286,
+        6.633,
+        6.347
+      ],
+      "median": 6.347,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 6.347,
+        "planning_ms": 0.794,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 41,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    },
+    {
+      "keyword": "없는매장xyz",
+      "mode": "force_generic_plan",
+      "variant": "stream_union",
+      "times": [
+        6.72,
+        6.761,
+        6.636
+      ],
+      "median": 6.72,
+      "same_ids": true,
+      "same_order": true,
+      "plan": {
+        "execution_ms": 6.72,
+        "planning_ms": 0.822,
+        "actual_rows": 0.0,
+        "shared_hit_blocks": 243,
+        "temp_written_blocks": 0,
+        "jit": null
+      }
+    }
+  ],
+  "raw_files": [
+    {
+      "name": "eligibility-keyword-explains.json",
+      "bytes": 3576670,
+      "sha256": "73060ad47eded294fe759d2a7e55368aff053fef7c194f8455cd02d7552c532c"
+    },
+    {
+      "name": "eligibility-final-keyword-explains.json",
+      "bytes": 1431367,
+      "sha256": "7bb9377da4b19f855da958de33c6e43b9c5f907a2a6ecfdd25029255f5514b19"
+    },
+    {
+      "name": "eligibility-auto-plans.json",
+      "bytes": 136443,
+      "sha256": "12ca02ff35e6fe8fffd3ae870bc84382afb8beb05c74f644a29b33b653b6b0bc"
+    },
+    {
+      "name": "eligibility-corpus-parity.json",
+      "bytes": 34273,
+      "sha256": "fbc3f927f51004b4ba2a92ae4a9642d873b412f507dcc747c554a84bafc4d775"
+    },
+    {
+      "name": "eligibility-initial-plan-summaries.json",
+      "bytes": 83540,
+      "sha256": "5912f0aeebdd4f3b315b73aea15f35106be8a872296c7e750427aa332f0bd4f5"
+    },
+    {
+      "name": "eligibility-sql-diagnostic.py",
+      "bytes": 3779,
+      "sha256": "81b2279c6c3c70e8507c95305b816a6be8ab55a0ce05aecf5372e195ea4e4582"
+    },
+    {
+      "name": "eligibility-final-diagnostic.py",
+      "bytes": 5006,
+      "sha256": "e69de54bfae964d2ae202b81f1a5a19b016b08ef38e9e66906085308985786e2"
+    }
+  ]
+}

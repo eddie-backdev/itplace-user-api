@@ -1,0 +1,11 @@
+{
+  "jar_sha256": "6ad52161d346a5945cfd01cd1fb8f21f52a908b73dc0d63d75b73f3b29abbdeb",
+  "source_main_tree_sha256": "ad8e0fc54060da2ad1602a9a988c41d9219270af8044aa6d1d4813397fb8d633",
+  "source_parent_commit": "c24889588a60bc454925bdae3475a737eb29b505",
+  "role": "corrected",
+  "verification": "./gradlew test build passed423tests85suites0failure/error/skipped; root source frozen; formal quiet window",
+  "baseline_success_criterion": "Speed improvement vs b9401d8, not just rejected7cc730f",
+  "source_commit": "df4ff463eb070ccb0e0f6ea398116588bbf77caa",
+  "frontend_coverage_commit": "eb48e13",
+  "source_main_tree_unchanged_during_measurement": true
+}
