@@ -1,0 +1,9 @@
+{
+  "api_port18090_closed": true,
+  "owned_databases_dropped": [
+    "itplace_map_root_cause_20260911"
+  ],
+  "owned_redis_removed": "itplace-map-diagnosis-redis-20260911",
+  "original_database_and_shared_redis_preserved": true,
+  "production_changes": false
+}

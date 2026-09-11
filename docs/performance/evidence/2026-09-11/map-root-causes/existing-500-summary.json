@@ -1,0 +1,789 @@
+{
+  "method": "Read existing corrected500 runs only. Interior window is conservatively inside inferred measurement: started_at+warmupWall+1s through +measurementDuration-1s. Runner lacks exact phase wall timestamps; first/last retained samples define actual counter window. Gauges trapezoid time weighted, sampling roughly2s+scrape delay. HTTP comparisons use matching warmup+measurement counts.",
+  "trials": [
+    {
+      "trial": 1,
+      "full_sample_window": {
+        "sample_count": 30,
+        "first_epoch": 1789106941.17425,
+        "last_epoch": 1789107007.498335,
+        "counter_window_seconds": 66.32408499717712,
+        "process_cpu_mean_cores_from_counter": 2.5068956775970097,
+        "process_cpu_load_fraction": {
+          "min": 0.0,
+          "max": 0.3629575957344002,
+          "time_weighted_mean": 0.2055845294872952
+        },
+        "host_cpu_load_fraction": {
+          "min": 0.0,
+          "max": 1.0,
+          "time_weighted_mean": 0.968769587234913
+        },
+        "heap_used_bytes": {
+          "min": 189570320.0,
+          "max": 448916640.0,
+          "time_weighted_mean": 337284327.4663642
+        },
+        "old_gen_used_bytes": {
+          "min": 87953408.0,
+          "max": 194824704.0,
+          "time_weighted_mean": 183437296.24953255
+        },
+        "gc_pause_count": 128.0,
+        "gc_pause_sum_seconds": 0.9,
+        "gc_pause_fraction_of_wall": 0.013569731117109353,
+        "snapshot_hits": 20754.0,
+        "snapshot_fallbacks": 0.0,
+        "snapshot_failures": 0.0,
+        "pools": {
+          "replica-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 20.0,
+              "time_weighted_mean": 19.121465058794403
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 179.0,
+              "time_weighted_mean": 167.01545710630623
+            },
+            "idle": {
+              "min": 0.0,
+              "max": 10.0,
+              "time_weighted_mean": 0.6821626741713087
+            },
+            "max": {
+              "min": 20.0,
+              "max": 20.0,
+              "time_weighted_mean": 20.0
+            },
+            "usage": {
+              "count": 61154.0,
+              "sum_seconds": 1278.228,
+              "mean_ms": 20.901788926317167,
+              "operations_per_second": 922.0481519285615,
+              "concurrent_operations_from_duration": 19.272455851511616
+            },
+            "acquire": {
+              "count": 61174.0,
+              "sum_seconds": 11330.576,
+              "mean_ms": 185.21881845228364,
+              "operations_per_second": 922.3497015089417,
+              "concurrent_operations_from_duration": 170.83652191330268
+            },
+            "timeouts": 0.0
+          },
+          "source-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 2.0,
+              "time_weighted_mean": 0.11144997971212334
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "idle": {
+              "min": 2.0,
+              "max": 6.0,
+              "time_weighted_mean": 5.199857103250689
+            },
+            "max": {
+              "min": 10.0,
+              "max": 10.0,
+              "time_weighted_mean": 10.0
+            },
+            "usage": {
+              "count": 96.0,
+              "sum_seconds": 4.569,
+              "mean_ms": 47.59375,
+              "operations_per_second": 1.4474379858249977,
+              "concurrent_operations_from_duration": 0.06888900163785848
+            },
+            "acquire": {
+              "count": 96.0,
+              "sum_seconds": 1.5350000000000001,
+              "mean_ms": 15.989583333333336,
+              "operations_per_second": 1.4474379858249977,
+              "concurrent_operations_from_duration": 0.023143930294180954
+            },
+            "timeouts": 0.0
+          }
+        }
+      },
+      "measurement_interior": {
+        "sample_count": 19,
+        "first_epoch": 1789106964.6464078,
+        "last_epoch": 1789107005.2969651,
+        "counter_window_seconds": 40.65055727958679,
+        "process_cpu_mean_cores_from_counter": 1.7674162129156992,
+        "process_cpu_load_fraction": {
+          "min": 0.1334757626260996,
+          "max": 0.2749814548581707,
+          "time_weighted_mean": 0.1511718950588863
+        },
+        "host_cpu_load_fraction": {
+          "min": 0.983959168793292,
+          "max": 0.9989082969432315,
+          "time_weighted_mean": 0.9954065954533756
+        },
+        "heap_used_bytes": {
+          "min": 228711456.0,
+          "max": 442935640.0,
+          "time_weighted_mean": 339196817.1017733
+        },
+        "old_gen_used_bytes": {
+          "min": 183265280.0,
+          "max": 194267136.0,
+          "time_weighted_mean": 189014976.4530568
+        },
+        "gc_pause_count": 84.0,
+        "gc_pause_sum_seconds": 0.5529999999999999,
+        "gc_pause_fraction_of_wall": 0.013603749542634096,
+        "snapshot_hits": 13995.0,
+        "snapshot_fallbacks": 0.0,
+        "snapshot_failures": 0.0,
+        "pools": {
+          "replica-pool": {
+            "active": {
+              "min": 17.0,
+              "max": 20.0,
+              "time_weighted_mean": 19.44798975864013
+            },
+            "pending": {
+              "min": 167.0,
+              "max": 179.0,
+              "time_weighted_mean": 176.03819199200802
+            },
+            "idle": {
+              "min": 0.0,
+              "max": 3.0,
+              "time_weighted_mean": 0.5520102413598716
+            },
+            "max": {
+              "min": 20.0,
+              "max": 20.0,
+              "time_weighted_mean": 20.0
+            },
+            "usage": {
+              "count": 41343.0,
+              "sum_seconds": 804.24,
+              "mean_ms": 19.4528698933314,
+              "operations_per_second": 1017.0340277416302,
+              "concurrent_operations_from_duration": 19.78423061874873
+            },
+            "acquire": {
+              "count": 41343.0,
+              "sum_seconds": 7207.128999999999,
+              "mean_ms": 174.32525457755847,
+              "operations_per_second": 1017.0340277416302,
+              "concurrent_operations_from_duration": 177.2947158000993
+            },
+            "timeouts": 0.0
+          },
+          "source-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "idle": {
+              "min": 2.0,
+              "max": 6.0,
+              "time_weighted_mean": 5.221123490949118
+            },
+            "max": {
+              "min": 10.0,
+              "max": 10.0,
+              "time_weighted_mean": 10.0
+            },
+            "usage": {
+              "count": 7.0,
+              "sum_seconds": 0.5920000000000001,
+              "mean_ms": 84.57142857142858,
+              "operations_per_second": 0.1721993612991658,
+              "concurrent_operations_from_duration": 0.014563145984158024
+            },
+            "acquire": {
+              "count": 7.0,
+              "sum_seconds": 0.010000000000000009,
+              "mean_ms": 1.42857142857143,
+              "operations_per_second": 0.1721993612991658,
+              "concurrent_operations_from_duration": 0.0002459990875702371
+            },
+            "timeouts": 0.0
+          }
+        }
+      },
+      "http_full_warmup_and_measurement": {
+        "clusters": {
+          "matched_count": 20913,
+          "client_mean_ms": 282.37943062683496,
+          "spring_observed_mean_ms": 0.7215360603452399,
+          "outside_spring_observation_mean_ms": 281.65789456648974
+        },
+        "preview": {
+          "matched_count": 34893,
+          "client_mean_ms": 486.21729336098934,
+          "spring_observed_mean_ms": 204.9303994971771,
+          "outside_spring_observation_mean_ms": 281.2868938638122
+        },
+        "keyword": {
+          "matched_count": 7077,
+          "client_mean_ms": 749.7020777274269,
+          "spring_observed_mean_ms": 468.58571284004523,
+          "outside_spring_observation_mean_ms": 281.1163648873816
+        },
+        "nearby": {
+          "matched_count": 6890,
+          "client_mean_ms": 665.0875858555878,
+          "spring_observed_mean_ms": 382.33517488185777,
+          "outside_spring_observation_mean_ms": 282.75241097373004
+        }
+      },
+      "closed_loop": {
+        "concurrency": 500,
+        "tps": 1144.3859624779968,
+        "mean_ms": 434.30540588817496,
+        "tps_times_mean_seconds": 497.0130099267362,
+        "note": "Little-law-style consistency check; finite window/drain/client scheduling means slightly below500. TPS and mean at fixed concurrency are coupled, not independent evidence."
+      },
+      "full_prom_counters": {
+        "gc_allocated_bytes": 33375125416.0,
+        "gc_promoted_bytes": 99365376.0,
+        "heap_max_bytes": 1073741824.0
+      }
+    },
+    {
+      "trial": 2,
+      "full_sample_window": {
+        "sample_count": 30,
+        "first_epoch": 1789107017.642171,
+        "last_epoch": 1789107084.355073,
+        "counter_window_seconds": 66.7129020690918,
+        "process_cpu_mean_cores_from_counter": 2.540722480105227,
+        "process_cpu_load_fraction": {
+          "min": 0.0,
+          "max": 0.36625985168664466,
+          "time_weighted_mean": 0.20934105085319946
+        },
+        "host_cpu_load_fraction": {
+          "min": 0.0,
+          "max": 1.0,
+          "time_weighted_mean": 0.9709752046920958
+        },
+        "heap_used_bytes": {
+          "min": 202016768.0,
+          "max": 445256688.0,
+          "time_weighted_mean": 318380670.59430933
+        },
+        "old_gen_used_bytes": {
+          "min": 86933504.0,
+          "max": 192030720.0,
+          "time_weighted_mean": 180070463.87957996
+        },
+        "gc_pause_count": 126.0,
+        "gc_pause_sum_seconds": 0.923,
+        "gc_pause_fraction_of_wall": 0.013835404717427629,
+        "snapshot_hits": 20555.0,
+        "snapshot_fallbacks": 110.0,
+        "snapshot_failures": 0.0,
+        "pools": {
+          "replica-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 20.0,
+              "time_weighted_mean": 19.091049702725584
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 179.0,
+              "time_weighted_mean": 169.66408353583438
+            },
+            "idle": {
+              "min": 0.0,
+              "max": 10.0,
+              "time_weighted_mean": 0.729313000678679
+            },
+            "max": {
+              "min": 20.0,
+              "max": 20.0,
+              "time_weighted_mean": 20.0
+            },
+            "usage": {
+              "count": 61327.0,
+              "sum_seconds": 1285.446,
+              "mean_ms": 20.960523097493763,
+              "operations_per_second": 919.267459486115,
+              "concurrent_operations_from_duration": 19.268326817333122
+            },
+            "acquire": {
+              "count": 61347.0,
+              "sum_seconds": 11365.717999999999,
+              "mean_ms": 185.26933672388216,
+              "operations_per_second": 919.5672515709997,
+              "concurrent_operations_from_duration": 170.3676147715624
+            },
+            "timeouts": 0.0
+          },
+          "source-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 1.0,
+              "time_weighted_mean": 0.03605453293091009
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "idle": {
+              "min": 2.0,
+              "max": 6.0,
+              "time_weighted_mean": 5.2812433187806285
+            },
+            "max": {
+              "min": 10.0,
+              "max": 10.0,
+              "time_weighted_mean": 10.0
+            },
+            "usage": {
+              "count": 78.0,
+              "sum_seconds": 4.2620000000000005,
+              "mean_ms": 54.64102564102564,
+              "operations_per_second": 1.169189131050222,
+              "concurrent_operations_from_duration": 0.06388569328892368
+            },
+            "acquire": {
+              "count": 78.0,
+              "sum_seconds": 2.361,
+              "mean_ms": 30.26923076923077,
+              "operations_per_second": 1.169189131050222,
+              "concurrent_operations_from_duration": 0.03539045562063557
+            },
+            "timeouts": 0.0
+          }
+        }
+      },
+      "measurement_interior": {
+        "sample_count": 19,
+        "first_epoch": 1789107040.9409761,
+        "last_epoch": 1789107082.173281,
+        "counter_window_seconds": 41.23230481147766,
+        "process_cpu_mean_cores_from_counter": 1.8956498880519135,
+        "process_cpu_load_fraction": {
+          "min": 0.12899111064394625,
+          "max": 0.31497060938829735,
+          "time_weighted_mean": 0.1629866353246166
+        },
+        "host_cpu_load_fraction": {
+          "min": 0.9846041055718475,
+          "max": 1.0,
+          "time_weighted_mean": 0.9954809444872917
+        },
+        "heap_used_bytes": {
+          "min": 202016768.0,
+          "max": 445256688.0,
+          "time_weighted_mean": 302925598.89438987
+        },
+        "old_gen_used_bytes": {
+          "min": 180379648.0,
+          "max": 191535104.0,
+          "time_weighted_mean": 186229252.8930199
+        },
+        "gc_pause_count": 83.0,
+        "gc_pause_sum_seconds": 0.556,
+        "gc_pause_fraction_of_wall": 0.013484572413357517,
+        "snapshot_hits": 14125.0,
+        "snapshot_fallbacks": 0.0,
+        "snapshot_failures": 0.0,
+        "pools": {
+          "replica-pool": {
+            "active": {
+              "min": 17.0,
+              "max": 20.0,
+              "time_weighted_mean": 19.721236173615715
+            },
+            "pending": {
+              "min": 146.0,
+              "max": 179.0,
+              "time_weighted_mean": 173.35336369774723
+            },
+            "idle": {
+              "min": 0.0,
+              "max": 3.0,
+              "time_weighted_mean": 0.2787638263842867
+            },
+            "max": {
+              "min": 20.0,
+              "max": 20.0,
+              "time_weighted_mean": 20.0
+            },
+            "usage": {
+              "count": 41598.0,
+              "sum_seconds": 815.241,
+              "mean_ms": 19.598081638540314,
+              "operations_per_second": 1008.8691425374926,
+              "concurrent_operations_from_duration": 19.771899818053946
+            },
+            "acquire": {
+              "count": 41598.0,
+              "sum_seconds": 7312.316,
+              "mean_ms": 175.78527813837204,
+              "operations_per_second": 1008.8691425374926,
+              "concurrent_operations_from_duration": 177.34434282617406
+            },
+            "timeouts": 0.0
+          },
+          "source-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "idle": {
+              "min": 2.0,
+              "max": 6.0,
+              "time_weighted_mean": 5.223322017188758
+            },
+            "max": {
+              "min": 10.0,
+              "max": 10.0,
+              "time_weighted_mean": 10.0
+            },
+            "usage": {
+              "count": 5.0,
+              "sum_seconds": 0.4540000000000002,
+              "mean_ms": 90.80000000000004,
+              "operations_per_second": 0.12126414040789132,
+              "concurrent_operations_from_duration": 0.011010783949036537
+            },
+            "acquire": {
+              "count": 5.0,
+              "sum_seconds": 0.020999999999999908,
+              "mean_ms": 4.1999999999999815,
+              "operations_per_second": 0.12126414040789132,
+              "concurrent_operations_from_duration": 0.0005093093897131413
+            },
+            "timeouts": 0.0
+          }
+        }
+      },
+      "http_full_warmup_and_measurement": {
+        "clusters": {
+          "matched_count": 20665,
+          "client_mean_ms": 285.80444466794097,
+          "spring_observed_mean_ms": 2.4633051650133075,
+          "outside_spring_observation_mean_ms": 283.34113950292766
+        },
+        "preview": {
+          "matched_count": 34701,
+          "client_mean_ms": 489.5259455822598,
+          "spring_observed_mean_ms": 206.07089127270106,
+          "outside_spring_observation_mean_ms": 283.4550543095587
+        },
+        "keyword": {
+          "matched_count": 6918,
+          "client_mean_ms": 750.6957895277537,
+          "spring_observed_mean_ms": 467.72691020410525,
+          "outside_spring_observation_mean_ms": 282.9688793236485
+        },
+        "nearby": {
+          "matched_count": 6920,
+          "client_mean_ms": 667.9615346515895,
+          "spring_observed_mean_ms": 384.1551131108381,
+          "outside_spring_observation_mean_ms": 283.80642154075144
+        }
+      },
+      "closed_loop": {
+        "concurrency": 500,
+        "tps": 1132.6404397297479,
+        "mean_ms": 438.68149433625405,
+        "tps_times_mean_seconds": 496.8684006463177,
+        "note": "Little-law-style consistency check; finite window/drain/client scheduling means slightly below500. TPS and mean at fixed concurrency are coupled, not independent evidence."
+      },
+      "full_prom_counters": {
+        "gc_allocated_bytes": 32549896088.0,
+        "gc_promoted_bytes": 105097216.0,
+        "heap_max_bytes": 1073741824.0
+      }
+    },
+    {
+      "trial": 3,
+      "full_sample_window": {
+        "sample_count": 30,
+        "first_epoch": 1789107247.4348722,
+        "last_epoch": 1789107313.799016,
+        "counter_window_seconds": 66.36414384841919,
+        "process_cpu_mean_cores_from_counter": 2.518106334373824,
+        "process_cpu_load_fraction": {
+          "min": 0.0,
+          "max": 0.3801688694547953,
+          "time_weighted_mean": 0.20696485913789192
+        },
+        "host_cpu_load_fraction": {
+          "min": 0.0,
+          "max": 1.0,
+          "time_weighted_mean": 0.9693236784754973
+        },
+        "heap_used_bytes": {
+          "min": 182116760.0,
+          "max": 441748384.0,
+          "time_weighted_mean": 326916371.39438623
+        },
+        "old_gen_used_bytes": {
+          "min": 86089728.0,
+          "max": 186181120.0,
+          "time_weighted_mean": 175395337.1321967
+        },
+        "gc_pause_count": 126.0,
+        "gc_pause_sum_seconds": 0.894,
+        "gc_pause_fraction_of_wall": 0.013471129862565014,
+        "snapshot_hits": 20915.0,
+        "snapshot_fallbacks": 199.0,
+        "snapshot_failures": 0.0,
+        "pools": {
+          "replica-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 20.0,
+              "time_weighted_mean": 19.508235468007033
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 179.0,
+              "time_weighted_mean": 170.91491098657835
+            },
+            "idle": {
+              "min": 0.0,
+              "max": 10.0,
+              "time_weighted_mean": 0.29861611901968776
+            },
+            "max": {
+              "min": 20.0,
+              "max": 20.0,
+              "time_weighted_mean": 20.0
+            },
+            "usage": {
+              "count": 61714.0,
+              "sum_seconds": 1279.762,
+              "mean_ms": 20.736980263797516,
+              "operations_per_second": 929.9298750988113,
+              "concurrent_operations_from_duration": 19.28393746663974
+            },
+            "acquire": {
+              "count": 61733.0,
+              "sum_seconds": 11335.386,
+              "mean_ms": 183.6195551811835,
+              "operations_per_second": 930.2161742793355,
+              "concurrent_operations_from_duration": 170.80588014351386
+            },
+            "timeouts": 0.0
+          },
+          "source-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 2.0,
+              "time_weighted_mean": 0.14290337629852143
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "idle": {
+              "min": 2.0,
+              "max": 7.0,
+              "time_weighted_mean": 5.995075603968414
+            },
+            "max": {
+              "min": 10.0,
+              "max": 10.0,
+              "time_weighted_mean": 10.0
+            },
+            "usage": {
+              "count": 95.0,
+              "sum_seconds": 5.518,
+              "mean_ms": 58.084210526315786,
+              "operations_per_second": 1.431495902621562,
+              "concurrent_operations_from_duration": 0.08314730937542925
+            },
+            "acquire": {
+              "count": 95.0,
+              "sum_seconds": 3.624,
+              "mean_ms": 38.14736842105263,
+              "operations_per_second": 1.431495902621562,
+              "concurrent_operations_from_duration": 0.054607801590532
+            },
+            "timeouts": 0.0
+          }
+        }
+      },
+      "measurement_interior": {
+        "sample_count": 19,
+        "first_epoch": 1789107270.7996218,
+        "last_epoch": 1789107311.540858,
+        "counter_window_seconds": 40.741236209869385,
+        "process_cpu_mean_cores_from_counter": 1.8457773007335332,
+        "process_cpu_load_fraction": {
+          "min": 0.12995194291739445,
+          "max": 0.29352581683874696,
+          "time_weighted_mean": 0.15825463122624786
+        },
+        "host_cpu_load_fraction": {
+          "min": 0.9745889387144993,
+          "max": 1.0,
+          "time_weighted_mean": 0.9956526785265981
+        },
+        "heap_used_bytes": {
+          "min": 202473976.0,
+          "max": 441748384.0,
+          "time_weighted_mean": 326486111.49170065
+        },
+        "old_gen_used_bytes": {
+          "min": 174470144.0,
+          "max": 185664000.0,
+          "time_weighted_mean": 180372553.09656233
+        },
+        "gc_pause_count": 82.0,
+        "gc_pause_sum_seconds": 0.534,
+        "gc_pause_fraction_of_wall": 0.013107113324917737,
+        "snapshot_hits": 14094.0,
+        "snapshot_fallbacks": 0.0,
+        "snapshot_failures": 0.0,
+        "pools": {
+          "replica-pool": {
+            "active": {
+              "min": 19.0,
+              "max": 20.0,
+              "time_weighted_mean": 19.944897965035693
+            },
+            "pending": {
+              "min": 169.0,
+              "max": 179.0,
+              "time_weighted_mean": 175.56649384575113
+            },
+            "idle": {
+              "min": 0.0,
+              "max": 1.0,
+              "time_weighted_mean": 0.0551020349643053
+            },
+            "max": {
+              "min": 20.0,
+              "max": 20.0,
+              "time_weighted_mean": 20.0
+            },
+            "usage": {
+              "count": 41463.0,
+              "sum_seconds": 807.2150000000001,
+              "mean_ms": 19.468321153799774,
+              "operations_per_second": 1017.71580485218,
+              "concurrent_operations_from_duration": 19.81321813216006
+            },
+            "acquire": {
+              "count": 41463.0,
+              "sum_seconds": 7220.963,
+              "mean_ms": 174.15437860260954,
+              "operations_per_second": 1017.71580485218,
+              "concurrent_operations_from_duration": 177.23966358808605
+            },
+            "timeouts": 0.0
+          },
+          "source-pool": {
+            "active": {
+              "min": 0.0,
+              "max": 1.0,
+              "time_weighted_mean": 0.05578290300397709
+            },
+            "pending": {
+              "min": 0.0,
+              "max": 0.0,
+              "time_weighted_mean": 0.0
+            },
+            "idle": {
+              "min": 2.0,
+              "max": 7.0,
+              "time_weighted_mean": 5.974500999613006
+            },
+            "max": {
+              "min": 10.0,
+              "max": 10.0,
+              "time_weighted_mean": 10.0
+            },
+            "usage": {
+              "count": 8.0,
+              "sum_seconds": 0.6699999999999999,
+              "mean_ms": 83.74999999999999,
+              "operations_per_second": 0.19636124831337434,
+              "concurrent_operations_from_duration": 0.016445254546245097
+            },
+            "acquire": {
+              "count": 8.0,
+              "sum_seconds": 0.017999999999999794,
+              "mean_ms": 2.2499999999999742,
+              "operations_per_second": 0.19636124831337434,
+              "concurrent_operations_from_duration": 0.0004418128087050872
+            },
+            "timeouts": 0.0
+          }
+        }
+      },
+      "http_full_warmup_and_measurement": {
+        "clusters": {
+          "matched_count": 21227,
+          "client_mean_ms": 282.58792817100857,
+          "spring_observed_mean_ms": 3.6276861593253877,
+          "outside_spring_observation_mean_ms": 278.9602420116832
+        },
+        "preview": {
+          "matched_count": 35014,
+          "client_mean_ms": 482.55501351125264,
+          "spring_observed_mean_ms": 203.1167792055178,
+          "outside_spring_observation_mean_ms": 279.43823430573485
+        },
+        "keyword": {
+          "matched_count": 7083,
+          "client_mean_ms": 739.6949557872371,
+          "spring_observed_mean_ms": 461.96785805717917,
+          "outside_spring_observation_mean_ms": 277.7270977300579
+        },
+        "nearby": {
+          "matched_count": 6960,
+          "client_mean_ms": 661.8073257337644,
+          "spring_observed_mean_ms": 382.17229398333336,
+          "outside_spring_observation_mean_ms": 279.63503175043104
+        }
+      },
+      "closed_loop": {
+        "concurrency": 500,
+        "tps": 1144.0952087816386,
+        "mean_ms": 434.1880086522423,
+        "tps_times_mean_seconds": 496.75242040947103,
+        "note": "Little-law-style consistency check; finite window/drain/client scheduling means slightly below500. TPS and mean at fixed concurrency are coupled, not independent evidence."
+      },
+      "full_prom_counters": {
+        "gc_allocated_bytes": 33675018168.0,
+        "gc_promoted_bytes": 87694336.0,
+        "heap_max_bytes": 1073741824.0
+      }
+    }
+  ],
+  "limits": [
+    "Host CPU includes API, PostgreSQL/Redis Docker VM,Java load generator and unrelated host work; processCPU gauge/counter only isolates API. Cannot assign remaining CPU without more measurement.",
+    "HTTP client minus Spring timer includes servlet/container queue, client scheduling,network/socket transfer and instrumentation differences; not a direct Tomcat queue timer.",
+    "Snapshot hit counter proves use of hit path; DB-free hit behavior still relies on source contract, not endpoint-tagged DB trace.",
+    "GC pause sums observed small do not prove allocation cost or long-term memory leak absent.",
+    "No Tomcat busy/max/queue metrics were captured in periodic samples; a thread dump or additional metrics is needed to confirm exact servlet-thread contention."
+  ]
+}

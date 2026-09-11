@@ -1,0 +1,162 @@
+{
+  "previous_plan": {
+    "recorded_at_utc": "2026-09-11T14:36:13.039402+00:00",
+    "completed_under_previous_plan": [
+      "prewarm50-duration5",
+      "web1-warm10-duration20",
+      "web50-warm10-duration20"
+    ],
+    "interrupted": "web200 started during instruction handoff; parent stopped owned runnerPID191 usingSIGTERM; no completed result; excluded",
+    "orchestrator": "Exited1 on client failure; API stopped by finally; no pending automatic work",
+    "not_executed": [
+      "web500",
+      "cluster500",
+      "map500",
+      "thread_dump500"
+    ],
+    "new_scope": "web1/5/10 each5s,cluster1 each5s,prewarm<=5; no further profile or expansion",
+    "representative_results": "small-* only;50 is historical intermediate data and200 has no valid performance result"
+  },
+  "current_user_scope_completed": [
+    {
+      "label": "small-web-1",
+      "concurrency": 1,
+      "window_seconds": 5,
+      "issued": 551,
+      "completed": 551,
+      "errors": 0,
+      "distinct_paths": 551,
+      "corpus_cycles": 0,
+      "actual_group_counts": {
+        "cluster10": 57,
+        "cluster5": 56,
+        "cluster7": 56,
+        "keyword": 67,
+        "nearby": 52,
+        "preview": 263
+      },
+      "actual_group_percent": {
+        "cluster10": 10.345,
+        "cluster5": 10.163,
+        "cluster7": 10.163,
+        "keyword": 12.16,
+        "nearby": 9.437,
+        "preview": 47.731
+      },
+      "nominal_corpus_group_counts": {
+        "cluster10": 20000,
+        "cluster5": 20000,
+        "cluster7": 20000,
+        "keyword": 20000,
+        "nearby": 20000,
+        "preview": 100000
+      }
+    },
+    {
+      "label": "small-web-5",
+      "concurrency": 5,
+      "window_seconds": 5,
+      "issued": 2497,
+      "completed": 2497,
+      "errors": 0,
+      "distinct_paths": 2497,
+      "corpus_cycles": 0,
+      "actual_group_counts": {
+        "cluster10": 275,
+        "cluster5": 237,
+        "cluster7": 252,
+        "keyword": 265,
+        "nearby": 238,
+        "preview": 1230
+      },
+      "actual_group_percent": {
+        "cluster10": 11.013,
+        "cluster5": 9.491,
+        "cluster7": 10.092,
+        "keyword": 10.613,
+        "nearby": 9.531,
+        "preview": 49.259
+      },
+      "nominal_corpus_group_counts": {
+        "cluster10": 20000,
+        "cluster5": 20000,
+        "cluster7": 20000,
+        "keyword": 20000,
+        "nearby": 20000,
+        "preview": 100000
+      }
+    },
+    {
+      "label": "small-web-10",
+      "concurrency": 10,
+      "window_seconds": 5,
+      "issued": 3388,
+      "completed": 3388,
+      "errors": 0,
+      "distinct_paths": 3388,
+      "corpus_cycles": 0,
+      "actual_group_counts": {
+        "cluster10": 371,
+        "cluster5": 312,
+        "cluster7": 335,
+        "keyword": 363,
+        "nearby": 314,
+        "preview": 1693
+      },
+      "actual_group_percent": {
+        "cluster10": 10.95,
+        "cluster5": 9.209,
+        "cluster7": 9.888,
+        "keyword": 10.714,
+        "nearby": 9.268,
+        "preview": 49.97
+      },
+      "nominal_corpus_group_counts": {
+        "cluster10": 20000,
+        "cluster5": 20000,
+        "cluster7": 20000,
+        "keyword": 20000,
+        "nearby": 20000,
+        "preview": 100000
+      }
+    },
+    {
+      "label": "small-cluster-1",
+      "concurrency": 1,
+      "window_seconds": 5,
+      "issued": 25565,
+      "completed": 25565,
+      "errors": 0,
+      "distinct_paths": 25565,
+      "corpus_cycles": 0,
+      "actual_group_counts": {
+        "cluster10": 8460,
+        "cluster5": 8502,
+        "cluster7": 8603
+      },
+      "actual_group_percent": {
+        "cluster10": 33.092,
+        "cluster5": 33.256,
+        "cluster7": 33.651
+      },
+      "nominal_corpus_group_counts": {
+        "cluster10": 50000,
+        "cluster5": 50000,
+        "cluster7": 50000
+      }
+    }
+  ],
+  "no_new500_runs": true,
+  "thread_dump_executed": false,
+  "cpu_profile_executed": false,
+  "additional_tests_after_small_scope": false,
+  "cleanup": {
+    "api_port18090_closed": true,
+    "owned_databases_dropped": [
+      "itplace_map_root_cause_20260911"
+    ],
+    "owned_redis_removed": "itplace-map-diagnosis-redis-20260911",
+    "original_database_and_shared_redis_preserved": true,
+    "production_changes": false
+  }
+}
