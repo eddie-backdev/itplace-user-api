@@ -1,0 +1,9 @@
+{
+  "api_port18090_closed": true,
+  "owned_databases_dropped": [
+    "itplace_map_movement_100vu_5min_20260912"
+  ],
+  "owned_redis_removed": "itplace-map-movement-100vu-5min-redis-20260912",
+  "original_database_and_shared_redis_preserved": true,
+  "production_changes": false
+}

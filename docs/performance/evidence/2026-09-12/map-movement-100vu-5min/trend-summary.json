@@ -1,0 +1,161 @@
+{
+  "complete_runner_result_available": true,
+  "sample_count": 34,
+  "scrape_errors": 0,
+  "sample_interval_setting_seconds": 10,
+  "phase_note": "All raw samples include preparation/warmup/measurement. Exact phase wall timestamps were not emitted. Interior intervals are conservatively inferred from runner started_at + warmup wall, with 1-second guards. Final 300-second totals come only from runner.measurement.",
+  "latency_note": "Interval means are Spring HTTP timer observations; final runner mean/p95/p99 include client end-to-end body completion. No interval client percentile is available.",
+  "observed_measurement_interior_seconds": 280.29426193237305,
+  "observed_measurement_http_requests": 2457508.0,
+  "observed_replica_pending_max": 76.0,
+  "last_intervals": [
+    {
+      "from_utc": "2026-09-11T17:40:51.501469+00:00",
+      "to_utc": "2026-09-11T17:41:01.505018+00:00",
+      "from_epoch": 1789148451.501469,
+      "to_epoch": 1789148461.505018,
+      "duration_seconds": 10.003549098968506,
+      "approx_measurement_interior": true,
+      "requests": 84621.0,
+      "server_completed_tps": 8459.097782478571,
+      "spring_mean_ms": 6.211961557533017,
+      "endpoint_metrics": {
+        "/api/v1/maps/stores/in-view/previews/compact": {
+          "requests": 52835.0,
+          "tps": 5281.625498839004,
+          "spring_mean_ms": 9.81526451507526
+        },
+        "/api/v1/maps/stores/in-view/clusters": {
+          "requests": 31786.0,
+          "tps": 3177.472283639568,
+          "spring_mean_ms": 0.2225161488076498
+        }
+      },
+      "pools": {
+        "replica-pool": {
+          "acquires": 52820.0,
+          "mean_acquire_ms": 3.4069670579326035,
+          "pending_start": 0.0,
+          "pending_end": 76.0,
+          "active_end": 20.0
+        },
+        "source-pool": {
+          "acquires": 1.0,
+          "mean_acquire_ms": 2.0000000000000018,
+          "pending_start": 0.0,
+          "pending_end": 0.0,
+          "active_end": 0.0
+        }
+      },
+      "api_cpu_cores_from_counter": 4.186048429983503,
+      "api_cpu_usage_gauge_end": 0.34881952543914396,
+      "system_cpu_usage_gauge_end": 0.9952464348261196,
+      "heap_used_bytes_end": 224331008.0,
+      "gc_pause_count": 100.0,
+      "gc_pause_seconds": 0.18600000000000083
+    },
+    {
+      "from_utc": "2026-09-11T17:41:01.505018+00:00",
+      "to_utc": "2026-09-11T17:41:11.519170+00:00",
+      "from_epoch": 1789148461.505018,
+      "to_epoch": 1789148471.51917,
+      "duration_seconds": 10.01415205001831,
+      "approx_measurement_interior": true,
+      "requests": 86154.0,
+      "server_completed_tps": 8603.224673410314,
+      "spring_mean_ms": 6.042656198180009,
+      "endpoint_metrics": {
+        "/api/v1/maps/stores/in-view/previews/compact": {
+          "requests": 53958.0,
+          "tps": 5388.174628315269,
+          "spring_mean_ms": 9.5117114895845
+        },
+        "/api/v1/maps/stores/in-view/clusters": {
+          "requests": 32196.0,
+          "tps": 3215.0500450950444,
+          "spring_mean_ms": 0.2287884688470626
+        }
+      },
+      "pools": {
+        "replica-pool": {
+          "acquires": 53958.0,
+          "mean_acquire_ms": 3.6435005003892003,
+          "pending_start": 76.0,
+          "pending_end": 45.0,
+          "active_end": 17.0
+        },
+        "source-pool": {
+          "acquires": 0.0,
+          "mean_acquire_ms": null,
+          "pending_start": 0.0,
+          "pending_end": 0.0,
+          "active_end": 0.0
+        }
+      },
+      "api_cpu_cores_from_counter": 4.313355018403282,
+      "api_cpu_usage_gauge_end": 0.3595407360158026,
+      "system_cpu_usage_gauge_end": 0.9944954128440368,
+      "heap_used_bytes_end": 254264320.0,
+      "gc_pause_count": 100.0,
+      "gc_pause_seconds": 0.16799999999999926
+    },
+    {
+      "from_utc": "2026-09-11T17:41:11.519170+00:00",
+      "to_utc": "2026-09-11T17:41:21.526548+00:00",
+      "from_epoch": 1789148471.51917,
+      "to_epoch": 1789148481.526548,
+      "duration_seconds": 10.007377862930298,
+      "approx_measurement_interior": false,
+      "requests": 86286.0,
+      "server_completed_tps": 8622.238630523168,
+      "spring_mean_ms": 6.400393158241179,
+      "endpoint_metrics": {
+        "/api/v1/maps/stores/in-view/previews/compact": {
+          "requests": 53820.0,
+          "tps": 5378.032161587707,
+          "spring_mean_ms": 10.126482051672209
+        },
+        "/api/v1/maps/stores/in-view/clusters": {
+          "requests": 32466.0,
+          "tps": 3244.2064689354606,
+          "spring_mean_ms": 0.2235279994763747
+        }
+      },
+      "pools": {
+        "replica-pool": {
+          "acquires": 53832.0,
+          "mean_acquire_ms": 4.194754049635902,
+          "pending_start": 45.0,
+          "pending_end": 0.0,
+          "active_end": 12.0
+        },
+        "source-pool": {
+          "acquires": 0.0,
+          "mean_acquire_ms": null,
+          "pending_start": 0.0,
+          "pending_end": 0.0,
+          "active_end": 0.0
+        }
+      },
+      "api_cpu_cores_from_counter": 4.23846282022772,
+      "api_cpu_usage_gauge_end": 0.3531347537442456,
+      "system_cpu_usage_gauge_end": 0.993993993993994,
+      "heap_used_bytes_end": 318342648.0,
+      "gc_pause_count": 100.0,
+      "gc_pause_seconds": 0.16800000000000015
+    }
+  ],
+  "measurement_interval_tps_range": [
+    7186.236765195013,
+    9165.860243236273
+  ],
+  "measurement_interval_spring_mean_ms_range": [
+    4.95382431528342,
+    6.615244132290055
+  ],
+  "observed_heap_bytes_range": [
+    164719312.0,
+    437940512.0
+  ],
+  "gc_pause_seconds_in_observed_intervals": 5.946
+}

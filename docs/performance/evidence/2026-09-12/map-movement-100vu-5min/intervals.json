@@ -1,0 +1,1487 @@
+[
+  {
+    "from_utc": "2026-09-11T17:35:51.176401+00:00",
+    "to_utc": "2026-09-11T17:36:01.183347+00:00",
+    "from_epoch": 1789148151.176401,
+    "to_epoch": 1789148161.183347,
+    "duration_seconds": 10.006946086883545,
+    "approx_measurement_interior": false,
+    "requests": 27673.0,
+    "server_completed_tps": 2765.379143620247,
+    "spring_mean_ms": 21.36164081212734,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 17321.0,
+        "tps": 1730.8977034165541,
+        "spring_mean_ms": 33.19363161156977
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 10352.0,
+        "tps": 1034.481440203693,
+        "spring_mean_ms": 1.564315402820711
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 17330.0,
+        "mean_acquire_ms": 0.5469705712637046,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      },
+      "source-pool": {
+        "acquires": 98.0,
+        "mean_acquire_ms": 12.785714285714286,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 7.737163099288019,
+    "api_cpu_usage_gauge_end": 0.6446864801359382,
+    "system_cpu_usage_gauge_end": 0.9511748041993001,
+    "heap_used_bytes_end": 333732632.0,
+    "gc_pause_count": 34.0,
+    "gc_pause_seconds": 0.077
+  },
+  {
+    "from_utc": "2026-09-11T17:36:01.183347+00:00",
+    "to_utc": "2026-09-11T17:36:11.199228+00:00",
+    "from_epoch": 1789148161.183347,
+    "to_epoch": 1789148171.1992278,
+    "duration_seconds": 10.015880823135376,
+    "approx_measurement_interior": false,
+    "requests": 51224.0,
+    "server_completed_tps": 5114.278105394311,
+    "spring_mean_ms": 6.260514465035921,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 31837.0,
+        "tps": 3178.652038916107,
+        "spring_mean_ms": 9.61623970939473
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 19387.0,
+        "tps": 1935.6260664782037,
+        "spring_mean_ms": 0.7497998312786919
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 31856.0,
+        "mean_acquire_ms": 0.13517076845806125,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 3.0
+      },
+      "source-pool": {
+        "acquires": 5.0,
+        "mean_acquire_ms": 2.400000000000002,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 7.827167713389274,
+    "api_cpu_usage_gauge_end": 0.652417695262628,
+    "system_cpu_usage_gauge_end": 0.9985851019558885,
+    "heap_used_bytes_end": 302051328.0,
+    "gc_pause_count": 62.0,
+    "gc_pause_seconds": 0.106
+  },
+  {
+    "from_utc": "2026-09-11T17:36:11.199228+00:00",
+    "to_utc": "2026-09-11T17:36:21.206149+00:00",
+    "from_epoch": 1789148171.1992278,
+    "to_epoch": 1789148181.206149,
+    "duration_seconds": 10.006921291351318,
+    "approx_measurement_interior": false,
+    "requests": 54358.0,
+    "server_completed_tps": 5432.04032662673,
+    "spring_mean_ms": 6.469286123753634,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 34169.0,
+        "tps": 3414.5366996671833,
+        "spring_mean_ms": 9.918758807925315
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 20189.0,
+        "tps": 2017.503626959547,
+        "spring_mean_ms": 0.63120438887513
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 34149.0,
+        "mean_acquire_ms": 0.3858970980116547,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 6.0
+      },
+      "source-pool": {
+        "acquires": 2.0,
+        "mean_acquire_ms": 0.500000000000056,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 7.714255039331441,
+    "api_cpu_usage_gauge_end": 0.6427683262050206,
+    "system_cpu_usage_gauge_end": 0.9984171942685771,
+    "heap_used_bytes_end": 403701856.0,
+    "gc_pause_count": 63.0,
+    "gc_pause_seconds": 0.10099999999999998
+  },
+  {
+    "from_utc": "2026-09-11T17:36:21.206149+00:00",
+    "to_utc": "2026-09-11T17:36:31.224908+00:00",
+    "from_epoch": 1789148181.206149,
+    "to_epoch": 1789148191.224908,
+    "duration_seconds": 10.01875901222229,
+    "approx_measurement_interior": false,
+    "requests": 62752.0,
+    "server_completed_tps": 6263.450385765971,
+    "spring_mean_ms": 5.358700360992479,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 39112.0,
+        "tps": 3903.8767129028342,
+        "spring_mean_ms": 8.267266370372266
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 23640.0,
+        "tps": 2359.573672863137,
+        "spring_mean_ms": 0.546524652072758
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 39119.0,
+        "mean_acquire_ms": 0.46108029346353435,
+        "pending_start": 0.0,
+        "pending_end": 16.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 6.893817579177398,
+    "api_cpu_usage_gauge_end": 0.5745820613316136,
+    "system_cpu_usage_gauge_end": 0.996336081272379,
+    "heap_used_bytes_end": 377374600.0,
+    "gc_pause_count": 73.0,
+    "gc_pause_seconds": 0.122
+  },
+  {
+    "from_utc": "2026-09-11T17:36:31.224908+00:00",
+    "to_utc": "2026-09-11T17:36:41.247400+00:00",
+    "from_epoch": 1789148191.224908,
+    "to_epoch": 1789148201.2474,
+    "duration_seconds": 10.022491931915283,
+    "approx_measurement_interior": true,
+    "requests": 72024.0,
+    "server_completed_tps": 7186.236765195013,
+    "spring_mean_ms": 5.456098232311452,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 45064.0,
+        "tps": 4496.286981933079,
+        "spring_mean_ms": 8.469726953133321
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 26960.0,
+        "tps": 2689.949783261934,
+        "spring_mean_ms": 0.41877758412462945
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 45049.0,
+        "mean_acquire_ms": 0.8906967968212393,
+        "pending_start": 16.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 5.902660376469341,
+    "api_cpu_usage_gauge_end": 0.49216206154765224,
+    "system_cpu_usage_gauge_end": 0.982761492338441,
+    "heap_used_bytes_end": 164719312.0,
+    "gc_pause_count": 87.0,
+    "gc_pause_seconds": 0.15899999999999997
+  },
+  {
+    "from_utc": "2026-09-11T17:36:41.247400+00:00",
+    "to_utc": "2026-09-11T17:36:51.268904+00:00",
+    "from_epoch": 1789148201.2474,
+    "to_epoch": 1789148211.268904,
+    "duration_seconds": 10.021503925323486,
+    "approx_measurement_interior": true,
+    "requests": 76547.0,
+    "server_completed_tps": 7638.27471110122,
+    "spring_mean_ms": 4.95382431528342,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 47784.0,
+        "tps": 4768.146613129982,
+        "spring_mean_ms": 7.707163773187678
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 28763.0,
+        "tps": 2870.1280979712387,
+        "spring_mean_ms": 0.3796987839933243
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 47804.0,
+        "mean_acquire_ms": 1.3733369592502715,
+        "pending_start": 0.0,
+        "pending_end": 24.0,
+        "active_end": 16.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 0.9999999999998899,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 5.766193620298833,
+    "api_cpu_usage_gauge_end": 0.48029249560190734,
+    "system_cpu_usage_gauge_end": 0.9955029980013325,
+    "heap_used_bytes_end": 332496512.0,
+    "gc_pause_count": 92.0,
+    "gc_pause_seconds": 0.15900000000000003
+  },
+  {
+    "from_utc": "2026-09-11T17:36:51.268904+00:00",
+    "to_utc": "2026-09-11T17:37:01.278661+00:00",
+    "from_epoch": 1789148211.268904,
+    "to_epoch": 1789148221.278661,
+    "duration_seconds": 10.009757041931152,
+    "approx_measurement_interior": true,
+    "requests": 79299.0,
+    "server_completed_tps": 7922.1703052146295,
+    "spring_mean_ms": 5.4254082743161955,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 49676.0,
+        "tps": 4962.757816389134,
+        "spring_mean_ms": 8.476540727574683
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 29623.0,
+        "tps": 2959.4124888254955,
+        "spring_mean_ms": 0.30884156101677757
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 49681.0,
+        "mean_acquire_ms": 1.9434391417242007,
+        "pending_start": 24.0,
+        "pending_end": 0.0,
+        "active_end": 18.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 5.395609381302251,
+    "api_cpu_usage_gauge_end": 0.4495010576387572,
+    "system_cpu_usage_gauge_end": 0.9965847563515202,
+    "heap_used_bytes_end": 423759320.0,
+    "gc_pause_count": 96.0,
+    "gc_pause_seconds": 0.16800000000000004
+  },
+  {
+    "from_utc": "2026-09-11T17:37:01.278661+00:00",
+    "to_utc": "2026-09-11T17:37:11.292925+00:00",
+    "from_epoch": 1789148221.278661,
+    "to_epoch": 1789148231.292925,
+    "duration_seconds": 10.01426386833191,
+    "approx_measurement_interior": true,
+    "requests": 82745.0,
+    "server_completed_tps": 8262.71417329679,
+    "spring_mean_ms": 6.35709677682035,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 51520.0,
+        "tps": 5144.66172225815,
+        "spring_mean_ms": 10.051366829406053
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 31225.0,
+        "tps": 3118.05245103864,
+        "spring_mean_ms": 0.26169907916733404
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 51520.0,
+        "mean_acquire_ms": 1.9339479813664597,
+        "pending_start": 0.0,
+        "pending_end": 19.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.479496005877884,
+    "api_cpu_usage_gauge_end": 0.3733183729245562,
+    "system_cpu_usage_gauge_end": 0.9975843398583923,
+    "heap_used_bytes_end": 314276352.0,
+    "gc_pause_count": 99.0,
+    "gc_pause_seconds": 0.16800000000000004
+  },
+  {
+    "from_utc": "2026-09-11T17:37:11.292925+00:00",
+    "to_utc": "2026-09-11T17:37:21.303597+00:00",
+    "from_epoch": 1789148231.292925,
+    "to_epoch": 1789148241.303597,
+    "duration_seconds": 10.010672092437744,
+    "approx_measurement_interior": true,
+    "requests": 87752.0,
+    "server_completed_tps": 8765.845009176714,
+    "spring_mean_ms": 5.015343117934636,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 54991.0,
+        "tps": 5493.2375660912185,
+        "spring_mean_ms": 7.863629978578316
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 32761.0,
+        "tps": 3272.607443085494,
+        "spring_mean_ms": 0.23434916922560375
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55012.0,
+        "mean_acquire_ms": 1.898167672507816,
+        "pending_start": 19.0,
+        "pending_end": 0.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 2.0000000000000018,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.534160601892902,
+    "api_cpu_usage_gauge_end": 0.3778417985649048,
+    "system_cpu_usage_gauge_end": 0.9929947460595446,
+    "heap_used_bytes_end": 215852648.0,
+    "gc_pause_count": 107.0,
+    "gc_pause_seconds": 0.18300000000000005
+  },
+  {
+    "from_utc": "2026-09-11T17:37:21.303597+00:00",
+    "to_utc": "2026-09-11T17:37:31.321888+00:00",
+    "from_epoch": 1789148241.303597,
+    "to_epoch": 1789148251.321888,
+    "duration_seconds": 10.018290996551514,
+    "approx_measurement_interior": true,
+    "requests": 90651.0,
+    "server_completed_tps": 9048.549301592837,
+    "spring_mean_ms": 5.073794541483266,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56537.0,
+        "tps": 5643.3776997954155,
+        "spring_mean_ms": 7.994816860480739
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 34114.0,
+        "tps": 3405.1716017974213,
+        "spring_mean_ms": 0.23279557187664857
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56493.0,
+        "mean_acquire_ms": 2.32191598959163,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 6.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.5871873771503395,
+    "api_cpu_usage_gauge_end": 0.3823145605972604,
+    "system_cpu_usage_gauge_end": 0.9929988331388565,
+    "heap_used_bytes_end": 331178360.0,
+    "gc_pause_count": 106.0,
+    "gc_pause_seconds": 0.17999999999999994
+  },
+  {
+    "from_utc": "2026-09-11T17:37:31.321888+00:00",
+    "to_utc": "2026-09-11T17:37:41.329229+00:00",
+    "from_epoch": 1789148251.321888,
+    "to_epoch": 1789148261.329229,
+    "duration_seconds": 10.007341146469116,
+    "approx_measurement_interior": true,
+    "requests": 90240.0,
+    "server_completed_tps": 9017.38020911172,
+    "spring_mean_ms": 5.104915672395836,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56504.0,
+        "tps": 5646.255001503198,
+        "spring_mean_ms": 8.009793526812265
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33736.0,
+        "tps": 3371.1252076085216,
+        "spring_mean_ms": 0.23957246970595233
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56512.0,
+        "mean_acquire_ms": 2.3634449320498323,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 10.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.649842782307672,
+    "api_cpu_usage_gauge_end": 0.3873792834902637,
+    "system_cpu_usage_gauge_end": 0.992743953294412,
+    "heap_used_bytes_end": 350238208.0,
+    "gc_pause_count": 108.0,
+    "gc_pause_seconds": 0.18199999999999994
+  },
+  {
+    "from_utc": "2026-09-11T17:37:41.329229+00:00",
+    "to_utc": "2026-09-11T17:37:51.334110+00:00",
+    "from_epoch": 1789148261.329229,
+    "to_epoch": 1789148271.33411,
+    "duration_seconds": 10.004880905151367,
+    "approx_measurement_interior": true,
+    "requests": 90230.0,
+    "server_completed_tps": 9018.598107803751,
+    "spring_mean_ms": 5.540227664169346,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56306.0,
+        "tps": 5627.853098282146,
+        "spring_mean_ms": 8.741733605139773
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33924.0,
+        "tps": 3390.7450095216054,
+        "spring_mean_ms": 0.22646768562079944
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56315.0,
+        "mean_acquire_ms": 3.22589008257125,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 8.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 1.000000000000112,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.533000485457938,
+    "api_cpu_usage_gauge_end": 0.37772657176814906,
+    "system_cpu_usage_gauge_end": 0.9913973106155517,
+    "heap_used_bytes_end": 186365000.0,
+    "gc_pause_count": 109.0,
+    "gc_pause_seconds": 0.18399999999999994
+  },
+  {
+    "from_utc": "2026-09-11T17:37:51.334110+00:00",
+    "to_utc": "2026-09-11T17:38:01.345047+00:00",
+    "from_epoch": 1789148271.33411,
+    "to_epoch": 1789148281.345047,
+    "duration_seconds": 10.010936975479126,
+    "approx_measurement_interior": true,
+    "requests": 88939.0,
+    "server_completed_tps": 8884.183390410702,
+    "spring_mean_ms": 6.17625328881593,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 55638.0,
+        "tps": 5557.721533586735,
+        "spring_mean_ms": 9.739061442844818
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33301.0,
+        "tps": 3326.4618568239666,
+        "spring_mean_ms": 0.22365366496501582
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55643.0,
+        "mean_acquire_ms": 3.5557572381072204,
+        "pending_start": 0.0,
+        "pending_end": 30.0,
+        "active_end": 19.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.404532573524635,
+    "api_cpu_usage_gauge_end": 0.3670736461812802,
+    "system_cpu_usage_gauge_end": 0.9936624416277519,
+    "heap_used_bytes_end": 418340352.0,
+    "gc_pause_count": 104.0,
+    "gc_pause_seconds": 0.17300000000000004
+  },
+  {
+    "from_utc": "2026-09-11T17:38:01.345047+00:00",
+    "to_utc": "2026-09-11T17:38:11.358063+00:00",
+    "from_epoch": 1789148281.345047,
+    "to_epoch": 1789148291.3580632,
+    "duration_seconds": 10.01301622390747,
+    "approx_measurement_interior": true,
+    "requests": 91276.0,
+    "server_completed_tps": 9115.734755534086,
+    "spring_mean_ms": 5.396670879135811,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 57073.0,
+        "tps": 5699.880907386354,
+        "spring_mean_ms": 8.494772546440528
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 34203.0,
+        "tps": 3415.8538481477312,
+        "spring_mean_ms": 0.22700867236792077
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 57097.0,
+        "mean_acquire_ms": 2.6869537804087766,
+        "pending_start": 30.0,
+        "pending_end": 0.0,
+        "active_end": 11.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.618064723553903,
+    "api_cpu_usage_gauge_end": 0.38486006162783526,
+    "system_cpu_usage_gauge_end": 0.9946653329999167,
+    "heap_used_bytes_end": 271652536.0,
+    "gc_pause_count": 114.0,
+    "gc_pause_seconds": 0.20599999999999996
+  },
+  {
+    "from_utc": "2026-09-11T17:38:11.358063+00:00",
+    "to_utc": "2026-09-11T17:38:21.366170+00:00",
+    "from_epoch": 1789148291.3580632,
+    "to_epoch": 1789148301.3661702,
+    "duration_seconds": 10.00810694694519,
+    "approx_measurement_interior": true,
+    "requests": 91219.0,
+    "server_completed_tps": 9114.510914358594,
+    "spring_mean_ms": 5.458626716111776,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56977.0,
+        "tps": 5693.0846464816495,
+        "spring_mean_ms": 8.603607019411342
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 34242.0,
+        "tps": 3421.426267876944,
+        "spring_mean_ms": 0.22553452695520138
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56940.0,
+        "mean_acquire_ms": 2.9802423603793455,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 6.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 0.9999999999998899,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.621849291300675,
+    "api_cpu_usage_gauge_end": 0.38515944935659335,
+    "system_cpu_usage_gauge_end": 0.9922409477724011,
+    "heap_used_bytes_end": 353249792.0,
+    "gc_pause_count": 116.0,
+    "gc_pause_seconds": 0.20699999999999985
+  },
+  {
+    "from_utc": "2026-09-11T17:38:21.366170+00:00",
+    "to_utc": "2026-09-11T17:38:31.378053+00:00",
+    "from_epoch": 1789148301.3661702,
+    "to_epoch": 1789148311.3780532,
+    "duration_seconds": 10.011883020401001,
+    "approx_measurement_interior": true,
+    "requests": 90216.0,
+    "server_completed_tps": 9010.892338251333,
+    "spring_mean_ms": 6.161659964950784,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56470.0,
+        "tps": 5640.297622828021,
+        "spring_mean_ms": 9.713235968673633
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33746.0,
+        "tps": 3370.5947154233118,
+        "spring_mean_ms": 0.21851123828009295
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56475.0,
+        "mean_acquire_ms": 4.077025232403718,
+        "pending_start": 0.0,
+        "pending_end": 3.0,
+        "active_end": 19.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.536645395021885,
+    "api_cpu_usage_gauge_end": 0.3780565621435463,
+    "system_cpu_usage_gauge_end": 0.9920727636849133,
+    "heap_used_bytes_end": 352112128.0,
+    "gc_pause_count": 120.0,
+    "gc_pause_seconds": 0.2200000000000002
+  },
+  {
+    "from_utc": "2026-09-11T17:38:31.378053+00:00",
+    "to_utc": "2026-09-11T17:38:41.389552+00:00",
+    "from_epoch": 1789148311.3780532,
+    "to_epoch": 1789148321.389552,
+    "duration_seconds": 10.011498928070068,
+    "approx_measurement_interior": true,
+    "requests": 91764.0,
+    "server_completed_tps": 9165.860243236273,
+    "spring_mean_ms": 5.646258829388427,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 57241.0,
+        "tps": 5717.525458601276,
+        "spring_mean_ms": 8.915400468265748
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 34523.0,
+        "tps": 3448.3347846349966,
+        "spring_mean_ms": 0.22584529200822612
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 57241.0,
+        "mean_acquire_ms": 3.2078929438689063,
+        "pending_start": 3.0,
+        "pending_end": 0.0,
+        "active_end": 13.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.625897613608162,
+    "api_cpu_usage_gauge_end": 0.3854510445002058,
+    "system_cpu_usage_gauge_end": 0.9932460602017844,
+    "heap_used_bytes_end": 417383424.0,
+    "gc_pause_count": 126.0,
+    "gc_pause_seconds": 0.2240000000000002
+  },
+  {
+    "from_utc": "2026-09-11T17:38:41.389552+00:00",
+    "to_utc": "2026-09-11T17:38:51.395814+00:00",
+    "from_epoch": 1789148321.389552,
+    "to_epoch": 1789148331.395814,
+    "duration_seconds": 10.006261825561523,
+    "approx_measurement_interior": true,
+    "requests": 90811.0,
+    "server_completed_tps": 9075.417132102071,
+    "spring_mean_ms": 5.694394797238228,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56878.0,
+        "tps": 5684.240627673978,
+        "spring_mean_ms": 8.953453159323477
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33933.0,
+        "tps": 3391.1765044280933,
+        "spring_mean_ms": 0.23160867403412605
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56870.0,
+        "mean_acquire_ms": 3.049428521188677,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 12.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 1.000000000000112,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 1.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.661201137157195,
+    "api_cpu_usage_gauge_end": 0.3884686819210491,
+    "system_cpu_usage_gauge_end": 0.9932387312186979,
+    "heap_used_bytes_end": 303695752.0,
+    "gc_pause_count": 131.0,
+    "gc_pause_seconds": 0.238
+  },
+  {
+    "from_utc": "2026-09-11T17:38:51.395814+00:00",
+    "to_utc": "2026-09-11T17:39:01.410087+00:00",
+    "from_epoch": 1789148331.395814,
+    "to_epoch": 1789148341.4100869,
+    "duration_seconds": 10.014272928237915,
+    "approx_measurement_interior": true,
+    "requests": 91259.0,
+    "server_completed_tps": 9112.893232884726,
+    "spring_mean_ms": 5.471035967225155,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56882.0,
+        "tps": 5680.092844244939,
+        "spring_mean_ms": 8.64191485536726
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 34377.0,
+        "tps": 3432.8003886397855,
+        "spring_mean_ms": 0.22433227244960288
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56893.0,
+        "mean_acquire_ms": 2.8389432794895657,
+        "pending_start": 0.0,
+        "pending_end": 14.0,
+        "active_end": 19.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.618432045084882,
+    "api_cpu_usage_gauge_end": 0.38490917113616346,
+    "system_cpu_usage_gauge_end": 0.992164054684895,
+    "heap_used_bytes_end": 284498080.0,
+    "gc_pause_count": 136.0,
+    "gc_pause_seconds": 0.246
+  },
+  {
+    "from_utc": "2026-09-11T17:39:01.410087+00:00",
+    "to_utc": "2026-09-11T17:39:11.420350+00:00",
+    "from_epoch": 1789148341.4100869,
+    "to_epoch": 1789148351.4203498,
+    "duration_seconds": 10.010262966156006,
+    "approx_measurement_interior": true,
+    "requests": 90437.0,
+    "server_completed_tps": 9034.427997122666,
+    "spring_mean_ms": 5.841157358216203,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56612.0,
+        "tps": 5655.395886341966,
+        "spring_mean_ms": 9.193154858881488
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33825.0,
+        "tps": 3379.0321107807,
+        "spring_mean_ms": 0.23100857750184767
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56634.0,
+        "mean_acquire_ms": 2.951601511459548,
+        "pending_start": 14.0,
+        "pending_end": 2.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.656618328369451,
+    "api_cpu_usage_gauge_end": 0.3880095955000138,
+    "system_cpu_usage_gauge_end": 0.9927445584188141,
+    "heap_used_bytes_end": 302241784.0,
+    "gc_pause_count": 139.0,
+    "gc_pause_seconds": 0.2509999999999999
+  },
+  {
+    "from_utc": "2026-09-11T17:39:11.420350+00:00",
+    "to_utc": "2026-09-11T17:39:21.428936+00:00",
+    "from_epoch": 1789148351.4203498,
+    "to_epoch": 1789148361.428936,
+    "duration_seconds": 10.008586168289185,
+    "approx_measurement_interior": true,
+    "requests": 90002.0,
+    "server_completed_tps": 8992.478906277376,
+    "spring_mean_ms": 5.571922820548426,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56277.0,
+        "tps": 5622.872107381746,
+        "spring_mean_ms": 8.77238854814577
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33725.0,
+        "tps": 3369.60679889563,
+        "spring_mean_ms": 0.2312968827575983
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56250.0,
+        "mean_acquire_ms": 2.901528888888893,
+        "pending_start": 2.0,
+        "pending_end": 0.0,
+        "active_end": 16.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.624224463055324,
+    "api_cpu_usage_gauge_end": 0.38536505432238527,
+    "system_cpu_usage_gauge_end": 0.9944977073780742,
+    "heap_used_bytes_end": 259171552.0,
+    "gc_pause_count": 144.0,
+    "gc_pause_seconds": 0.2639999999999998
+  },
+  {
+    "from_utc": "2026-09-11T17:39:21.428936+00:00",
+    "to_utc": "2026-09-11T17:39:31.435630+00:00",
+    "from_epoch": 1789148361.428936,
+    "to_epoch": 1789148371.43563,
+    "duration_seconds": 10.006694078445435,
+    "approx_measurement_interior": true,
+    "requests": 89902.0,
+    "server_completed_tps": 8984.185915471347,
+    "spring_mean_ms": 5.689576288458555,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56147.0,
+        "tps": 5610.943990077748,
+        "spring_mean_ms": 8.971753772810676
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33755.0,
+        "tps": 3373.2419253935986,
+        "spring_mean_ms": 0.2301060110502145
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56140.0,
+        "mean_acquire_ms": 3.1260954755967187,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 2.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 2.0000000000000018,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.604385388301769,
+    "api_cpu_usage_gauge_end": 0.3836281948843882,
+    "system_cpu_usage_gauge_end": 0.9916541478884994,
+    "heap_used_bytes_end": 430163800.0,
+    "gc_pause_count": 146.0,
+    "gc_pause_seconds": 0.2629999999999999
+  },
+  {
+    "from_utc": "2026-09-11T17:39:31.435630+00:00",
+    "to_utc": "2026-09-11T17:39:41.445877+00:00",
+    "from_epoch": 1789148371.43563,
+    "to_epoch": 1789148381.445877,
+    "duration_seconds": 10.010246992111206,
+    "approx_measurement_interior": true,
+    "requests": 89334.0,
+    "server_completed_tps": 8924.255322611081,
+    "spring_mean_ms": 6.615244132290055,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 55916.0,
+        "tps": 5585.876157108393,
+        "spring_mean_ms": 10.43558106504399
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33418.0,
+        "tps": 3338.379165502688,
+        "spring_mean_ms": 0.2229417823029512
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55934.0,
+        "mean_acquire_ms": 4.836807666177995,
+        "pending_start": 0.0,
+        "pending_end": 39.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.492113235111717,
+    "api_cpu_usage_gauge_end": 0.37437131676217444,
+    "system_cpu_usage_gauge_end": 0.9914016195007931,
+    "heap_used_bytes_end": 374040568.0,
+    "gc_pause_count": 149.0,
+    "gc_pause_seconds": 0.2760000000000007
+  },
+  {
+    "from_utc": "2026-09-11T17:39:41.445877+00:00",
+    "to_utc": "2026-09-11T17:39:51.458743+00:00",
+    "from_epoch": 1789148381.445877,
+    "to_epoch": 1789148391.458743,
+    "duration_seconds": 10.012866020202637,
+    "approx_measurement_interior": true,
+    "requests": 90666.0,
+    "server_completed_tps": 9054.949883186906,
+    "spring_mean_ms": 5.932524705567683,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56510.0,
+        "tps": 5643.738754316855,
+        "spring_mean_ms": 9.382734672288084
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 34156.0,
+        "tps": 3411.21112887005,
+        "spring_mean_ms": 0.22426363227544152
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56519.0,
+        "mean_acquire_ms": 3.8139032891593976,
+        "pending_start": 39.0,
+        "pending_end": 60.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.574275527864607,
+    "api_cpu_usage_gauge_end": 0.3812523255169328,
+    "system_cpu_usage_gauge_end": 0.9914879412501043,
+    "heap_used_bytes_end": 437940512.0,
+    "gc_pause_count": 152.0,
+    "gc_pause_seconds": 0.26699999999999946
+  },
+  {
+    "from_utc": "2026-09-11T17:39:51.458743+00:00",
+    "to_utc": "2026-09-11T17:40:01.465614+00:00",
+    "from_epoch": 1789148391.458743,
+    "to_epoch": 1789148401.465614,
+    "duration_seconds": 10.006870985031128,
+    "approx_measurement_interior": true,
+    "requests": 88886.0,
+    "server_completed_tps": 8882.49684971066,
+    "spring_mean_ms": 6.20065412872669,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 55614.0,
+        "tps": 5557.581394143157,
+        "spring_mean_ms": 9.772734738878707
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33272.0,
+        "tps": 3324.915455567503,
+        "spring_mean_ms": 0.22993727813176268
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55659.0,
+        "mean_acquire_ms": 3.741497331967877,
+        "pending_start": 60.0,
+        "pending_end": 15.0,
+        "active_end": 18.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 2.0000000000000018,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.5631261828302625,
+    "api_cpu_usage_gauge_end": 0.38017610640983374,
+    "system_cpu_usage_gauge_end": 0.992574670448857,
+    "heap_used_bytes_end": 418340976.0,
+    "gc_pause_count": 152.0,
+    "gc_pause_seconds": 0.2599999999999998
+  },
+  {
+    "from_utc": "2026-09-11T17:40:01.465614+00:00",
+    "to_utc": "2026-09-11T17:40:11.476168+00:00",
+    "from_epoch": 1789148401.465614,
+    "to_epoch": 1789148411.476168,
+    "duration_seconds": 10.01055383682251,
+    "approx_measurement_interior": true,
+    "requests": 88932.0,
+    "server_completed_tps": 8883.824156948769,
+    "spring_mean_ms": 5.475651564116399,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 55505.0,
+        "tps": 5544.6482686934,
+        "spring_mean_ms": 8.633240195549941
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33427.0,
+        "tps": 3339.1758882553695,
+        "spring_mean_ms": 0.23252603721542503
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55454.0,
+        "mean_acquire_ms": 2.9247664731128515,
+        "pending_start": 15.0,
+        "pending_end": 31.0,
+        "active_end": 15.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.50448643851587,
+    "api_cpu_usage_gauge_end": 0.37538386868911183,
+    "system_cpu_usage_gauge_end": 0.9943238731218698,
+    "heap_used_bytes_end": 396648120.0,
+    "gc_pause_count": 154.0,
+    "gc_pause_seconds": 0.26500000000000057
+  },
+  {
+    "from_utc": "2026-09-11T17:40:11.476168+00:00",
+    "to_utc": "2026-09-11T17:40:21.483304+00:00",
+    "from_epoch": 1789148411.476168,
+    "to_epoch": 1789148421.483304,
+    "duration_seconds": 10.007136106491089,
+    "approx_measurement_interior": true,
+    "requests": 88304.0,
+    "server_completed_tps": 8824.103026111732,
+    "spring_mean_ms": 6.001918394512148,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 55306.0,
+        "tps": 5526.656119339276,
+        "spring_mean_ms": 9.448575669402972
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 32998.0,
+        "tps": 3297.446906772456,
+        "spring_mean_ms": 0.2251795847324075
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55301.0,
+        "mean_acquire_ms": 3.4716912894884326,
+        "pending_start": 31.0,
+        "pending_end": 11.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.448050823564527,
+    "api_cpu_usage_gauge_end": 0.3706590858060913,
+    "system_cpu_usage_gauge_end": 0.9956608811748998,
+    "heap_used_bytes_end": 301559832.0,
+    "gc_pause_count": 159.0,
+    "gc_pause_seconds": 0.2869999999999999
+  },
+  {
+    "from_utc": "2026-09-11T17:40:21.483304+00:00",
+    "to_utc": "2026-09-11T17:40:31.491560+00:00",
+    "from_epoch": 1789148421.483304,
+    "to_epoch": 1789148431.49156,
+    "duration_seconds": 10.008255958557129,
+    "approx_measurement_interior": true,
+    "requests": 88274.0,
+    "server_completed_tps": 8820.11814701093,
+    "spring_mean_ms": 5.749033093685562,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 55090.0,
+        "tps": 5504.455544314658,
+        "spring_mean_ms": 9.07403821256125
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33184.0,
+        "tps": 3315.6626026962717,
+        "spring_mean_ms": 0.22906768870540045
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 55083.0,
+        "mean_acquire_ms": 2.935551803641778,
+        "pending_start": 11.0,
+        "pending_end": 0.0,
+        "active_end": 17.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 0.0,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.454533355722381,
+    "api_cpu_usage_gauge_end": 0.3712624707280177,
+    "system_cpu_usage_gauge_end": 0.9939115929941618,
+    "heap_used_bytes_end": 399879488.0,
+    "gc_pause_count": 109.0,
+    "gc_pause_seconds": 0.20199999999999996
+  },
+  {
+    "from_utc": "2026-09-11T17:40:31.491560+00:00",
+    "to_utc": "2026-09-11T17:40:41.497570+00:00",
+    "from_epoch": 1789148431.49156,
+    "to_epoch": 1789148441.49757,
+    "duration_seconds": 10.006010055541992,
+    "approx_measurement_interior": true,
+    "requests": 90331.0,
+    "server_completed_tps": 9027.674317593624,
+    "spring_mean_ms": 5.644515846675006,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 56514.0,
+        "tps": 5648.005517313946,
+        "spring_mean_ms": 8.889252762766747
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 33817.0,
+        "tps": 3379.668800279678,
+        "spring_mean_ms": 0.22200462226099246
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 56518.0,
+        "mean_acquire_ms": 3.401341165646344,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 10.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.519889921053078,
+    "api_cpu_usage_gauge_end": 0.376610962346639,
+    "system_cpu_usage_gauge_end": 0.9923205342237061,
+    "heap_used_bytes_end": 267124224.0,
+    "gc_pause_count": 109.0,
+    "gc_pause_seconds": 0.18799999999999972
+  },
+  {
+    "from_utc": "2026-09-11T17:40:41.497570+00:00",
+    "to_utc": "2026-09-11T17:40:51.501469+00:00",
+    "from_epoch": 1789148441.49757,
+    "to_epoch": 1789148451.501469,
+    "duration_seconds": 10.003898859024048,
+    "approx_measurement_interior": true,
+    "requests": 86693.0,
+    "server_completed_tps": 8665.921279461789,
+    "spring_mean_ms": 6.297075710518723,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 54213.0,
+        "tps": 5419.18713533344,
+        "spring_mean_ms": 9.935126578053227
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 32480.0,
+        "tps": 3246.734144128348,
+        "spring_mean_ms": 0.22473421785714395
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 54228.0,
+        "mean_acquire_ms": 3.8853544294460374,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 11.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.287945890347079,
+    "api_cpu_usage_gauge_end": 0.3573282514501257,
+    "system_cpu_usage_gauge_end": 0.9949098798397864,
+    "heap_used_bytes_end": 221994368.0,
+    "gc_pause_count": 100.0,
+    "gc_pause_seconds": 0.1719999999999997
+  },
+  {
+    "from_utc": "2026-09-11T17:40:51.501469+00:00",
+    "to_utc": "2026-09-11T17:41:01.505018+00:00",
+    "from_epoch": 1789148451.501469,
+    "to_epoch": 1789148461.505018,
+    "duration_seconds": 10.003549098968506,
+    "approx_measurement_interior": true,
+    "requests": 84621.0,
+    "server_completed_tps": 8459.097782478571,
+    "spring_mean_ms": 6.211961557533017,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 52835.0,
+        "tps": 5281.625498839004,
+        "spring_mean_ms": 9.81526451507526
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 31786.0,
+        "tps": 3177.472283639568,
+        "spring_mean_ms": 0.2225161488076498
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 52820.0,
+        "mean_acquire_ms": 3.4069670579326035,
+        "pending_start": 0.0,
+        "pending_end": 76.0,
+        "active_end": 20.0
+      },
+      "source-pool": {
+        "acquires": 1.0,
+        "mean_acquire_ms": 2.0000000000000018,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.186048429983503,
+    "api_cpu_usage_gauge_end": 0.34881952543914396,
+    "system_cpu_usage_gauge_end": 0.9952464348261196,
+    "heap_used_bytes_end": 224331008.0,
+    "gc_pause_count": 100.0,
+    "gc_pause_seconds": 0.18600000000000083
+  },
+  {
+    "from_utc": "2026-09-11T17:41:01.505018+00:00",
+    "to_utc": "2026-09-11T17:41:11.519170+00:00",
+    "from_epoch": 1789148461.505018,
+    "to_epoch": 1789148471.51917,
+    "duration_seconds": 10.01415205001831,
+    "approx_measurement_interior": true,
+    "requests": 86154.0,
+    "server_completed_tps": 8603.224673410314,
+    "spring_mean_ms": 6.042656198180009,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 53958.0,
+        "tps": 5388.174628315269,
+        "spring_mean_ms": 9.5117114895845
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 32196.0,
+        "tps": 3215.0500450950444,
+        "spring_mean_ms": 0.2287884688470626
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 53958.0,
+        "mean_acquire_ms": 3.6435005003892003,
+        "pending_start": 76.0,
+        "pending_end": 45.0,
+        "active_end": 17.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.313355018403282,
+    "api_cpu_usage_gauge_end": 0.3595407360158026,
+    "system_cpu_usage_gauge_end": 0.9944954128440368,
+    "heap_used_bytes_end": 254264320.0,
+    "gc_pause_count": 100.0,
+    "gc_pause_seconds": 0.16799999999999926
+  },
+  {
+    "from_utc": "2026-09-11T17:41:11.519170+00:00",
+    "to_utc": "2026-09-11T17:41:21.526548+00:00",
+    "from_epoch": 1789148471.51917,
+    "to_epoch": 1789148481.526548,
+    "duration_seconds": 10.007377862930298,
+    "approx_measurement_interior": false,
+    "requests": 86286.0,
+    "server_completed_tps": 8622.238630523168,
+    "spring_mean_ms": 6.400393158241179,
+    "endpoint_metrics": {
+      "/api/v1/maps/stores/in-view/previews/compact": {
+        "requests": 53820.0,
+        "tps": 5378.032161587707,
+        "spring_mean_ms": 10.126482051672209
+      },
+      "/api/v1/maps/stores/in-view/clusters": {
+        "requests": 32466.0,
+        "tps": 3244.2064689354606,
+        "spring_mean_ms": 0.2235279994763747
+      }
+    },
+    "pools": {
+      "replica-pool": {
+        "acquires": 53832.0,
+        "mean_acquire_ms": 4.194754049635902,
+        "pending_start": 45.0,
+        "pending_end": 0.0,
+        "active_end": 12.0
+      },
+      "source-pool": {
+        "acquires": 0.0,
+        "mean_acquire_ms": null,
+        "pending_start": 0.0,
+        "pending_end": 0.0,
+        "active_end": 0.0
+      }
+    },
+    "api_cpu_cores_from_counter": 4.23846282022772,
+    "api_cpu_usage_gauge_end": 0.3531347537442456,
+    "system_cpu_usage_gauge_end": 0.993993993993994,
+    "heap_used_bytes_end": 318342648.0,
+    "gc_pause_count": 100.0,
+    "gc_pause_seconds": 0.16800000000000015
+  }
+]
