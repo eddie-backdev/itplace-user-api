@@ -1,0 +1,50 @@
+[
+  {
+    "label": "small-web-1",
+    "concurrency": 1,
+    "duration_seconds": 5,
+    "warmup_seconds": 1,
+    "requests": 551,
+    "errors": 0,
+    "tps": 110.15801419821567,
+    "mean_ms": 9.046526172413794,
+    "p95_ms": 45.27747715458933,
+    "scope": "User-requested quick small-load diagnostic, single5-second trial,not capacity/SLO or formal before-after proof"
+  },
+  {
+    "label": "small-web-5",
+    "concurrency": 5,
+    "duration_seconds": 5,
+    "warmup_seconds": 1,
+    "requests": 2497,
+    "errors": 0,
+    "tps": 496.5344171559591,
+    "mean_ms": 10.004739656788145,
+    "p95_ms": 55.24712665800157,
+    "scope": "User-requested quick small-load diagnostic, single5-second trial,not capacity/SLO or formal before-after proof"
+  },
+  {
+    "label": "small-web-10",
+    "concurrency": 10,
+    "duration_seconds": 5,
+    "warmup_seconds": 0,
+    "requests": 3388,
+    "errors": 0,
+    "tps": 671.7745724401706,
+    "mean_ms": 14.662566501475798,
+    "p95_ms": 72.99752940030099,
+    "scope": "User-requested quick small-load diagnostic, single5-second trial,not capacity/SLO or formal before-after proof"
+  },
+  {
+    "label": "small-cluster-1",
+    "concurrency": 1,
+    "duration_seconds": 5,
+    "warmup_seconds": 1,
+    "requests": 25565,
+    "errors": 0,
+    "tps": 5112.82160547367,
+    "mean_ms": 0.19006462053588893,
+    "p95_ms": 0.23906623206580782,
+    "scope": "User-requested quick small-load diagnostic, single5-second trial,not capacity/SLO or formal before-after proof"
+  }
+]
