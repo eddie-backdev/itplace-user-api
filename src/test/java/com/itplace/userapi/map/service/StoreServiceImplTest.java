@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -80,6 +82,114 @@ class StoreServiceImplTest {
                     Supplier<List<MapStoreClusterResponse>> loader = invocation.getArgument(1);
                     return loader.get();
                 });
+    }
+
+    @Test
+    void mobileRejectsDistantStoresBeforeLoadingTheirPartnerBenefits() {
+        Partner nearPartner = Partner.builder().partnerId(10L).partnerName("GS25").build();
+        Partner farPartner = Partner.builder().partnerId(20L).partnerName("CU").build();
+        Store near = store(1L, "GS25 가까운점", nearPartner, point(127.0, 37.5));
+        Store far = store(2L, "CU 먼점", farPartner, point(128.0, 38.5));
+        when(storeSearchService.searchByKeyword("편의점", null))
+                .thenReturn(new StoreSearchResult(List.of(), List.of(1L, 2L)));
+        when(storeRepository.searchNearbyStoreIds(127.0, 37.5, null, "편의점")).thenReturn(List.of(1L, 2L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(1L, 2L))).thenReturn(List.of(near, far));
+        TierBenefitDto lgu = TierBenefitDto.builder().carrier(Carrier.LGU).context("할인").build();
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L)))
+                .thenReturn(Map.of(10L, List.of(new BenefitCacheDto(100L, "할인", List.of(lgu)))));
+        assertThat(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800,
+                "LGU", null, "편의점", null)).extracting(r -> r.getStore().getStoreId()).containsExactly(1L);
+        verify(partnerBenefitCacheService).getBenefitsBatch(List.of(10L));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "unknown", "ALL"})
+    void mobileNullOrUnrecognizedCarrierKeepsAllCarriersAndStoresWithoutBenefits(String carrier) {
+        mobileKeywordCandidatesWithMixedBenefits();
+
+        var result = storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800,
+                carrier, null, "편의점", null);
+
+        assertThat(result).extracting(response -> response.getStore().getStoreId()).containsExactly(1L, 2L, 3L);
+        assertThat(result.get(0).getTierBenefit()).extracting(TierBenefitDto::getCarrier)
+                .containsExactly(Carrier.LGU, null, Carrier.SKT);
+        assertThat(result.get(2).getTierBenefit()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"LGU", " lgu "})
+    void mobileCarrierFilterRetainsUniversalTiersAndRejectsUnmatchedOrEmptyBenefits(String carrier) {
+        mobileKeywordCandidatesWithMixedBenefits();
+
+        var result = storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800,
+                carrier, null, "편의점", null);
+
+        assertThat(result).extracting(response -> response.getStore().getStoreId()).containsExactly(1L);
+        assertThat(result.get(0).getTierBenefit()).extracting(TierBenefitDto::getCarrier)
+                .containsExactly(Carrier.LGU, null);
+    }
+
+    @Test
+    void mobilePartnerRadiusUsesUnroundedCenterDistanceBeforeBenefitLoading() {
+        Partner partner = Partner.builder().partnerId(10L).partnerName("GS25").build();
+        Store inside = store(1L, "GS25 경계 안", partner,
+                point(127.0, 37.5 + Math.toDegrees(799.95 / 6_378_137.0)));
+        Store outside = store(2L, "GS25 경계 밖", partner,
+                point(127.0, 37.5 + Math.toDegrees(800.05 / 6_378_137.0)));
+        when(partnerRepository.findByPartnerName("GS25")).thenReturn(java.util.Optional.of(partner));
+        when(storeRepository.searchNearbyStoreIdsByPartnerId(127.0, 37.5, 10L)).thenReturn(List.of(1L, 2L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(1L, 2L))).thenReturn(List.of(inside, outside));
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L))).thenReturn(Map.of());
+
+        // 지도 중심과 사용자 위치가 다르며, 두 후보 모두 표시용 반올림 거리로는 800m가 된다.
+        var result = storeService.findNearbyForMobile(37.5, 127.0, 37.49, 127.0, 800,
+                null, null, null, " GS25 ");
+
+        assertThat(result).extracting(response -> response.getStore().getStoreId()).containsExactly(1L);
+        assertThat(result.get(0).getDistance()).isGreaterThan(0.8);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,127", "37.5,0", "0,0"})
+    void mobilePartnerBranchKeepsLegacyDistanceForValidZeroUserCoordinates(double userLat, double userLng) {
+        Partner partner = Partner.builder().partnerId(10L).partnerName("GS25").build();
+        Store near = store(1L, "GS25 강남점", partner, point(127.0, 37.5));
+        when(partnerRepository.findByPartnerName("GS25")).thenReturn(java.util.Optional.of(partner));
+        when(storeRepository.searchNearbyStoreIdsByPartnerId(127.0, 37.5, 10L)).thenReturn(List.of(1L));
+        when(storeRepository.findAllByStoreIdInWithPartner(List.of(1L))).thenReturn(List.of(near));
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L))).thenReturn(Map.of());
+        when(partnerBenefitCacheService.getBenefits(10L)).thenReturn(List.of());
+
+        double legacyDistance = storeService.findNearbyByPartnerName(37.5, 127.0, "GS25", userLat, userLng)
+                .get(0).getDistance();
+        var result = storeService.findNearbyForMobile(37.5, 127.0, userLat, userLng, 800,
+                null, null, null, "GS25");
+
+        assertThat(legacyDistance).isPositive();
+        assertThat(result).singleElement().satisfies(response ->
+                assertThat(response.getDistance()).isEqualTo(legacyDistance));
+    }
+
+    private void mobileKeywordCandidatesWithMixedBenefits() {
+        Partner gs25 = Partner.builder().partnerId(10L).partnerName("GS25").build();
+        Partner cu = Partner.builder().partnerId(20L).partnerName("CU").build();
+        Partner seven = Partner.builder().partnerId(30L).partnerName("세븐일레븐").build();
+        List<Long> ids = List.of(1L, 2L, 3L);
+        when(storeSearchService.searchByKeyword("편의점", null))
+                .thenReturn(new StoreSearchResult(List.of(), ids));
+        when(storeRepository.searchNearbyStoreIds(127.0, 37.5, null, "편의점")).thenReturn(ids);
+        when(storeRepository.findAllByStoreIdInWithPartner(ids)).thenReturn(List.of(
+                store(1L, "GS25 강남점", gs25, point(127.0, 37.5)),
+                store(2L, "CU 강남점", cu, point(127.0, 37.5)),
+                store(3L, "세븐일레븐 강남점", seven, point(127.0, 37.5))));
+        TierBenefitDto lgu = TierBenefitDto.builder().carrier(Carrier.LGU).context("LGU 할인").build();
+        TierBenefitDto universal = TierBenefitDto.builder().context("통신사 공통 할인").build();
+        TierBenefitDto skt = TierBenefitDto.builder().carrier(Carrier.SKT).context("SKT 할인").build();
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L, 20L, 30L))).thenReturn(Map.of(
+                10L, List.of(new BenefitCacheDto(100L, "할인", List.of(lgu, universal, skt))),
+                20L, List.of(new BenefitCacheDto(200L, "할인", List.of(skt))),
+                30L, List.of()));
     }
 
     @Test

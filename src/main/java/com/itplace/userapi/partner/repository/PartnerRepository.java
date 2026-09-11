@@ -8,17 +8,23 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
+    @Transactional(readOnly = true, timeout = 5)
     Optional<Partner> findByPartnerId(Long partnerId);
 
+    @Transactional(readOnly = true, timeout = 5)
     Optional<Partner> findByPartnerName(String partnerName);
 
+    @Transactional(readOnly = true, timeout = 5)
     List<Partner> findAllByPartnerName(String partnerName);
 
+    @Transactional(readOnly = true, timeout = 5)
     List<Partner> findAllByPartnerNameIn(List<String> partnerNames);
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                 SELECT p.*

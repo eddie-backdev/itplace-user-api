@@ -16,10 +16,10 @@ public class StorePreviewQueryService {
     /**
      * 지도 미리보기 조회에 필요한 DB 작업만 짧은 읽기 트랜잭션으로 실행한다.
      *
-     * <p>JPA projection을 불변 스냅샷으로 복사해 반환하므로 트랜잭션이 종료된 뒤에도
+     * <p>JDBC scalar row를 프록시 없이 불변 스냅샷으로 매핑하므로 트랜잭션이 종료된 뒤에도
      * Redis 혜택 조회와 응답 조립 과정에서 DB 커넥션을 점유하지 않는다.</p>
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 5)
     public List<StorePreviewProjection> findStorePreviewsInView(
             double minLat,
             double maxLat,
@@ -61,22 +61,22 @@ public class StorePreviewQueryService {
             Boolean hasCoupon
     ) implements StorePreviewProjection {
 
-        private static StorePreviewSnapshot from(StorePreviewProjection projection) {
+        private static StorePreviewSnapshot from(Object[] row) {
             return new StorePreviewSnapshot(
-                    projection.getStoreId(),
-                    projection.getPartnerId(),
-                    projection.getStoreName(),
-                    projection.getBusiness(),
-                    projection.getPartnerName(),
-                    projection.getCategory(),
-                    projection.getImage(),
-                    projection.getLatitude(),
-                    projection.getLongitude(),
-                    projection.getAddress(),
-                    projection.getRoadName(),
-                    projection.getRoadAddress(),
-                    projection.getPostCode(),
-                    projection.getHasCoupon()
+                    ((Number) row[0]).longValue(),
+                    ((Number) row[1]).longValue(),
+                    (String) row[2],
+                    (String) row[3],
+                    (String) row[4],
+                    (String) row[5],
+                    (String) row[6],
+                    ((Number) row[7]).doubleValue(),
+                    ((Number) row[8]).doubleValue(),
+                    (String) row[9],
+                    (String) row[10],
+                    (String) row[11],
+                    (String) row[12],
+                    (Boolean) row[13]
             );
         }
 

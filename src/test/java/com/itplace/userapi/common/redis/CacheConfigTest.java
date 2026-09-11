@@ -22,7 +22,7 @@ class CacheConfigTest {
 
     @Test
     void typedBenefitSerializerReadsExistingValuesAndKeepsRollbackCompatibleBytes() {
-        var manager = (RedisCacheManager) new CacheConfig().cacheManager(mock(RedisConnectionFactory.class));
+        var manager = (RedisCacheManager) new CacheConfig().cacheManager(mock(RedisConnectionFactory.class), org.springframework.data.redis.cache.CacheStatisticsCollector.create());
         manager.afterPropertiesSet();
         var typed = manager.getCacheConfigurations().get("partner-benefits").getValueSerializationPair();
         // 다른 캐시에 유지된 generic serializer가 기존 혜택 캐시 형식이다.
@@ -47,13 +47,15 @@ class CacheConfigTest {
         when(connection.stringCommands()).thenReturn(stringCommands);
         when(stringCommands.get(any(byte[].class))).thenReturn(null);
 
-        CacheManager cacheManager = new CacheConfig().cacheManager(connectionFactory);
+        CacheManager cacheManager = new CacheConfig().cacheManager(connectionFactory, org.springframework.data.redis.cache.CacheStatisticsCollector.create());
         ((RedisCacheManager) cacheManager).afterPropertiesSet();
 
         assertThat(cacheManager.getCacheNames()).contains("partner-benefits", "map-store-clusters");
         RedisCacheManager redisCacheManager = (RedisCacheManager) cacheManager;
-        assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits").getTtl())
-                .isEqualTo(Duration.ofHours(1));
+        for (int i = 0; i < 100; i++) {
+            assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits").getTtlFunction()
+                    .getTimeToLive(1L, java.util.List.of())).isBetween(Duration.ofMinutes(55), Duration.ofHours(1));
+        }
         assertThat(redisCacheManager.getCacheConfigurations().get("map-store-clusters").getTtl())
                 .isEqualTo(Duration.ofMinutes(1));
         RedisCache cache = (RedisCache) cacheManager.getCache("partner-benefits");

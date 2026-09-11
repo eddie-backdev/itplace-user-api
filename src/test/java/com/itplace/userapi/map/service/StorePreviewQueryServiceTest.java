@@ -22,33 +22,23 @@ class StorePreviewQueryServiceTest {
     @Mock
     private StoreRepository storeRepository;
 
-    @Mock
-    private StorePreviewProjection projection;
-
     @InjectMocks
     private StorePreviewQueryService queryService;
 
     @Test
     void findStorePreviewsInViewReturnsDetachedSnapshot() {
+        Object[] row = {1L,10L,"GS25 강남점","편의점","GS25","생활/편의",null,
+                37.501,127.001,null,null,null,null,true};
         when(storeRepository.findStorePreviewsInView(
                 37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 300
-        )).thenReturn(List.of(projection));
-        when(projection.getStoreId()).thenReturn(1L);
-        when(projection.getPartnerId()).thenReturn(10L);
-        when(projection.getStoreName()).thenReturn("GS25 강남점");
-        when(projection.getBusiness()).thenReturn("편의점");
-        when(projection.getPartnerName()).thenReturn("GS25");
-        when(projection.getCategory()).thenReturn("생활/편의");
-        when(projection.getLatitude()).thenReturn(37.501);
-        when(projection.getLongitude()).thenReturn(127.001);
-        when(projection.getHasCoupon()).thenReturn(true);
+        )).thenReturn(List.<Object[]>of(row));
 
         List<StorePreviewProjection> result = queryService.findStorePreviewsInView(
                 37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 300
         );
 
+        row[2] = "변경된 JDBC row";
         assertThat(result).singleElement()
-                .isNotSameAs(projection)
                 .satisfies(snapshot -> {
                     assertThat(snapshot.getStoreId()).isEqualTo(1L);
                     assertThat(snapshot.getPartnerId()).isEqualTo(10L);
@@ -96,6 +86,7 @@ class StorePreviewQueryServiceTest {
 
         assertThat(orchestrationTransaction.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
         assertThat(queryTransaction.readOnly()).isTrue();
+        assertThat(queryTransaction.timeout()).isEqualTo(5);
         assertThat(queryTransaction.propagation()).isEqualTo(Propagation.REQUIRED);
 
         Method batchMethod = StoreServiceImpl.class.getMethod(

@@ -156,11 +156,107 @@ class MapClusterSnapshotCacheTest {
         second.synchronizeSnapshot();
         assertThat(total(second)).isEqualTo(23);
         assertThat(secondMetrics.get("map.cluster.snapshot.builds").counter().count()).isZero();
-        assertThat(redis.opsForHash().size(MapClusterSnapshotCache.KEY)).isEqualTo(3);
+        assertThat(redis.opsForHash().size(MapClusterSnapshotCache.KEY)).isEqualTo(5);
         Object version = redis.opsForHash().get(MapClusterSnapshotCache.KEY, "version");
         assertThat(redis.execute(MapClusterSnapshotCache.PUBLISH, List.of(MapClusterSnapshotCache.KEY),
                 Long.toString(clock.millis() - 30_001), "late-publisher", "{}")).isZero();
         assertThat(redis.opsForHash().get(MapClusterSnapshotCache.KEY, "version")).isEqualTo(version);
+    }
+
+    @Test
+    void unchangedRowsOnlyRenewFreshnessWithoutRebuildingOrRepublishingData() {
+        cache.synchronizeSnapshot();
+        Object version = redis.opsForHash().get(MapClusterSnapshotCache.KEY, "version");
+        Object data = redis.opsForHash().get(MapClusterSnapshotCache.KEY, "data");
+        for (int i = 0; i < 4; i++) {
+            clock.advance(30_001);
+            cache.synchronizeSnapshot();
+            assertThat(total(cache)).isEqualTo(5);
+        }
+        assertThat(redis.opsForHash().get(MapClusterSnapshotCache.KEY, "version")).isEqualTo(version);
+        assertThat(redis.opsForHash().get(MapClusterSnapshotCache.KEY, "data")).isEqualTo(data);
+        assertThat(registry.get("map.cluster.snapshot.builds").counter().count()).isEqualTo(1);
+        assertThat(registry.get("map.cluster.snapshot.installs").counter().count()).isEqualTo(1);
+        assertThat(registry.get("map.cluster.snapshot.revalidations").counter().count()).isEqualTo(4);
+        var second = new MapClusterSnapshotCache(redis, mapper, source, properties, new SimpleMeterRegistry(), clock);
+        second.synchronizeSnapshot();
+        assertThat(total(second)).isEqualTo(5); // 오래된 payload도 현재 version의 DB 검증 시각으로 사용한다.
+        assertThat(redis.execute(MapClusterSnapshotCache.REVALIDATE, List.of(MapClusterSnapshotCache.KEY),
+                "different-version", Long.toString(clock.millis() + 1))).isZero();
+        assertThat(redis.execute(MapClusterSnapshotCache.PUBLISH, List.of(MapClusterSnapshotCache.KEY),
+                Long.toString(clock.millis() - 1), "late-publisher", "{}")).isZero();
+        clock.advance(60_000);
+        assertThat(cache.find("LEGAL_DONG",37.5,37.5,127,127,null,5)).isEmpty();
+    }
+
+    @Test
+    void anchorChangeRebuildsEvenWhenSummaryHasNotChangedAndRedisEvictionRecovers() {
+        cache.synchronizeSnapshot();
+        Object version = redis.opsForHash().get(MapClusterSnapshotCache.KEY, "version");
+        jdbc.update("UPDATE map_region_anchor SET latitude=37.55 WHERE region_key='one'");
+        clock.advance(30_001);
+        cache.synchronizeSnapshot();
+        assertThat(redis.opsForHash().get(MapClusterSnapshotCache.KEY, "version")).isNotEqualTo(version);
+        assertThat(cache.find("LEGAL_DONG",37.5,37.5,127,127,null,5)).hasValue(List.of());
+        assertThat(cache.find("LEGAL_DONG",37.55,37.55,127,127,null,5).orElseThrow().get(0).getCount()).isEqualTo(5);
+        redis.delete(MapClusterSnapshotCache.KEY);
+        clock.advance(1);
+        cache.synchronizeSnapshot();
+        assertThat(redis.hasKey(MapClusterSnapshotCache.KEY)).isTrue();
+        assertThat(registry.get("map.cluster.snapshot.builds").counter().count()).isEqualTo(3);
+    }
+
+    @Test
+    void legacyThreeFieldSnapshotRemainsReadableAndNetworkDeadlineDoesNotLeakToPool() throws Exception {
+        cache.synchronizeSnapshot();
+        redis.opsForHash().delete(MapClusterSnapshotCache.KEY, "verifiedAt", "verifiedVersion");
+        var second = new MapClusterSnapshotCache(redis, mapper, source, properties, new SimpleMeterRegistry(), clock);
+        second.synchronizeSnapshot();
+        assertThat(total(second)).isEqualTo(5);
+        try (Connection connection = source.getConnection()) {
+            assertThat(connection.getNetworkTimeout()).isZero();
+            assertThat(connection.isReadOnly()).isFalse();
+        }
+    }
+
+    @Test
+    void legacyPublisherCannotReuseAnotherVersionsFreshness() throws Exception {
+        cache.synchronizeSnapshot();
+        String json = redis.<String, String>opsForHash().get(MapClusterSnapshotCache.KEY, "data");
+        MapClusterSnapshot.Data original = mapper.readValue(json, MapClusterSnapshot.Data.class);
+        clock.advance(30_001);
+        cache.synchronizeSnapshot();
+        // 구버전은 새 version/createdAt/data만 쓰고 이전 heartbeat 필드를 남긴다.
+        String legacyJson = mapper.writeValueAsString(new MapClusterSnapshot.Data(1, "legacy", original.createdAt(), original.regions()));
+        redis.opsForHash().putAll(MapClusterSnapshotCache.KEY,
+                Map.of("version", "legacy", "createdAt", Long.toString(original.createdAt()), "data", legacyJson));
+        try (Connection connection = source.getConnection(); Statement lock = connection.createStatement()) {
+            lock.executeQuery("SELECT pg_advisory_lock(" + MapRegionStoreSummaryRefreshService.REFRESH_LOCK_KEY + ")").close();
+            try {
+                var second = new MapClusterSnapshotCache(redis, mapper, source, properties, new SimpleMeterRegistry(), clock);
+                second.synchronizeSnapshot();
+                assertThat(second.find("LEGAL_DONG",37.5,37.5,127,127,null,5)).isEmpty();
+            } finally {
+                lock.executeQuery("SELECT pg_advisory_unlock(" + MapRegionStoreSummaryRefreshService.REFRESH_LOCK_KEY + ")").close();
+            }
+        }
+    }
+
+    @Test
+    void failedDatabaseRevalidationDoesNotExtendFreshness() throws Exception {
+        cache.synchronizeSnapshot();
+        javax.sql.DataSource failing = org.mockito.Mockito.mock(javax.sql.DataSource.class);
+        org.mockito.Mockito.when(failing.getConnection()).thenThrow(new java.sql.SQLException("database offline"));
+        var instance = new MapClusterSnapshotCache(redis, mapper, failing, properties, new SimpleMeterRegistry(), clock);
+        instance.synchronizeSnapshot();
+        Object verifiedAt = redis.opsForHash().get(MapClusterSnapshotCache.KEY, "verifiedAt");
+        clock.advance(30_001);
+        instance.synchronizeSnapshot();
+        assertThat(total(instance)).isEqualTo(5);
+        assertThat(redis.opsForHash().get(MapClusterSnapshotCache.KEY, "verifiedAt")).isEqualTo(verifiedAt);
+        clock.advance(30_000);
+        instance.synchronizeSnapshot();
+        assertThat(instance.find("LEGAL_DONG",37.5,37.5,127,127,null,5)).isEmpty();
     }
 
     @Test

@@ -33,9 +33,19 @@ public class ElasticsearchConfig {
     @Value("${elasticsearch.password}")
     private String password;
 
-    @Bean
-    public ElasticsearchClient elasticsearchClient() {
-        RestClientBuilder builder = RestClient.builder(new HttpHost(host, port, scheme));
+    @Value("${elasticsearch.connectTimeoutMs:2000}")
+    private int connectTimeoutMs;
+
+    @Value("${elasticsearch.socketTimeoutMs:30000}")
+    private int socketTimeoutMs;
+
+    @Bean(destroyMethod = "close")
+    public ElasticsearchTransport elasticsearchTransport() {
+        RestClientBuilder builder = RestClient.builder(new HttpHost(host, port, scheme))
+                .setRequestConfigCallback(request -> request
+                        .setConnectTimeout(connectTimeoutMs)
+                        .setConnectionRequestTimeout(connectTimeoutMs)
+                        .setSocketTimeout(socketTimeoutMs));
         if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
             BasicCredentialsProvider creds = new BasicCredentialsProvider();
             creds.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
@@ -46,7 +56,11 @@ public class ElasticsearchConfig {
         }
 
         RestClient restClient = builder.build();
-        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+        return new RestClientTransport(restClient, new JacksonJsonpMapper());
+    }
+
+    @Bean
+    public ElasticsearchClient elasticsearchClient(ElasticsearchTransport transport) {
         return new ElasticsearchClient(transport);
     }
 }

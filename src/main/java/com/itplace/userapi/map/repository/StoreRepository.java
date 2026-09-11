@@ -1,29 +1,29 @@
 package com.itplace.userapi.map.repository;
 
 import com.itplace.userapi.map.entity.Store;
-import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import com.itplace.userapi.map.repository.projection.StoreClusterProjection;
 import io.lettuce.core.dynamic.annotation.Param;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     SELECT s.storeId FROM store s
                     WHERE s.active = true
-                    AND EXISTS (
-                        SELECT 1
+                    AND s.partnerId = ANY (ARRAY(
+                        SELECT DISTINCT b.partnerId
                         FROM benefit b
                         JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                        WHERE b.partnerId = s.partnerId
-                          AND COALESCE(b.active, true) = true
-                          AND COALESCE(bcp.active, true) = true
+                        WHERE b.active = true
+                          AND bcp.active = true
                           AND bcp.usageType IN ('offline', 'both')
-                    )
+                    ))
                     AND ST_DWithin(
                         location::geography,
                         ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
@@ -40,22 +40,22 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("limit") int limit
     );
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     SELECT s.storeId
                     FROM store s
-                    JOIN partner p ON s.partnerId = p.partnerId
-                    WHERE p.category = :category
-                    AND s.active = true
-                    AND EXISTS (
-                        SELECT 1
+                    WHERE s.active = true
+                    AND s.partnerId = ANY (ARRAY(
+                        SELECT DISTINCT b.partnerId
                         FROM benefit b
+                        JOIN partner p ON p.partnerId = b.partnerId
                         JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                        WHERE b.partnerId = s.partnerId
-                          AND COALESCE(b.active, true) = true
-                          AND COALESCE(bcp.active, true) = true
+                        WHERE p.category = :category
+                          AND b.active = true
+                          AND bcp.active = true
                           AND bcp.usageType IN ('offline', 'both')
-                    )
+                    ))
                     AND ST_DWithin(
                         s.location::geography,
                         ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
@@ -73,6 +73,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("limit") int limit
     );
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     WITH candidate_store AS MATERIALIZED (
@@ -85,19 +86,18 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                                 ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
                             ) AS distance_meters
                         FROM store s
-                        JOIN partner p ON s.partnerId = p.partnerId
                         WHERE s.location IS NOT NULL
                           AND s.active = true
-                          AND EXISTS (
-                              SELECT 1
+                          AND s.partnerId = ANY (ARRAY(
+                              SELECT DISTINCT b.partnerId
                               FROM benefit b
+                              JOIN partner p ON p.partnerId = b.partnerId
                               JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                              WHERE b.partnerId = s.partnerId
-                                AND COALESCE(b.active, true) = true
-                                AND COALESCE(bcp.active, true) = true
+                              WHERE (:category IS NULL OR p.category = :category)
+                                AND b.active = true
+                                AND bcp.active = true
                                 AND bcp.usageType IN ('offline', 'both')
-                          )
-                          AND (:category IS NULL OR p.category = :category)
+                          ))
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                           AND s.longitude BETWEEN :minLng AND :maxLng
                           AND s.latitude BETWEEN :minLat AND :maxLat
@@ -142,58 +142,66 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("limit") int limit
     );
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
-                    SELECT
-                        s.storeId AS "storeId",
-                        p.partnerId AS "partnerId",
-                        s.storeName AS "storeName",
-                        s.business AS "business",
-                        p.partnerName AS "partnerName",
-                        p.category AS "category",
-                        p.image AS "image",
-                        ST_Y(s.location::geometry) AS "latitude",
-                        ST_X(s.location::geometry) AS "longitude",
-                        s.address AS "address",
-                        s.roadName AS "roadName",
-                        s.roadAddress AS "roadAddress",
-                        s.postCode AS "postCode",
-                        s.hasCoupon AS "hasCoupon"
-                    FROM store s
-                    JOIN partner p ON s.partnerId = p.partnerId
-                    WHERE s.location IS NOT NULL
-                      AND s.active = true
-                      -- 혜택 제휴사를 한 번만 계산해 매장마다 정책을 다시 조인하지 않는다.
-                      AND s.partnerId = ANY (ARRAY(
-                          SELECT DISTINCT b.partnerId
-                          FROM benefit b
-                          JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                          WHERE COALESCE(b.active, true) = true
-                            AND COALESCE(bcp.active, true) = true
-                            AND bcp.usageType IN ('offline', 'both')
-                      ))
-                      AND (:category IS NULL OR p.category = :category)
-                      AND (
-                          REGEXP_REPLACE(
-                              LOWER(COALESCE(p.partnerName, '')),
-                              '[^가-힣a-z0-9]+',
-                              '',
-                              'g'
-                          ) NOT IN ('다락', '미니창고다락')
-                          OR s.business LIKE '%보관%'
-                          OR s.business LIKE '%저장%'
-                      )
-                      AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
-                      AND s.longitude BETWEEN :minLng AND :maxLng
-                      AND s.latitude BETWEEN :minLat AND :maxLat
-                    ORDER BY
-                      ABS(s.latitude - :centerLat) + ABS(s.longitude - :centerLng) ASC,
-                      s.storeId ASC
+                    -- 숫자 좌표와 geometry bbox의 중복 selectivity가 제휴사 조인을 왜곡하지 않게 분리한다.
+                    WITH visible_store AS MATERIALIZED (
+                        SELECT
+                            s.storeId AS "storeId",
+                            p.partnerId AS "partnerId",
+                            s.storeName AS "storeName",
+                            s.business AS "business",
+                            p.partnerName AS "partnerName",
+                            p.category AS "category",
+                            p.image AS "image",
+                            ST_Y(s.location::geometry) AS "latitude",
+                            ST_X(s.location::geometry) AS "longitude",
+                            s.address AS "address",
+                            s.roadName AS "roadName",
+                            s.roadAddress AS "roadAddress",
+                            s.postCode AS "postCode",
+                            s.hasCoupon AS "hasCoupon",
+                            s.latitude::double precision AS numeric_latitude,
+                            s.longitude::double precision AS numeric_longitude
+                        FROM store s
+                        JOIN partner p ON s.partnerId = p.partnerId
+                        WHERE s.location IS NOT NULL
+                          AND s.active = true
+                          -- 혜택 제휴사를 한 번만 계산해 매장마다 정책을 다시 조인하지 않는다.
+                          AND s.partnerId = ANY (ARRAY(
+                              SELECT DISTINCT b.partnerId
+                              FROM benefit b
+                              JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
+                              WHERE b.active = true
+                                AND bcp.active = true
+                                AND bcp.usageType IN ('offline', 'both')
+                          ))
+                          AND (:category IS NULL OR p.category = :category)
+                          AND (
+                              REGEXP_REPLACE(
+                                  LOWER(COALESCE(p.partnerName, '')),
+                                  '[^가-힣a-z0-9]+',
+                                  '',
+                                  'g'
+                              ) NOT IN ('다락', '미니창고다락')
+                              OR s.business LIKE '%보관%'
+                              OR s.business LIKE '%저장%'
+                          )
+                          AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
+                    )
+                    SELECT "storeId", "partnerId", "storeName", "business", "partnerName", "category",
+                           "image", "latitude", "longitude", "address", "roadName", "roadAddress",
+                           "postCode", "hasCoupon"
+                    FROM visible_store
+                    WHERE numeric_longitude BETWEEN :minLng AND :maxLng
+                      AND numeric_latitude BETWEEN :minLat AND :maxLat
+                    ORDER BY ABS(numeric_latitude - :centerLat) + ABS(numeric_longitude - :centerLng), "storeId"
                     LIMIT :limit
                     """,
             nativeQuery = true
     )
-    List<StorePreviewProjection> findStorePreviewsInView(
+    List<Object[]> findStorePreviewsInView(
             @Param("minLat") double minLat,
             @Param("maxLat") double maxLat,
             @Param("minLng") double minLng,
@@ -206,6 +214,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
 
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     WITH summarized_region AS MATERIALIZED (
@@ -262,6 +271,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     );
 
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query("""
             SELECT DISTINCT s
             FROM Store s
@@ -273,8 +283,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   FROM Benefit b
                   JOIN b.carrierPolicies policy
                   WHERE b.partner = p
-                    AND COALESCE(b.active, true) = true
-                    AND COALESCE(policy.active, true) = true
+                    AND b.active = true
+                    AND policy.active = true
                     AND policy.usageType IN (
                         com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
                         com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
@@ -283,29 +293,42 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             """)
     List<Store> findAllByStoreIdInWithPartner(@Param("storeIds") List<Long> storeIds);
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
+                    WITH keyword_stores AS MATERIALIZED (
+                        SELECT s.storeId, s.partnerId, s.storeName, s.location
+                        FROM store s
+                        WHERE s.active = true
+                          AND s.location IS NOT NULL
+                          AND (
+                              LOWER(COALESCE(s.business, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                              OR LOWER(COALESCE(s.storeName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                          )
+                        UNION
+                        SELECT s.storeId, s.partnerId, s.storeName, s.location
+                        FROM store s
+                        WHERE s.active = true
+                          AND s.location IS NOT NULL
+                          AND s.partnerId = ANY (ARRAY(
+                              SELECT p.partnerId FROM partner p
+                              WHERE LOWER(COALESCE(p.partnerName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                              OR LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                          ))
+                    )
+
                     SELECT s.storeId
-                    FROM store s
+                    FROM keyword_stores s
                     JOIN partner p ON s.partnerId = p.partnerId
-                    WHERE s.location IS NOT NULL
-                    AND s.active = true
-                    AND EXISTS (
-                        SELECT 1
-                        FROM benefit b
-                        JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                        WHERE b.partnerId = s.partnerId
-                          AND COALESCE(b.active, true) = true
-                          AND COALESCE(bcp.active, true) = true
-                          AND bcp.usageType IN ('offline', 'both')
-                    )
+                    WHERE s.partnerId = ANY (ARRAY(
+                          SELECT DISTINCT b.partnerId
+                          FROM benefit b
+                          JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
+                          WHERE b.active = true
+                            AND bcp.active = true
+                            AND bcp.usageType IN ('offline', 'both')
+                      ))
                     AND (:category IS NULL OR p.category = :category)
-                    AND (
-                        LOWER(COALESCE(s.storeName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                        OR LOWER(COALESCE(s.business, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                        OR LOWER(COALESCE(p.partnerName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                        OR LOWER(COALESCE(p.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                    )
                     ORDER BY
                            CASE
                                WHEN LOWER(COALESCE(s.storeName, '')) = LOWER(:keyword)
@@ -323,6 +346,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     List<Long> searchNearbyStoreIds(@Param("lng") double lng, @Param("lat") double lat,
                                     @Param("category") String category, @Param("keyword") String keyword);
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query("""
             SELECT DISTINCT s
             FROM Store s
@@ -333,8 +357,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   FROM Benefit b
                   JOIN b.carrierPolicies policy
                   WHERE b.partner = p
-                    AND COALESCE(b.active, true) = true
-                    AND COALESCE(policy.active, true) = true
+                    AND b.active = true
+                    AND policy.active = true
                     AND policy.usageType IN (
                         com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
                         com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
@@ -343,6 +367,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             """)
     List<Store> findAllWithPartner();
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     SELECT s.storeId
@@ -350,15 +375,14 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                     WHERE s.location IS NOT NULL
                       AND s.partnerId = :partnerId
                       AND s.active = true
-                      AND EXISTS (
-                          SELECT 1
+                      AND s.partnerId = ANY (ARRAY(
+                          SELECT DISTINCT b.partnerId
                           FROM benefit b
                           JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                          WHERE b.partnerId = s.partnerId
-                            AND COALESCE(b.active, true) = true
-                            AND COALESCE(bcp.active, true) = true
+                          WHERE b.active = true
+                            AND bcp.active = true
                             AND bcp.usageType IN ('offline', 'both')
-                      )
+                      ))
                     ORDER BY ST_DistanceSphere(location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) ASC
                     LIMIT 30
                     """,
@@ -370,6 +394,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("partnerId") Long partnerId
     );
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     SELECT ranked.store_id
@@ -391,15 +416,14 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         FROM store s
                         WHERE s.location IS NOT NULL
                           AND s.active = true
-                          AND EXISTS (
-                              SELECT 1
+                          AND s.partnerId = ANY (ARRAY(
+                              SELECT DISTINCT b.partnerId
                               FROM benefit b
                               JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                              WHERE b.partnerId = s.partnerId
-                                AND COALESCE(b.active, true) = true
-                                AND COALESCE(bcp.active, true) = true
+                              WHERE b.active = true
+                                AND bcp.active = true
                                 AND bcp.usageType IN ('offline', 'both')
-                          )
+                          ))
                           AND s.partnerId IN :partnerIds
                     ) ranked
                     WHERE ranked.row_num <= 30
@@ -413,6 +437,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("partnerIds") List<Long> partnerIds
     );
 
+    @Transactional(readOnly = true, timeout = 5)
     @Query("""
                 SELECT s FROM Store s
                 JOIN FETCH s.partner p
@@ -424,8 +449,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                       FROM Benefit b
                       JOIN b.carrierPolicies policy
                       WHERE b.partner = p
-                        AND COALESCE(b.active, true) = true
-                        AND COALESCE(policy.active, true) = true
+                        AND b.active = true
+                        AND policy.active = true
                         AND policy.usageType IN (
                             com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
                             com.itplace.userapi.benefit.entity.enums.UsageType.BOTH

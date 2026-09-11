@@ -63,7 +63,6 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                 SELECT b.* FROM benefit b
                 LEFT JOIN partner p ON p.partnerId = b.partnerId
                 LEFT JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                LEFT JOIN favorite f ON f.benefitId = b.benefitId
                 WHERE (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
                   AND (:filter IS NULL OR
@@ -89,14 +88,13 @@ public interface BenefitRepository extends JpaRepository<Benefit, Long> {
                   CASE WHEN :sort = 'NAME_ASC' THEN LOWER(b.benefitName) END ASC,
                   CASE WHEN :sort = 'NAME_DESC' THEN LOWER(b.benefitName) END DESC,
                   CASE WHEN :sort = 'LATEST' THEN b.benefitId END DESC,
-                  COUNT(DISTINCT f.userId) DESC,
+                  (SELECT COUNT(*) FROM favorite f WHERE f.benefitId = b.benefitId) DESC,
                   b.benefitId ASC
             """,
             countQuery = """
                 SELECT COUNT(DISTINCT b.benefitId) FROM benefit b
                 LEFT JOIN partner p ON p.partnerId = b.partnerId
                 LEFT JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                LEFT JOIN favorite f ON f.benefitId = b.benefitId
                 WHERE (:mainCategory IS NULL OR b.mainCategory = :mainCategory)
                   AND (:category IS NULL OR p.category = :category)
                   AND (:filter IS NULL OR
