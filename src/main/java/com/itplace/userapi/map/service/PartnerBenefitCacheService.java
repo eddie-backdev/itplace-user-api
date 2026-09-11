@@ -9,6 +9,7 @@ import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +20,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.support.NullValue;
+import org.springframework.data.redis.cache.RedisCache;
+import org.springframework.data.redis.util.ByteUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,9 +77,22 @@ public class PartnerBenefitCacheService {
         }
 
         Map<Long, CompletableFuture<?>> futureByPartner = new HashMap<>();
+        // RedisCache.retrieve는 완료 콜백에서 JSON을 해석해 Lettuce 이벤트 루프를 점유한다.
+        // raw byte만 병렬로 받고 JSON 해석은 아래의 요청 스레드에서 수행한다.
+        RedisCache redisCache = cache instanceof RedisCache candidate
+                && !candidate.getCacheConfiguration().isTimeToIdleEnabled() ? candidate : null;
         try {
             for (Long partnerId : partnerIds) {
-                CompletableFuture<?> future = cache.retrieve(partnerId);
+                CompletableFuture<?> future;
+                if (redisCache == null) {
+                    future = cache.retrieve(partnerId);
+                } else {
+                    var configuration = redisCache.getCacheConfiguration();
+                    String key = configuration.getConversionService().convert(partnerId, String.class);
+                    if (configuration.usePrefix()) key = configuration.getKeyPrefixFor(cache.getName()) + key;
+                    future = redisCache.getNativeCache().retrieve(cache.getName(),
+                            ByteUtils.getBytes(configuration.getKeySerializationPair().write(key)));
+                }
                 futureByPartner.put(
                         partnerId,
                         future != null ? future : CompletableFuture.completedFuture(null)
@@ -91,6 +108,11 @@ public class PartnerBenefitCacheService {
         Map<Long, Cache.ValueWrapper> cachedByPartner = new HashMap<>();
         futureByPartner.forEach((partnerId, future) -> {
             Object cached = future.join();
+            if (redisCache != null && cached instanceof byte[] bytes) {
+                Object decoded = redisCache.getCacheConfiguration().getValueSerializationPair().read(ByteBuffer.wrap(bytes));
+                cachedByPartner.put(partnerId, () -> decoded == NullValue.INSTANCE ? null : decoded);
+                return;
+            }
             if (cached instanceof Cache.ValueWrapper wrapper) {
                 cachedByPartner.put(partnerId, wrapper);
             } else if (cached != null) {

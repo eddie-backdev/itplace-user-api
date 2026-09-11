@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.itplace.userapi.map.dto.BenefitCacheDto;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,6 +19,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -54,6 +57,9 @@ public class CacheConfig {
         );
 
         GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(mapper);
+        // 혜택 목록은 타입을 알고 있으므로 타입 추론용 JSON 트리를 먼저 만들 필요가 없다.
+        var benefitSerializer = new Jackson2JsonRedisSerializer<List<BenefitCacheDto>>(mapper,
+                mapper.getTypeFactory().constructCollectionType(List.class, BenefitCacheDto.class));
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -65,7 +71,8 @@ public class CacheConfig {
                 .cacheDefaults(config.entryTtl(Duration.ofHours(1)))
                 .initialCacheNames(Set.of(PARTNER_BENEFITS_CACHE, MAP_STORE_CLUSTERS_CACHE))
                 .withInitialCacheConfigurations(Map.of(
-                        PARTNER_BENEFITS_CACHE, config.entryTtl(Duration.ofHours(1)),
+                        PARTNER_BENEFITS_CACHE, config.entryTtl(Duration.ofHours(1))
+                                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(benefitSerializer)),
                         MAP_STORE_CLUSTERS_CACHE, config.entryTtl(Duration.ofMinutes(1))
                 ))
                 .enableStatistics()

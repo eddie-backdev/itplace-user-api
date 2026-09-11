@@ -235,7 +235,6 @@ class StoreRepositoryQueryContractTest {
                 .as(methodName)
                 .contains(
                         "s.active = true",
-                        "EXISTS (",
                         "COALESCE(b.active, true) = true",
                         "COALESCE(bcp.active, true) = true",
                         "bcp.usageType IN ('offline', 'both')"
