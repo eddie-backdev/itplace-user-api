@@ -754,7 +754,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private List<Long> searchKeywordStoreIds(double lng, double lat, String category, String keyword, boolean eligibleOnly) {
-        return eligibleOnly ? storeRepository.searchEligibleNearbyStoreIds(lng, lat, category, keyword)
+        return eligibleOnly ? storePreviewQueryService.searchEligibleNearbyStoreIds(lng, lat, category, keyword)
                 : storeRepository.searchNearbyStoreIds(lng, lat, category, keyword);
     }
 
