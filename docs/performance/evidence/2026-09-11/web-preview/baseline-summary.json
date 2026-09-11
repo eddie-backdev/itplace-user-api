@@ -1,0 +1,146 @@
+{
+  "completed": 133750,
+  "errors": 0,
+  "successful_tps": 975.2194679366861,
+  "mean_ms": 508.07523404095696,
+  "p95_trial_range_ms": [
+    923.120671492165,
+    970.2091031933259
+  ],
+  "p99_trial_range_ms": [
+    1172.1183013696493,
+    1231.9081146456417
+  ],
+  "mean_body_bytes": 34846.0379364486,
+  "groups": {
+    "cluster10": {
+      "completed": 13498,
+      "errors": 0,
+      "successful_tps": 98.41878413614496,
+      "mean_ms": 305.04897817973034,
+      "p95_trial_range_ms": [
+        416.4362947174501,
+        437.6787309744455
+      ],
+      "p99_trial_range_ms": [
+        460.0047449691563,
+        518.3448606107191
+      ],
+      "mean_body_bytes": 768.621647651504
+    },
+    "cluster5": {
+      "completed": 13300,
+      "errors": 0,
+      "successful_tps": 96.97509475557327,
+      "mean_ms": 304.75195182834585,
+      "p95_trial_range_ms": [
+        416.4362947174501,
+        442.05551828419016
+      ],
+      "p99_trial_range_ms": [
+        460.0047449691563,
+        508.13141908706837
+      ],
+      "mean_body_bytes": 2416.8067669172933
+    },
+    "cluster7": {
+      "completed": 13369,
+      "errors": 0,
+      "successful_tps": 97.47819863062098,
+      "mean_ms": 304.61281868778514,
+      "p95_trial_range_ms": [
+        416.4362947174501,
+        442.05551828419016
+      ],
+      "p99_trial_range_ms": [
+        455.4502425437196,
+        508.13141908706837
+      ],
+      "mean_body_bytes": 4686.139576632508
+    },
+    "keyword": {
+      "completed": 13495,
+      "errors": 0,
+      "successful_tps": 98.39691005462115,
+      "mean_ms": 842.807257401482,
+      "p95_trial_range_ms": [
+        1207.6346580194493,
+        1269.2361624275197
+      ],
+      "p99_trial_range_ms": [
+        1444.5091477416954,
+        1533.3755680552847
+      ],
+      "mean_body_bytes": 43948.306706187475
+    },
+    "nearby": {
+      "completed": 13250,
+      "errors": 0,
+      "successful_tps": 96.61052673017637,
+      "mean_ms": 721.6385125970567,
+      "p95_trial_range_ms": [
+        1040.1954784696022,
+        1082.4315860793379
+      ],
+      "p99_trial_range_ms": [
+        1281.9285240517936,
+        1320.7722402590873
+      ],
+      "mean_body_bytes": 162819.1763773585
+    },
+    "preview": {
+      "completed": 66838,
+      "errors": 0,
+      "successful_tps": 487.33995362954937,
+      "mean_ms": 520.3110129359047,
+      "p95_trial_range_ms": [
+        741.6316456969458,
+        795.1295055929959
+      ],
+      "p99_trial_range_ms": [
+        932.3518782070855,
+        1009.6034833214779
+      ],
+      "mean_body_bytes": 27006.39909931476
+    }
+  },
+  "trials": [
+    {
+      "file": "baseline-1.json",
+      "seed": 20260911,
+      "completed": 44015,
+      "successful_tps": 962.4015586654285,
+      "mean_ms": 514.6968573032602,
+      "p95_ms": 970.2091031933259,
+      "p99_ms": 1231.9081146456417,
+      "errors": 0
+    },
+    {
+      "file": "baseline-2.json",
+      "seed": 20260912,
+      "completed": 45993,
+      "successful_tps": 1007.7448396039891,
+      "mean_ms": 492.1793181417172,
+      "p95_ms": 923.120671492165,
+      "p99_ms": 1172.1183013696493,
+      "errors": 0
+    },
+    {
+      "file": "baseline-3.json",
+      "seed": 20260913,
+      "completed": 43742,
+      "successful_tps": 955.5967390248129,
+      "mean_ms": 518.1262173536418,
+      "p95_ms": 960.6030724686386,
+      "p99_ms": 1219.7110045996446,
+      "errors": 0
+    }
+  ],
+  "conditions": {
+    "corpus_sha256": "340839051acf396b8e01ee392ff3be2aa0c323e8027cf4fe1342b26fd23328fc",
+    "concurrency": 500,
+    "accept_encoding": "identity",
+    "request_timeout_seconds": 10
+  },
+  "interpretation": "Pooled count / sum(wall including drain); request-weighted mean. Percentiles remain trial ranges. No request path reuse within each measurement; paths may recur across separate trials."
+}

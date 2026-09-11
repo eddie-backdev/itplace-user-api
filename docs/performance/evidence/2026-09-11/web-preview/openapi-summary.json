@@ -1,0 +1,51 @@
+{
+  "endpoints": {
+    "/api/v1/maps/nearby/previews/compact": [
+      "get"
+    ],
+    "/api/v1/maps/nearby/category/previews/compact": [
+      "get"
+    ],
+    "/api/v1/maps/nearby/search/previews/compact": [
+      "get"
+    ]
+  },
+  "store_schemas": {
+    "MapStorePreviewResponse": {
+      "required": [],
+      "fields": {
+        "roadName": {
+          "type": "string"
+        },
+        "distance": {
+          "type": "number",
+          "format": "double"
+        },
+        "tierBenefit": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/TierBenefitDto"
+          }
+        }
+      }
+    },
+    "StorePreview": {
+      "required": [],
+      "fields": {
+        "roadName": {
+          "type": "string"
+        },
+        "distance": {
+          "type": "number",
+          "format": "double"
+        },
+        "tierBenefit": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/TierBenefitDto"
+          }
+        }
+      }
+    }
+  }
+}

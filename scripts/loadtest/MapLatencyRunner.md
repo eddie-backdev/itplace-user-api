@@ -12,6 +12,8 @@ python3 scripts/loadtest/generate-map-corpus.py --anchors output/performance-ren
 
 `--include-mobile`은 과거 실험의 입력 재현용이다. 원본 결과에서 mobile 행만 빼서 웹 전용 재측정 결과로 해석하지 않는다. 같은 서버 자원을 공유하던 부하 자체가 달라지기 때문이다.
 
+웹 기본 입력은 검색·주변의 `/previews/compact`를 사용한다. `--legacy-previews`를 지정하면 같은 좌표·순서·파라미터를 유지하면서 해당 두 그룹만 기존 list endpoint로 생성하므로 compact 전후 비교에 사용한다. viewport compact와 cluster는 두 모드에서 동일하다. `--include-mobile`은 이전 모바일 포함 시험의 기존 경로를 그대로 재현한다.
+
 API는 SDKMAN Java17, 이 발생기는 SDKMAN Java11을 사용한다. 전후 비교 시 같은 JAR 실행 방법·API JVM/DB 설정·발생기 JVM·corpus·seed·HTTP 압축·warmup·concurrency·duration을 유지한다.
 
 ```sh

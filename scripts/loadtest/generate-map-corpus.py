@@ -13,6 +13,7 @@ p.add_argument('--output', type=Path, required=True)
 p.add_argument('--count', type=int, default=200000)
 p.add_argument('--seed', type=int, default=20260911)
 p.add_argument('--include-mobile', action='store_true', help='Reproduce the historical mobile-inclusive corpus; excluded by default.')
+p.add_argument('--legacy-previews', action='store_true', help='Use legacy web list endpoints for before/after comparisons.')
 args = p.parse_args()
 assert args.count > 0
 anchors = json.loads(args.anchors.read_text())
@@ -58,6 +59,8 @@ with args.output.open('w') as out:
                 q['radiusMeters'] = rng.choice([400, 800, 1500, 3000])
                 if mobile:
                     q['carrier'] = rng.choice(['SKT', 'KT', 'LGU'])
+        if not args.include_mobile and not args.legacy_previews and group in ('keyword', 'nearby'):
+            endpoint += '/compact'
         path = endpoint + '?' + urlencode(q)
         assert path not in paths
         paths.add(path)
@@ -65,5 +68,6 @@ with args.output.open('w') as out:
         out.write(group + '\t' + path + '\n')
 meta = dict(seed=args.seed, entries=args.count, groups=dict(groups), distinct_centers=len(centers), distinct_paths=len(paths), available_store_anchors=len(anchors), selected_store_anchors=len(selected), store_anchor_fraction=.8, uniform_korea_rectangle_fraction=.2, bounds=dict(minLat=min(x[0] for x in centers), maxLat=max(x[0] for x in centers), minLng=min(x[1] for x in centers), maxLng=max(x[1] for x in centers)), anchors_sha256=hashlib.sha256(args.anchors.read_bytes()).hexdigest(), corpus_sha256=hashlib.sha256(args.output.read_bytes()).hexdigest(), warning='Synthetic mix, not observed production traffic. Uniform rectangle includes empty/sea locations. Each measurement must report actual issued unique paths and reject wraparound for diverse-request claims.')
 meta['scope'] = 'historical-mobile-inclusive' if args.include_mobile else 'web-only'
+meta['preview_format'] = 'legacy' if args.include_mobile or args.legacy_previews else 'compact'
 args.output.with_suffix('.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2)+'\n')
 print(json.dumps(meta, ensure_ascii=False))
