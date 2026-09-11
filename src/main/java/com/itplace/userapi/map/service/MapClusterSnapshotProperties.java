@@ -23,6 +23,7 @@ public class MapClusterSnapshotProperties {
     @Min(1) @Max(500_000) private int maxCategoryCounts = 100_000;
     @Min(1024) @Max(67_108_864) private int maxPayloadBytes = 16_777_216;
     @Min(1) @Max(30) private int queryTimeoutSeconds = 5;
+    @Min(1000) @Max(60_000) private int networkTimeoutMs = 10_000;
 
     @AssertTrue(message = "maximum-age-ms는 refresh-interval-ms와 poll-interval-ms 합계 이상이어야 합니다")
     public boolean isAgeWindowValid() { return maximumAgeMs >= refreshIntervalMs + pollIntervalMs; }

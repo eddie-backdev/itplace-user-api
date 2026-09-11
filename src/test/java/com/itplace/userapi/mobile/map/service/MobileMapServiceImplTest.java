@@ -28,7 +28,7 @@ class MobileMapServiceImplTest {
 
     @Test
     void findNearby_returnsLightweightMarkersFromExistingStoreService() {
-        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, null, null, null, null))
                 .thenReturn(List.of(store(1L, "GS25 강남점", Carrier.LGU)));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
@@ -49,7 +49,7 @@ class MobileMapServiceImplTest {
 
     @Test
     void findNearby_keepsSearchCenterSeparateFromUserDistanceOrigin() {
-        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.49, 126.99))
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.49, 126.99, 800, null, null, null, null))
                 .thenReturn(List.of(store(1L, "GS25 강남점", Carrier.LGU, 1.2)));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
@@ -61,12 +61,9 @@ class MobileMapServiceImplTest {
     }
 
     @Test
-    void findNearby_filtersMarkersByCarrierForMobilePayload() {
-        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
-                .thenReturn(List.of(
-                        store(1L, "GS25 강남점", Carrier.LGU),
-                        store(2L, "GS25 역삼점", Carrier.SKT)
-                ));
+    void findNearbyConvertsCarrierFilteredStoreServiceResults() {
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, "LGU", null, null, null))
+                .thenReturn(List.of(store(1L, "GS25 강남점", Carrier.LGU)));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
                 37.5, 127.0, 37.5, 127.0, 800, "LGU", null, null, null);
@@ -80,11 +77,9 @@ class MobileMapServiceImplTest {
     }
 
     @Test
-    void findNearby_excludesStoreWithoutTierBenefitWhenCarrierIsRequested() {
-        StoreDetailResponse noBenefit = store(1L, "GS25 강남점", Carrier.LGU);
-        noBenefit.setTierBenefit(List.of());
-        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
-                .thenReturn(List.of(noBenefit));
+    void findNearbyReturnsEmptyMarkersWhenStoreServiceRejectsAllCarrierCandidates() {
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, "LGU", null, null, null))
+                .thenReturn(List.of());
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
                 37.5, 127.0, 37.5, 127.0, 800, "LGU", null, null, null);
@@ -96,7 +91,7 @@ class MobileMapServiceImplTest {
     void findNearby_usesNeutralSummaryWhenBenefitDetailsAreUnavailable() {
         StoreDetailResponse noBenefit = store(1L, "GS25 강남점", Carrier.LGU);
         noBenefit.setTierBenefit(List.of());
-        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, null, null, null, null))
                 .thenReturn(List.of(noBenefit));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
@@ -108,12 +103,9 @@ class MobileMapServiceImplTest {
     }
 
     @Test
-    void findNearby_filtersKeywordResultsOutsideRequestedRadius() {
-        when(storeService.findNearbyByKeyword(37.5, 127.0, null, "커피", 37.5, 127.0))
-                .thenReturn(List.of(
-                        store(1L, "GS25 강남점", Carrier.LGU, 0.5, 37.5045),
-                        store(2L, "GS25 역삼점", Carrier.LGU, 0.9, 37.5081)
-                ));
+    void findNearbyUsesKeywordCandidatesFilteredByStoreService() {
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, null, null, "커피", null))
+                .thenReturn(List.of(store(1L, "GS25 강남점", Carrier.LGU, 0.5, 37.5045)));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
                 37.5, 127.0, 37.5, 127.0, 800, null, null, "커피", null);
@@ -124,12 +116,9 @@ class MobileMapServiceImplTest {
     }
 
     @Test
-    void findNearby_filtersPartnerResultsOutsideRequestedRadius() {
-        when(storeService.findNearbyByPartnerName(37.5, 127.0, "GS25", 37.5, 127.0))
-                .thenReturn(List.of(
-                        store(1L, "GS25 강남점", Carrier.LGU, 0.7, 37.5063),
-                        store(2L, "GS25 역삼점", Carrier.LGU, 1.1, 37.5099)
-                ));
+    void findNearbyUsesPartnerCandidatesFilteredByStoreService() {
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, null, null, null, "GS25"))
+                .thenReturn(List.of(store(1L, "GS25 강남점", Carrier.LGU, 0.7, 37.5063)));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(
                 37.5, 127.0, 37.5, 127.0, 800, null, null, null, "GS25");
@@ -146,7 +135,7 @@ class MobileMapServiceImplTest {
                 tier(1L, Carrier.LGU, "LGU 할인"),
                 tier(2L, Carrier.SKT, "SKT 할인")
         ));
-        when(storeService.findNearbyDistributedForMap(37.5, 127.0, 800, null, 37.5, 127.0))
+        when(storeService.findNearbyForMobile(37.5, 127.0, 37.5, 127.0, 800, null, null, null, null))
                 .thenReturn(List.of(store));
 
         MobileMapNearbyResponse response = mobileMapService.findNearby(

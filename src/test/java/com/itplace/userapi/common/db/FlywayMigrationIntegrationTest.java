@@ -39,6 +39,7 @@ class FlywayMigrationIntegrationTest {
                     CREATE TABLE store (
                         storeId BIGSERIAL PRIMARY KEY,
                         partnerId BIGINT NOT NULL,
+                        storeName VARCHAR(255),
                         business VARCHAR(255),
                         address VARCHAR(512),
                         city VARCHAR(100),
@@ -135,6 +136,7 @@ class FlywayMigrationIntegrationTest {
                         createdDate TIMESTAMP NOT NULL
                     )
                     """);
+            statement.execute("CREATE TABLE favorite (benefitId BIGINT, userId BIGINT, createdDate TIMESTAMP, PRIMARY KEY(benefitId,userId))");
             statement.execute("INSERT INTO partner VALUES (1, '테스트카페', '카페')");
             statement.execute("""
                     INSERT INTO store (
@@ -198,7 +200,7 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(10);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(11);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
@@ -215,6 +217,8 @@ class FlywayMigrationIntegrationTest {
             assertThat(columnExists(connection, "recommendations", "cachebatchid")).isTrue();
             assertThat(columnExists(connection, "recommendations", "requestid")).isTrue();
             assertThat(indexExists(connection, "idx_store_location")).isTrue();
+            assertThat(indexExists(connection, "idx_store_name_search")).isTrue();
+            assertThat(indexExists(connection, "idx_favorite_user_created")).isTrue();
             assertThat(indexExists(connection, "idx_inquiries_status_created")).isTrue();
             assertThat(indexExists(connection, "idx_map_region_anchor_viewport")).isTrue();
             assertThat(indexExists(connection, "idx_map_region_store_summary_cluster_lookup")).isTrue();
@@ -244,7 +248,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20260904.0001");
+                    """)).isEqualTo("20260911.0001");
 
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("UPDATE store SET active = false WHERE storeId = 1");

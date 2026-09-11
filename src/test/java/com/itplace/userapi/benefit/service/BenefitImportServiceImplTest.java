@@ -66,6 +66,9 @@ class BenefitImportServiceImplTest {
     @Mock
     private BenefitSnapshotImportStateRepository benefitSnapshotImportStateRepository;
 
+    @Mock
+    private com.itplace.userapi.map.service.PartnerBenefitCacheService partnerBenefitCacheService;
+
     private BenefitImportServiceImpl service;
 
     @BeforeEach
@@ -76,7 +79,8 @@ class BenefitImportServiceImplTest {
                 benefitCarrierPolicyRepository,
                 carrierTierBenefitRepository,
                 benefitPolicyRepository,
-                benefitSnapshotImportStateRepository
+                benefitSnapshotImportStateRepository,
+                partnerBenefitCacheService
         );
         ReflectionTestUtils.setField(service, "expectedApiKey", "internal-key");
         lenient().when(benefitSnapshotImportStateRepository.findByCarrierForUpdate(any(Carrier.class)))
@@ -311,6 +315,7 @@ class BenefitImportServiceImplTest {
     @Test
     void inactivatesActiveCarrierPoliciesMissingFromFullSnapshot() {
         BenefitCarrierPolicy missing = BenefitCarrierPolicy.builder()
+                .benefit(Benefit.builder().partner(Partner.builder().partnerId(88L).build()).build())
                 .benefitCarrierPolicyId(99L)
                 .carrier(Carrier.SKT)
                 .sourceKey("skt-disappeared")
@@ -325,6 +330,37 @@ class BenefitImportServiceImplTest {
         ArgumentCaptor<Iterable<BenefitCarrierPolicy>> policyCaptor = iterableCaptor();
         verify(benefitCarrierPolicyRepository, times(2)).saveAll(policyCaptor.capture());
         assertThat(toList(policyCaptor.getAllValues().get(1))).containsExactly(missing);
+        verify(partnerBenefitCacheService).invalidateAfterCommit(List.of(7L, 88L));
+    }
+
+    @Test
+    void inactivatesMissingPoliciesWithoutPartnerAndInvalidatesOnlyKnownPartnerIds() {
+        BenefitCarrierPolicy orphan = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(91L)
+                .benefit(Benefit.builder().benefitId(81L).build())
+                .carrier(Carrier.SKT).sourceKey("orphan-policy").active(true).build();
+        BenefitCarrierPolicy partnerWithoutId = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(92L)
+                .benefit(Benefit.builder().benefitId(82L).partner(Partner.builder().build()).build())
+                .carrier(Carrier.SKT).sourceKey("partner-without-id").active(true).build();
+        BenefitCarrierPolicy knownPartner = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(93L)
+                .benefit(Benefit.builder().benefitId(83L).partner(Partner.builder().partnerId(88L).build()).build())
+                .carrier(Carrier.SKT).sourceKey("known-partner").active(true).build();
+        List<BenefitCarrierPolicy> missing = List.of(orphan, partnerWithoutId, knownPartner);
+        when(benefitCarrierPolicyRepository.findAllByCarrier(Carrier.SKT)).thenReturn(missing);
+
+        BenefitSnapshotImportResponse response = service.importSnapshot(request(), "internal-key");
+
+        assertThat(response.getStatus()).isEqualTo(BenefitSnapshotImportStatus.APPLIED);
+        assertThat(missing).allSatisfy(policy -> {
+            assertThat(policy.getActive()).isFalse();
+            assertThat(policy.getLastCrawledAt()).isNotNull();
+        });
+        ArgumentCaptor<Iterable<BenefitCarrierPolicy>> policyCaptor = iterableCaptor();
+        verify(benefitCarrierPolicyRepository, times(2)).saveAll(policyCaptor.capture());
+        assertThat(toList(policyCaptor.getAllValues().get(1))).containsExactlyElementsOf(missing);
+        verify(partnerBenefitCacheService).invalidateAfterCommit(List.of(7L, 88L));
     }
 
     @Test
@@ -337,8 +373,11 @@ class BenefitImportServiceImplTest {
                         new BenefitSnapshotImportState(Carrier.SKT, alreadyAppliedAt)
                 ));
 
+        when(partnerRepository.findAll()).thenReturn(List.of(Partner.builder().partnerId(7L).build(),
+                Partner.builder().partnerId(88L).build()));
         BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
 
+        verify(partnerBenefitCacheService).invalidateAfterCommit(List.of(7L, 88L));
         assertThat(response.getStatus()).isEqualTo(BenefitSnapshotImportStatus.DUPLICATE);
         assertThat(response.getReceivedCount()).isEqualTo(1);
         assertThat(response.getUpsertedBenefitCount()).isZero();

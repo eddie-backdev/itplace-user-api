@@ -10,6 +10,11 @@ spring:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 
+  data:
+    redis:
+      timeout: ${REDIS_TIMEOUT:2s}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
@@ -61,8 +66,8 @@ spring:
 
 elasticsearch:
   scheme: http
-  connectTimeoutMs: 2000
-  socketTimeoutMs: 30000
+  connectTimeoutMs: ${ELASTICSEARCH_CONNECT_TIMEOUT_MS:2000}
+  socketTimeoutMs: ${ELASTICSEARCH_SOCKET_TIMEOUT_MS:30000}
 
 google:
   recaptcha:
@@ -87,6 +92,8 @@ app:
       login-initial-lock: ${AUTH_LOGIN_INITIAL_LOCK:30s}
       login-max-lock: ${AUTH_LOGIN_MAX_LOCK:15m}
   map:
+    search:
+      socket-timeout-ms: ${MAP_SEARCH_SOCKET_TIMEOUT_MS:3000}
     cluster-snapshot:
       enabled: ${MAP_CLUSTER_SNAPSHOT_ENABLED:true}
       poll-interval-ms: ${MAP_CLUSTER_SNAPSHOT_POLL_INTERVAL_MS:5000}
@@ -96,12 +103,15 @@ app:
       max-category-counts: ${MAP_CLUSTER_SNAPSHOT_MAX_CATEGORY_COUNTS:100000}
       max-payload-bytes: ${MAP_CLUSTER_SNAPSHOT_MAX_PAYLOAD_BYTES:16777216}
       query-timeout-seconds: ${MAP_CLUSTER_SNAPSHOT_QUERY_TIMEOUT_SECONDS:5}
+      network-timeout-ms: ${MAP_CLUSTER_SNAPSHOT_NETWORK_TIMEOUT_MS:10000}
     cluster-summary:
       refresh:
         enabled: ${MAP_CLUSTER_SUMMARY_REFRESH_ENABLED:true}
         initial-delay-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_INITIAL_DELAY_MS:60000}
         fixed-delay-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_FIXED_DELAY_MS:300000}
         minimum-interval-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_MINIMUM_INTERVAL_MS:240000}
+        query-timeout-seconds: ${MAP_CLUSTER_SUMMARY_REFRESH_QUERY_TIMEOUT_SECONDS:45}
+        network-timeout-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_NETWORK_TIMEOUT_MS:50000}
   ai:
     indexing:
       enabled: ${AI_INDEXING_ENABLED:false}
@@ -168,3 +178,5 @@ kakao:
   local:
     base-url: ${KAKAO_LOCAL_BASE_URL:https://dapi.kakao.com}
     rest-api-key: ${KAKAO_REST_API_KEY:}
+    connect-timeout: ${KAKAO_LOCAL_CONNECT_TIMEOUT:2s}
+    read-timeout: ${KAKAO_LOCAL_READ_TIMEOUT:3s}

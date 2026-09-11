@@ -30,16 +30,29 @@ import org.springframework.stereotype.Service;
 public class MapClusterSnapshotCache {
     static final String KEY = "map-cluster-snapshot:v1";
     private static final TypeReference<Map<String, MapClusterSnapshot.CategoryCount>> COUNTS = new TypeReference<>() {};
-    private static final DefaultRedisScript<String> READ = new DefaultRedisScript<>("""
+    private static final DefaultRedisScript<List> READ = new DefaultRedisScript<>("""
             if redis.call('HSTRLEN', KEYS[1], 'data') > tonumber(ARGV[1]) then
                 return redis.error_reply('map snapshot exceeds size limit')
             end
-            return redis.call('HGET', KEYS[1], 'data')
-            """, String.class);
+            return redis.call('HMGET', KEYS[1], 'version', 'createdAt', 'verifiedAt', 'verifiedVersion', 'data')
+            """, List.class);
     static final DefaultRedisScript<Long> PUBLISH = new DefaultRedisScript<>("""
             local previous = tonumber(redis.call('HGET', KEYS[1], 'createdAt'))
+            if redis.call('HGET', KEYS[1], 'verifiedVersion') == redis.call('HGET', KEYS[1], 'version') then
+                previous = tonumber(redis.call('HGET', KEYS[1], 'verifiedAt')) or previous
+            end
             if previous and previous >= tonumber(ARGV[1]) then return 0 end
-            redis.call('HSET', KEYS[1], 'createdAt', ARGV[1], 'version', ARGV[2], 'data', ARGV[3])
+            redis.call('HSET', KEYS[1], 'createdAt', ARGV[1], 'verifiedAt', ARGV[1], 'verifiedVersion', ARGV[2], 'version', ARGV[2], 'data', ARGV[3])
+            return 1
+            """, Long.class);
+    static final DefaultRedisScript<Long> REVALIDATE = new DefaultRedisScript<>("""
+            if redis.call('HGET', KEYS[1], 'version') ~= ARGV[1] then return 0 end
+            local previous = tonumber(redis.call('HGET', KEYS[1], 'createdAt'))
+            if redis.call('HGET', KEYS[1], 'verifiedVersion') == redis.call('HGET', KEYS[1], 'version') then
+                previous = tonumber(redis.call('HGET', KEYS[1], 'verifiedAt')) or previous
+            end
+            if previous and previous >= tonumber(ARGV[2]) then return 0 end
+            redis.call('HSET', KEYS[1], 'verifiedAt', ARGV[2], 'verifiedVersion', ARGV[1])
             return 1
             """, Long.class);
     static final String SQL = """
@@ -58,6 +71,7 @@ public class MapClusterSnapshotCache {
                    jsonb_object_agg(category, jsonb_build_object('name', name, 'count', count))::text AS counts
             FROM categories
             GROUP BY aggregation_unit, region_type, region_hash, region_key, latitude, longitude
+            ORDER BY aggregation_unit, region_type, region_hash, region_key, latitude, longitude
             LIMIT ?
             """;
 
@@ -70,9 +84,12 @@ public class MapClusterSnapshotCache {
     private final Counter fallbacks;
     private final Counter builds;
     private final Counter installs;
+    private final Counter revalidations;
     private final Counter failures;
     // 이전 세대 목록, 요청별 결과, Future/대기열을 유지하지 않는다.
-    private volatile MapClusterSnapshot current;
+    private volatile State current;
+
+    private record State(MapClusterSnapshot snapshot, long verifiedAt) {}
 
     @Autowired
     public MapClusterSnapshotCache(StringRedisTemplate redis, ObjectMapper mapper,
@@ -92,29 +109,39 @@ public class MapClusterSnapshotCache {
         fallbacks = registry.counter("map.cluster.snapshot.requests", "result", "fallback");
         builds = registry.counter("map.cluster.snapshot.builds");
         installs = registry.counter("map.cluster.snapshot.installs");
+        revalidations = registry.counter("map.cluster.snapshot.revalidations");
         failures = registry.counter("map.cluster.snapshot.failures");
-        Gauge.builder("map.cluster.snapshot.regions", this, cache -> cache.current == null ? 0 : cache.current.data.regions().size()).register(registry);
-        Gauge.builder("map.cluster.snapshot.json.bytes", this, cache -> cache.current == null ? 0 : cache.current.jsonBytes).register(registry);
-        Gauge.builder("map.cluster.snapshot.age.seconds", this, cache -> cache.current == null ? -1 : Math.max(0, cache.clock.millis() - cache.current.data.createdAt()) / 1000.0).register(registry);
+        Gauge.builder("map.cluster.snapshot.regions", this, cache -> {
+            State state = cache.current;
+            return state == null ? 0 : state.snapshot.data.regions().size();
+        }).register(registry);
+        Gauge.builder("map.cluster.snapshot.json.bytes", this, cache -> {
+            State state = cache.current;
+            return state == null ? 0 : state.snapshot.jsonBytes;
+        }).register(registry);
+        Gauge.builder("map.cluster.snapshot.age.seconds", this, cache -> {
+            State state = cache.current;
+            return state == null ? -1 : Math.max(0, cache.clock.millis() - state.verifiedAt) / 1000.0;
+        }).register(registry);
     }
 
     public boolean isEnabled() { return properties.isEnabled(); }
 
     public Optional<List<StoreClusterProjection>> find(String unit, double minLat, double maxLat,
                                                       double minLng, double maxLng, String category, int mapLevel) {
-        MapClusterSnapshot snapshot = current;
-        if (!isEnabled() || snapshot == null || !fresh(snapshot.data.createdAt(), properties.getMaximumAgeMs())
+        State state = current;
+        if (!isEnabled() || state == null || !fresh(state.verifiedAt, properties.getMaximumAgeMs())
                 || !Double.isFinite(minLat) || !Double.isFinite(maxLat)
                 || !Double.isFinite(minLng) || !Double.isFinite(maxLng)) {
             fallbacks.increment();
             return Optional.empty();
         }
         hits.increment();
-        return Optional.of(snapshot.select(unit, minLat, maxLat, minLng, maxLng, category, mapLevel));
+        return Optional.of(state.snapshot.select(unit, minLat, maxLat, minLng, maxLng, category, mapLevel));
     }
 
     @Scheduled(initialDelayString = "${app.map.cluster-snapshot.initial-delay-ms:1000}",
-            fixedDelayString = "${app.map.cluster-snapshot.poll-interval-ms:5000}")
+            fixedDelayString = "${app.map.cluster-snapshot.poll-interval-ms:5000}", scheduler = "mapSnapshotScheduler")
     public synchronized void synchronizeSnapshot() {
         if (!isEnabled()) { current = null; return; }
         try {
@@ -126,25 +153,43 @@ public class MapClusterSnapshotCache {
     }
 
     private boolean readFreshSharedSnapshot() throws Exception {
-        List<Object> metadata = redis.opsForHash().multiGet(KEY, List.of("version", "createdAt"));
-        if (metadata.size() != 2 || metadata.get(0) == null || metadata.get(1) == null) return false;
-        long createdAt;
-        try { createdAt = Long.parseLong(metadata.get(1).toString()); }
-        catch (NumberFormatException invalid) { return false; }
-        if (!fresh(createdAt, properties.getRefreshIntervalMs())) return false;
-        MapClusterSnapshot snapshot = current;
-        if (snapshot != null && snapshot.data.version().equals(metadata.get(0))) return true;
-        String json = redis.execute(READ, List.of(KEY), Integer.toString(properties.getMaxPayloadBytes()));
-        if (json == null) return false;
+        List<Object> metadata = redis.opsForHash().multiGet(KEY, List.of("version", "createdAt", "verifiedAt", "verifiedVersion"));
+        long verifiedAt = verifiedAt(metadata);
+        if (!fresh(verifiedAt, properties.getRefreshIntervalMs())) return false;
+        State state = current;
+        if (state != null && state.snapshot.data.version().equals(metadata.get(0))) {
+            current = new State(state.snapshot, verifiedAt);
+            return true;
+        }
+        // metadata와 data를 한 번에 읽어 게시/heartbeat 사이에 세대가 섞이지 않게 한다.
+        List<?> shared = redis.execute(READ, List.of(KEY), Integer.toString(properties.getMaxPayloadBytes()));
+        if (shared == null || shared.size() != 5 || shared.get(4) == null) return false;
+        verifiedAt = verifiedAt(shared);
+        if (!fresh(verifiedAt, properties.getRefreshIntervalMs())) return false;
+        String json = shared.get(4).toString();
         MapClusterSnapshot.Data data = mapper.readValue(json, MapClusterSnapshot.Data.class);
-        if (!fresh(data.createdAt(), properties.getRefreshIntervalMs())) return false;
+        if (!data.version().equals(shared.get(0)) || data.createdAt() != Long.parseLong(shared.get(1).toString())) return false;
         install(new MapClusterSnapshot(data, json.getBytes(StandardCharsets.UTF_8).length,
-                properties.getMaxRegions(), properties.getMaxCategoryCounts()));
+                properties.getMaxRegions(), properties.getMaxCategoryCounts()), verifiedAt);
         return true;
+    }
+
+    private long verifiedAt(List<?> metadata) {
+        if (metadata.size() < 4 || metadata.get(0) == null || metadata.get(1) == null) return 0;
+        try {
+            long createdAt = Long.parseLong(metadata.get(1).toString());
+            // 이전 게시자는 heartbeat 필드를 갱신하지 않는다. 현재 version의 검증만 인정한다.
+            return metadata.get(0).equals(metadata.get(3)) && metadata.get(2) != null
+                    ? Math.max(createdAt, Long.parseLong(metadata.get(2).toString())) : createdAt;
+        } catch (NumberFormatException invalid) {
+            return 0;
+        }
     }
 
     private void rebuildIfNeeded() throws Exception {
         try (Connection connection = source.getConnection()) {
+            int originalNetworkTimeout = connection.getNetworkTimeout();
+            connection.setNetworkTimeout(Runnable::run, properties.getNetworkTimeoutMs());
             connection.setReadOnly(true);
             connection.setAutoCommit(false);
             try {
@@ -178,6 +223,19 @@ public class MapClusterSnapshotCache {
                             }
                         }
                     }
+                    State previous = current;
+                    // MV와 대표점을 모두 비교한다. timestamp/통계 추정으로 변경을 놓치지 않는다.
+                    if (previous != null && previous.snapshot.data.regions().equals(rows)) {
+                        if (!fresh(createdAt, properties.getRefreshIntervalMs())) throw new IllegalStateException("지도 snapshot 검증 시간 초과");
+                        Long renewed = redis.execute(REVALIDATE, List.of(KEY), previous.snapshot.data.version(), Long.toString(createdAt));
+                        if (Long.valueOf(1).equals(renewed)) {
+                            current = new State(previous.snapshot, createdAt);
+                            revalidations.increment();
+                            return;
+                        }
+                        if (readFreshSharedSnapshot()) return;
+                        // Redis 재시작/eviction으로 공유 데이터가 사라졌다면 다시 게시한다.
+                    }
                     MapClusterSnapshot.Data data = new MapClusterSnapshot.Data(1, UUID.randomUUID().toString(), createdAt, rows);
                     String json = mapper.writeValueAsString(data);
                     int bytes = json.getBytes(StandardCharsets.UTF_8).length;
@@ -187,7 +245,7 @@ public class MapClusterSnapshotCache {
                     // timeout 뒤 지연 도착한 이전 게시도 새 집계를 덮어쓰지 못하게 Redis에서 시각을 비교한다.
                     Long published = redis.execute(PUBLISH, List.of(KEY), Long.toString(createdAt), data.version(), json);
                     if (Long.valueOf(1).equals(published)) {
-                        install(snapshot);
+                        install(snapshot, createdAt);
                         builds.increment();
                     } else {
                         readFreshSharedSnapshot();
@@ -196,13 +254,16 @@ public class MapClusterSnapshotCache {
                 connection.commit();
             } finally {
                 // 중도 반환/실패 때도 transaction advisory lock을 해제한다.
-                connection.rollback();
+                try { connection.rollback(); }
+                finally {
+                    if (!connection.isClosed()) connection.setNetworkTimeout(Runnable::run, originalNetworkTimeout);
+                }
             }
         }
     }
 
-    private void install(MapClusterSnapshot snapshot) {
-        current = snapshot;
+    private void install(MapClusterSnapshot snapshot, long verifiedAt) {
+        current = new State(snapshot, verifiedAt);
         installs.increment();
     }
 

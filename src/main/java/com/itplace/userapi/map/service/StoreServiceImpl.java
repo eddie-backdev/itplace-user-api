@@ -1,6 +1,7 @@
 package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.StoreCode;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
@@ -36,7 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Slf4j
 public class StoreServiceImpl implements StoreService {
     private final StoreRepository storeRepository;
@@ -243,7 +244,7 @@ public class StoreServiceImpl implements StoreService {
         double centerLat = (normalizedMinLat + normalizedMaxLat) / 2;
         double centerLng = (normalizedMinLng + normalizedMaxLng) / 2;
 
-        List<StorePreviewProjection> matchedPreviews = storePreviewQueryService.findStorePreviewsInView(
+        List<StorePreviewProjection> matchedPreviews = filterPreviewsMatchedToPartner(storePreviewQueryService.findStorePreviewsInView(
                         normalizedMinLat,
                         normalizedMaxLat,
                         normalizedMinLng,
@@ -252,9 +253,7 @@ public class StoreServiceImpl implements StoreService {
                         centerLng,
                         normalizeCategory(category),
                         normalizeMapInViewPreviewLimit(limit)
-                ).stream()
-                .filter(this::isStoreMatchedToPartner)
-                .toList();
+                ));
         if (matchedPreviews.isEmpty()) {
             return MapStorePreviewBatchResponse.builder()
                     .stores(List.of())
@@ -307,7 +306,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MapStorePreviewResponse> findNearbyPreviews(double lat, double lng, double radiusMeters, double userLat,
                                                             double userLng) {
         List<Long> allStoreIds = storeRepository.findStoreIdsInRadius(
@@ -326,7 +325,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<StoreDetailResponse> findNearby(double lat, double lng, double radiusMeters, double userLat,
                                            double userLng) {
         List<Long> allStoreIds = storeRepository.findStoreIdsInRadius(
@@ -424,7 +423,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<StoreDetailResponse> findNearbyDistributedForMap(double lat, double lng, double radiusMeters,
                                                                  String category, double userLat, double userLng) {
         String normalizedCategory = normalizeCategory(category);
@@ -443,7 +442,7 @@ public class StoreServiceImpl implements StoreService {
 
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MapStorePreviewResponse> findNearbyByCategoryPreviews(double lat, double lng, double radiusMeters,
                                                                       String category, double userLat, double userLng) {
         if (category == null || category.isBlank() || category.equalsIgnoreCase("전체")) {
@@ -466,14 +465,14 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<StoreDetailResponse> findNearbyByCategory(double lat, double lng, double radiusMeters, String category,
                                                      double userLat, double userLng) {
         if (category == null || category.isBlank() || category.equalsIgnoreCase("전체")) {
             return findNearby(lat, lng, radiusMeters, userLat, userLng);
         }
 
-        log.info("카테고리 기반 반경 검색 실행: {}, 반경: {}m", category, radiusMeters);
+        log.debug("카테고리 기반 반경 검색 실행: {}, 반경: {}m", category, radiusMeters);
 
         List<Long> storeIds = storeRepository.findStoreIdsByCategoryWithinRadius(
                 category, lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
@@ -514,18 +513,23 @@ public class StoreServiceImpl implements StoreService {
 
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MapStorePreviewResponse> findNearbyByKeywordPreviews(double lat, double lng, String category,
                                                                      String keyword, double userLat, double userLng) {
-        return findNearbyByKeyword(lat, lng, category, keyword, userLat, userLng).stream()
-                .map(MapStorePreviewResponse::fromDetail)
-                .toList();
+        return toMapStorePreviewResponses(findKeywordStores(lat, lng, category, keyword, userLat, userLng),
+                userLat, userLng);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<StoreDetailResponse> findNearbyByKeyword(double lat, double lng, String category,
                                                     String keyword, double userLat, double userLng) {
+        return toStoreDetailResponses(findKeywordStores(lat, lng, category, keyword, userLat, userLng),
+                userLat, userLng);
+    }
+
+    private List<Store> findKeywordStores(double lat, double lng, String category,
+                                          String keyword, double userLat, double userLng) {
         if (keyword == null || keyword.isBlank()) {
             throw new StoreKeywordException(StoreCode.KEYWORD_REQUEST);
         }
@@ -544,11 +548,11 @@ public class StoreServiceImpl implements StoreService {
             searchResult = storeSearchService.searchByKeyword(normalizedKeyword, category);
         } catch (RuntimeException e) {
             log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category, e);
-            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
+            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
         }
         if (searchResult.isEmpty()) {
             log.info("ES 매장 검색 결과 없음, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
-            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
+            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
         }
 
         // 전국 ES 후보 제한 밖의 가까운 정확 일치 매장도 지리 검색으로 보충한다.
@@ -559,37 +563,20 @@ public class StoreServiceImpl implements StoreService {
         List<Store> allStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(allIds));
         if (allStores.isEmpty()) {
             log.info("ES 매장 검색 ID가 DB에서 조회되지 않아 DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
-            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
+            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
         }
 
-        List<Long> partnerIds = allStores.stream()
-                .map(store -> store.getPartner().getPartnerId())
-                .distinct()
-                .toList();
-
-        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
-
-        // storeId → DTO 맵 구성
-        Map<Long, StoreDetailResponse> dtoMap = allStores.stream()
-                .collect(Collectors.toMap(
-                        store -> store.getStoreId(),
-                        store -> {
-                            Partner partner = store.getPartner();
-                            double storeLat = store.getLocation().getY();
-                            double storeLng = store.getLocation().getX();
-                            double distance = userLat == 0 || userLng == 0
-                                    ? 0 : calculateDistance(userLat, userLng, storeLat, storeLng);
-                            List<BenefitCacheDto> finalBenefits = selectBenefits(
-                                    partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
-                                    store.getStoreName()
-                            );
-                            List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
-                            return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
-                        }
-                ));
+        Map<Long, Store> storesById = allStores.stream()
+                .collect(Collectors.toMap(Store::getStoreId, store -> store));
+        Map<Long, Double> distances = new HashMap<>();
+        for (Store store : allStores) {
+            distances.put(store.getStoreId(), userLat == 0 || userLng == 0 ? 0.0
+                    : calculateDistance(userLat, userLng, store.getLocation().getY(), store.getLocation().getX()));
+        }
+        Comparator<Store> byDistance = Comparator.comparingDouble(store -> distances.get(store.getStoreId()));
 
         List<Long> strictBrandMatchIds = Stream.concat(nearbyIds.stream(), searchResult.brandMatchIds().stream()).distinct()
-                .filter(id -> isStrictPartnerKeywordMatch(dtoMap.get(id), normalizedKeyword))
+                .filter(id -> isStrictPartnerKeywordMatch(storesById.get(id), normalizedKeyword))
                 .toList();
         Set<Long> brandIds = new HashSet<>(strictBrandMatchIds);
         List<Long> nameMatchIds = Stream.concat(nearbyIds.stream(), searchResult.nameMatchIds().stream())
@@ -597,7 +584,7 @@ public class StoreServiceImpl implements StoreService {
         if (strictBrandMatchIds.isEmpty() && nameMatchIds.isEmpty()) {
             log.info("ES 브랜드 검색 결과가 키워드와 정확히 맞지 않아 DB 키워드 검색으로 대체: keyword={}, category={}",
                     normalizedKeyword, category);
-            return searchNearbyStoresInDatabase(lat, lng, category, normalizedKeyword, userLat, userLng);
+            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
         }
 
         // 브랜드 매치(partnerName) 그룹은 실제 파트너명이 키워드와 포함 관계일 때만 우선 노출한다.
@@ -605,69 +592,52 @@ public class StoreServiceImpl implements StoreService {
         // 검증되지 않은 브랜드 매치를 먼저 보여주면 무관한 혜택이 적용된 것처럼 보인다.
         return Stream.concat(
                 strictBrandMatchIds.stream()
-                        .map(dtoMap::get)
+                        .map(storesById::get)
                         .filter(Objects::nonNull)
-                        .sorted(Comparator.comparing(StoreDetailResponse::getDistance)),
+                        .sorted(byDistance),
                 nameMatchIds.stream()
-                        .map(dtoMap::get)
+                        .map(storesById::get)
                         .filter(Objects::nonNull)
-                        .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
+                        .sorted(byDistance)
         ).toList();
     }
 
 
     private List<Store> filterStoresMatchedToPartner(List<Store> stores) {
-        if (stores == null || stores.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return stores.stream()
-                .filter(this::isStoreMatchedToPartner)
-                .toList();
+        if (stores == null || stores.isEmpty()) return List.of();
+        Map<String, PartnerNames> names = new HashMap<>();
+        return stores.stream().filter(store -> store != null && store.getPartner() != null
+                && isStoreMatchedToPartner(store.getStoreName(), store.getBusiness(),
+                        store.getPartner().getPartnerName(), names)).toList();
     }
 
-    private boolean isStoreMatchedToPartner(Store store) {
-        if (store == null || store.getPartner() == null) {
-            return false;
-        }
-        return isStoreMatchedToPartner(
-                store.getStoreName(), store.getBusiness(), store.getPartner().getPartnerName());
+    private List<StorePreviewProjection> filterPreviewsMatchedToPartner(List<StorePreviewProjection> previews) {
+        Map<String, PartnerNames> names = new HashMap<>();
+        return previews.stream().filter(preview -> preview != null
+                && isStoreMatchedToPartner(preview.getStoreName(), preview.getBusiness(),
+                        preview.getPartnerName(), names)).toList();
     }
 
-    private boolean isStoreMatchedToPartner(StorePreviewProjection preview) {
-        if (preview == null) {
-            return false;
-        }
-        return isStoreMatchedToPartner(
-                preview.getStoreName(), preview.getBusiness(), preview.getPartnerName());
-    }
+    private record PartnerNames(String normalized, List<String> aliases) {}
 
-    private boolean isStoreMatchedToPartner(String storeName, String business, String partnerName) {
+    private boolean isStoreMatchedToPartner(String storeName, String business, String partnerName,
+                                             Map<String, PartnerNames> namesByPartner) {
+        PartnerNames names = namesByPartner.computeIfAbsent(partnerName, name -> {
+            String normalized = normalizeSearchText(name);
+            List<String> aliases = switch (normalized) {
+                case "gs25", "지에스25" -> List.of("gs25", "지에스25");
+                case "cu", "씨유" -> List.of("cu", "씨유");
+                case "세븐일레븐", "7eleven" -> List.of("세븐일레븐", "7eleven");
+                default -> List.of(normalized);
+            };
+            return new PartnerNames(normalized, aliases);
+        });
         String normalizedStoreName = normalizeSearchText(storeName);
-        boolean partnerNameMatches = aliasesForPartner(partnerName).stream()
-                .map(this::normalizeSearchText)
-                .filter(alias -> !alias.isBlank())
-                .anyMatch(normalizedStoreName::contains);
-        if (!partnerNameMatches) {
-            return false;
-        }
-        return StorePartnerBusinessPolicy.matches(partnerName, business);
+        return names.aliases().stream().anyMatch(alias -> !alias.isBlank() && normalizedStoreName.contains(alias))
+                && StorePartnerBusinessPolicy.matchesNormalizedPartner(names.normalized(), business);
     }
 
-    private List<String> aliasesForPartner(String partnerName) {
-        String normalized = normalizeSearchText(partnerName);
-        if ("gs25".equals(normalized) || "지에스25".equals(normalized)) {
-            return List.of("GS25", "지에스25");
-        }
-        if ("cu".equals(normalized) || "씨유".equals(normalized)) {
-            return List.of("CU", "씨유");
-        }
-        if ("세븐일레븐".equals(normalized) || "7eleven".equals(normalized)) {
-            return List.of("세븐일레븐", "7-ELEVEN", "7ELEVEN");
-        }
-        return List.of(partnerName);
-    }
-
-    private boolean isStrictPartnerKeywordMatch(StoreDetailResponse response, String keyword) {
+    private boolean isStrictPartnerKeywordMatch(Store response, String keyword) {
         if (response == null || response.getPartner() == null) {
             return false;
         }
@@ -680,19 +650,9 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private String normalizeSearchText(String text) {
-        if (text == null) {
-            return "";
-        }
-        return text.toLowerCase(java.util.Locale.ROOT).replaceAll("[^가-힣a-z0-9]+", "");
+        return StorePartnerBusinessPolicy.normalize(text);
     }
 
-
-    private List<StoreDetailResponse> searchNearbyStoresInDatabase(double lat, double lng, String category,
-                                                                   String keyword, double userLat, double userLng) {
-        List<Long> fallbackStoreIds = storeRepository.searchNearbyStoreIds(lng, lat, category, keyword);
-        List<Store> fallbackStores = findStoresWithPartnerInRequestedOrder(fallbackStoreIds);
-        return toStoreDetailResponses(fallbackStores, userLat, userLng);
-    }
 
     private List<Store> findStoresWithPartnerInRequestedOrder(List<Long> storeIds) {
         if (storeIds == null || storeIds.isEmpty()) {
@@ -717,9 +677,7 @@ public class StoreServiceImpl implements StoreService {
     private List<MapStorePreviewResponse> toMapStorePreviewResponsesFromProjection(List<StorePreviewProjection> previews,
                                                                                    double userLat, double userLng,
                                                                                    boolean includeBenefits) {
-        List<StorePreviewProjection> matchedPreviews = previews.stream()
-                .filter(this::isStoreMatchedToPartner)
-                .toList();
+        List<StorePreviewProjection> matchedPreviews = filterPreviewsMatchedToPartner(previews);
         if (matchedPreviews.isEmpty()) {
             return Collections.emptyList();
         }
@@ -799,6 +757,11 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private List<StoreDetailResponse> toStoreDetailResponses(List<Store> stores, double userLat, double userLng) {
+        return toStoreDetailResponses(stores, userLat, userLng, null, false);
+    }
+
+    private List<StoreDetailResponse> toStoreDetailResponses(List<Store> stores, double userLat, double userLng,
+                                                            Carrier carrier, boolean includeZeroCoordinates) {
         List<Store> matchedStores = filterStoresMatchedToPartner(stores);
         if (matchedStores.isEmpty()) {
             return Collections.emptyList();
@@ -814,7 +777,7 @@ public class StoreServiceImpl implements StoreService {
         return matchedStores.stream()
                 .map(store -> {
                     Partner partner = store.getPartner();
-                    double distance = userLat == 0 || userLng == 0
+                    double distance = !includeZeroCoordinates && (userLat == 0 || userLng == 0)
                             ? 0 : calculateDistance(userLat, userLng,
                             store.getLocation().getY(), store.getLocation().getX());
                     List<BenefitCacheDto> finalBenefits = selectBenefits(
@@ -822,13 +785,61 @@ public class StoreServiceImpl implements StoreService {
                             store.getStoreName()
                     );
                     List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
+                    if (carrier != null) {
+                        tierBenefitDtos = tierBenefitDtos.stream()
+                                .filter(tier -> tier.getCarrier() == null || tier.getCarrier() == carrier).toList();
+                        if (tierBenefitDtos.isEmpty()) return null;
+                    }
                     return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
                 })
+                .filter(Objects::nonNull)
                 .toList();
     }
 
     @Override
-    @Transactional(readOnly = true)
+    public List<StoreDetailResponse> findNearbyForMobile(double lat, double lng, double userLat, double userLng,
+                                                        double radiusMeters, String carrier, String category,
+                                                        String keyword, String partnerName) {
+        List<Store> candidates;
+        boolean distributed = false;
+        if (partnerName != null && !partnerName.isBlank()) {
+            Partner partner = partnerRepository.findByPartnerName(partnerName.trim())
+                    .orElseThrow(() -> new PartnerNotFoundException(PartnerCode.PARTNER_NOT_FOUND));
+            candidates = findStoresWithPartnerInRequestedOrder(
+                    storeRepository.searchNearbyStoreIdsByPartnerId(lng, lat, partner.getPartnerId()));
+        } else if (keyword != null && !keyword.isBlank()) {
+            candidates = findKeywordStores(lat, lng, normalizeCategory(category), keyword.trim(), userLat, userLng);
+        } else {
+            distributed = true;
+            List<Long> ids = findDistributedStoreIdsForMap(lat, lng, radiusMeters, normalizeCategory(category));
+            candidates = ids.isEmpty() ? List.of() : storeRepository.findAllByStoreIdInWithPartner(ids);
+        }
+        List<Store> inRadius = candidates.stream()
+                .filter(store -> withinMobileRadius(store, lat, lng, radiusMeters)).toList();
+        Carrier carrierFilter = null;
+        if (carrier != null && !carrier.isBlank()) {
+            try { carrierFilter = Carrier.valueOf(carrier.trim().toUpperCase(java.util.Locale.ROOT)); }
+            catch (IllegalArgumentException ignored) { /* Legacy mobile accepts unknown carrier as all. */ }
+        }
+        List<StoreDetailResponse> responses = toStoreDetailResponses(inRadius, userLat, userLng, carrierFilter,
+                partnerName != null && !partnerName.isBlank());
+        return distributed ? responses.stream().sorted(Comparator.comparing(StoreDetailResponse::getDistance)
+                .thenComparing(response -> response.getStore().getStoreId())).toList() : responses;
+    }
+
+    private boolean withinMobileRadius(Store store, double lat, double lng, double radiusMeters) {
+        double latitude = store.getLocation().getY();
+        double longitude = store.getLocation().getX();
+        double dLat = Math.toRadians(latitude - lat), dLng = Math.toRadians(longitude - lng);
+        double haversine = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat)) * Math.cos(Math.toRadians(latitude))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double normalized = Math.max(0, Math.min(1, haversine));
+        return 6_378_137.0 * 2 * Math.atan2(Math.sqrt(normalized), Math.sqrt(1 - normalized)) <= radiusMeters;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<StoreDetailResponse> findNearbyByPartnerName(double lat, double lng, String partnerName, double userLat,
                                                         double userLng) {
         if (partnerName == null || partnerName.isBlank()) {
@@ -842,7 +853,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<StoreDetailResponse> findNearbyByBenefitCandidate(double lat,
                                                                   double lng,
                                                                   Long partnerId,

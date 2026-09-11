@@ -7,6 +7,10 @@ import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import java.util.List;
 
 public interface StoreService {
+    List<StoreDetailResponse> findNearbyForMobile(double lat, double lng, double userLat, double userLng,
+                                                  double radiusMeters, String carrier, String category,
+                                                  String keyword, String partnerName);
+
     List<MapStoreClusterResponse> findStoreClustersInView(double minLat, double minLng, double maxLat, double maxLng,
                                                           String category, int mapLevel);
 

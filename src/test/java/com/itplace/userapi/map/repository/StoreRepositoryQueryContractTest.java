@@ -196,13 +196,14 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void previewQuery_usesSpatialIndexEnvelopeBeforeCoordinateFilter() {
+    void previewQuery_separatesSpatialJoinFromExactNumericBounds() {
         String sql = queryValue("findStorePreviewsInView");
 
         assertThat(sql).contains(
                 "s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)",
-                "s.longitude BETWEEN :minLng AND :maxLng",
-                "s.latitude BETWEEN :minLat AND :maxLat"
+                "WITH visible_store AS MATERIALIZED",
+                "numeric_longitude BETWEEN :minLng AND :maxLng",
+                "numeric_latitude BETWEEN :minLat AND :maxLat"
         );
     }
 
@@ -235,8 +236,8 @@ class StoreRepositoryQueryContractTest {
                 .as(methodName)
                 .contains(
                         "s.active = true",
-                        "COALESCE(b.active, true) = true",
-                        "COALESCE(bcp.active, true) = true",
+                        "b.active = true",
+                        "bcp.active = true",
                         "bcp.usageType IN ('offline', 'both')"
                 ));
     }
@@ -264,8 +265,8 @@ class StoreRepositoryQueryContractTest {
     void finalStoreLoads_repeatVisibilityGuardForStaleSearchIds() {
         assertThat(queryValue("findAllByStoreIdInWithPartner")).contains(
                 "s.active = true",
-                "COALESCE(b.active, true) = true",
-                "COALESCE(policy.active, true) = true",
+                "b.active = true",
+                "policy.active = true",
                 "UsageType.OFFLINE",
                 "UsageType.BOTH"
         );
@@ -328,6 +329,18 @@ class StoreRepositoryQueryContractTest {
                 "mapLevel",
                 "administrativeUnitType"
         );
+    }
+
+    @Test
+    void everyDeclaredQueryHasShortReadOnlyTransaction() {
+        Arrays.stream(StoreRepository.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(Query.class))
+                .forEach(method -> {
+                    var transaction = method.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+                    assertThat(transaction).as(method.getName()).isNotNull();
+                    assertThat(transaction.readOnly()).isTrue();
+                    assertThat(transaction.timeout()).isEqualTo(5);
+                });
     }
 
     private String queryValue(String methodName) {

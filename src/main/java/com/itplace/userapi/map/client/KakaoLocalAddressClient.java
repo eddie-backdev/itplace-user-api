@@ -1,10 +1,13 @@
 package com.itplace.userapi.map.client;
 
 import com.itplace.userapi.map.dto.kakao.KakaoCoordinateAddressResponse;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -20,9 +23,14 @@ public class KakaoLocalAddressClient {
     public KakaoLocalAddressClient(
             RestClient.Builder restClientBuilder,
             @Value("${kakao.local.base-url:https://dapi.kakao.com}") String baseUrl,
-            @Value("${kakao.local.rest-api-key:${KAKAO_REST_API_KEY:}}") String restApiKey
+            @Value("${kakao.local.rest-api-key:${KAKAO_REST_API_KEY:}}") String restApiKey,
+            @Value("${kakao.local.connect-timeout:2s}") Duration connectTimeout,
+            @Value("${kakao.local.read-timeout:3s}") Duration readTimeout
     ) {
-        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
+        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(readTimeout);
+        this.restClient = restClientBuilder.baseUrl(baseUrl).requestFactory(requestFactory).build();
         this.restApiKey = restApiKey;
     }
 

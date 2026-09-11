@@ -19,6 +19,7 @@ import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.BenefitSnapshotImportStateRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
 import com.itplace.userapi.partner.entity.Partner;
+import com.itplace.userapi.map.service.PartnerBenefitCacheService;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import com.itplace.userapi.partner.service.PartnerImagePolicy;
 import java.nio.charset.StandardCharsets;
@@ -51,6 +52,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
     private final BenefitPolicyRepository benefitPolicyRepository;
     private final BenefitSnapshotImportStateRepository benefitSnapshotImportStateRepository;
+    private final PartnerBenefitCacheService partnerBenefitCacheService;
 
     @Value("${app.internal.api-key:}")
     private String expectedApiKey;
@@ -73,6 +75,12 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         BenefitSnapshotImportStatus ignoredStatus = ignoredStatus(latestKnownCrawledAt, crawledAt);
         if (ignoredStatus != null) {
             importState.markApplied(latestKnownCrawledAt);
+            // DB commit 이후 Redis만 실패한 import도 동일 스냅샷 재시도로 복구한다.
+            if (ignoredStatus == BenefitSnapshotImportStatus.DUPLICATE) {
+                // 제휴사 이동으로 현재 carrier에서 사라진 이전 제휴사까지 복구한다.
+                partnerBenefitCacheService.invalidateAfterCommit(partnerRepository.findAll().stream()
+                        .map(Partner::getPartnerId).toList());
+            }
             return ignoredResponse(request, latestKnownCrawledAt, ignoredStatus);
         }
 
@@ -84,6 +92,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         List<ImportRow> rows = new ArrayList<>(items.size());
         List<Benefit> benefitsToSave = new ArrayList<>(items.size());
         int tierBenefitCount = 0;
+        Set<Long> changedPartnerIds = new LinkedHashSet<>();
 
         for (BenefitSnapshotImportRequest.BenefitSnapshotItem item : items) {
             Partner partner = partnerByName.get(item.getPartnerName());
@@ -96,6 +105,8 @@ public class BenefitImportServiceImpl implements BenefitImportService {
                 benefit = new Benefit();
             }
 
+            if (benefit.getPartner() != null) changedPartnerIds.add(benefit.getPartner().getPartnerId());
+            changedPartnerIds.add(partner.getPartnerId());
             benefit.setPartner(partner);
             benefit.setMainCategory(item.getMainCategory());
             benefit.setBenefitName(item.getBenefitName());
@@ -129,8 +140,9 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
         List<BenefitCarrierPolicy> savedPolicies = benefitCarrierPolicyRepository.saveAll(policiesToSave);
         replaceCarrierTierBenefits(savedPolicies, latestRowBySourceKey);
-        inactivateMissingPolicies(request.getCarrier(), latestRowBySourceKey.keySet(), crawledAt);
+        changedPartnerIds.addAll(inactivateMissingPolicies(request.getCarrier(), latestRowBySourceKey.keySet(), crawledAt));
         importState.markApplied(crawledAt);
+        partnerBenefitCacheService.invalidateAfterCommit(changedPartnerIds.stream().filter(Objects::nonNull).toList());
 
         return BenefitSnapshotImportResponse.builder()
                 .carrier(request.getCarrier())
@@ -329,7 +341,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
                 .orElseThrow(() -> new IllegalStateException("혜택 이용 정책을 찾을 수 없습니다: " + code));
     }
 
-    private void inactivateMissingPolicies(
+    private List<Long> inactivateMissingPolicies(
             Carrier carrier,
             Set<String> incomingSourceKeys,
             LocalDateTime crawledAt
@@ -345,6 +357,13 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         if (!missingPolicies.isEmpty()) {
             benefitCarrierPolicyRepository.saveAll(missingPolicies);
         }
+        return missingPolicies.stream()
+                .map(policy -> policy.getBenefit().getPartner())
+                .filter(Objects::nonNull)
+                .map(Partner::getPartnerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private void replaceCarrierTierBenefits(

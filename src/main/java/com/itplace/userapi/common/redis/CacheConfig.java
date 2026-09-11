@@ -16,6 +16,8 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.CacheStatisticsCollector;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -44,7 +46,13 @@ public class CacheConfig {
     }
 
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
+    public CacheStatisticsCollector cacheStatisticsCollector() {
+        return CacheStatisticsCollector.create();
+    }
+
+    @Bean
+    public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory,
+                                     CacheStatisticsCollector statistics) {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -67,15 +75,17 @@ public class CacheConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(serializer));
 
-        return RedisCacheManager.builder(redisConnectionFactory)
+        return RedisCacheManager.builder(RedisCacheWriter.nonLockingRedisCacheWriter(redisConnectionFactory)
+                        .withStatisticsCollector(statistics))
                 .cacheDefaults(config.entryTtl(Duration.ofHours(1)))
                 .initialCacheNames(Set.of(PARTNER_BENEFITS_CACHE, MAP_STORE_CLUSTERS_CACHE))
                 .withInitialCacheConfigurations(Map.of(
-                        PARTNER_BENEFITS_CACHE, config.entryTtl(Duration.ofHours(1))
+                        // 기존 1시간 상한을 늘리지 않고 동시 적재된 제휴사의 만료를 분산한다.
+                        PARTNER_BENEFITS_CACHE, config.entryTtl((key, value) -> Duration.ofSeconds(
+                                3300 + java.util.concurrent.ThreadLocalRandom.current().nextInt(301)))
                                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(benefitSerializer)),
                         MAP_STORE_CLUSTERS_CACHE, config.entryTtl(Duration.ofMinutes(1))
                 ))
-                .enableStatistics()
                 .build();
     }
 }
