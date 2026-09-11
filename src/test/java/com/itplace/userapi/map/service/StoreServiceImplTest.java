@@ -534,25 +534,10 @@ class StoreServiceImplTest {
                 "06235",
                 false
         );
-        StorePreviewProjection stalePreview = preview(
-                3L,
-                10L,
-                "스타벅스 역삼점",
-                "GS25",
-                "생활/편의",
-                "https://example.com/gs25.png",
-                37.500,
-                127.000,
-                "서울 강남구 역삼동",
-                "테헤란로",
-                "서울 강남구 테헤란로 3",
-                "06236",
-                true
-        );
 
         when(storePreviewQueryService.findStorePreviewsInView(
                 37.49, 37.52, 126.99, 127.02, 37.505, 127.005, null, 900))
-                .thenReturn(List.of(farPreview, stalePreview, nearPreview));
+                .thenReturn(List.of(farPreview, nearPreview));
         when(partnerBenefitCacheService.getBenefitsBatch(anyList()))
                 .thenReturn(Map.of(10L, List.of(new BenefitCacheDto(100L, "GS25 오프라인 혜택", List.of(benefit)))));
 
@@ -643,54 +628,6 @@ class StoreServiceImplTest {
                 });
         verify(partnerBenefitCacheService).getBenefitsBatch(List.of(10L));
         verify(storeRepository, never()).findAllByStoreIdInWithPartner(anyList());
-    }
-
-    @Test
-    void findStoresInViewPreviews_rejectsDaracNameCollisionWithCareCenter() {
-        StorePreviewProjection validStorage = previewWithBusiness(
-                1L,
-                8L,
-                "다락 노원역점",
-                "서비스,산업 > 보관,저장 > 무인보관함 > 다락",
-                "다락",
-                "생활/편의",
-                "https://example.com/darac.png",
-                37.654,
-                127.061,
-                "서울 노원구 상계동",
-                "서울 노원구 상계로",
-                "서울 노원구 상계로 51",
-                "01695",
-                false
-        );
-        StorePreviewProjection careCenter = previewWithBusiness(
-                2L,
-                8L,
-                "상계다락 아이휴센터 우리동네키움센터 노원16호점",
-                "사회,공공기관 > 단체,협회 > 사회복지시설 > 아동복지시설",
-                "다락",
-                "생활/편의",
-                "https://example.com/darac.png",
-                37.660,
-                127.070,
-                "서울 노원구 상계동",
-                "서울 노원구 한글비석로",
-                "서울 노원구 한글비석로 426-12",
-                "01661",
-                false
-        );
-
-        when(storePreviewQueryService.findStorePreviewsInView(
-                37.64, 37.67, 127.05, 127.08, 37.655, 127.065, null, 900))
-                .thenReturn(List.of(careCenter, validStorage));
-
-        List<MapStorePreviewResponse> result = storeService.findStoresInViewPreviews(
-                37.64, 127.05, 37.67, 127.08, null, 37.655, 127.065, 900, false);
-
-        assertThat(result)
-                .extracting(MapStorePreviewResponse::getStoreName)
-                .containsExactly("다락 노원역점");
-        verify(partnerBenefitCacheService, never()).getBenefitsBatch(anyList());
     }
 
     @Test

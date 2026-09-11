@@ -23,7 +23,9 @@ public class MapResponseCompressionFilter extends OncePerRequestFilter {
             "/api/v1/maps/stores/in-view/previews/compact", "/api/v1/maps/nearby",
             "/api/v1/maps/nearby/previews", "/api/v1/maps/nearby/category",
             "/api/v1/maps/nearby/category/previews", "/api/v1/maps/nearby/search",
-            "/api/v1/maps/nearby/search/previews", "/api/v1/mobile/map/nearby");
+            "/api/v1/maps/nearby/search/previews", "/api/v1/mobile/map/nearby",
+            "/api/v1/maps/nearby/previews/compact", "/api/v1/maps/nearby/category/previews/compact",
+            "/api/v1/maps/nearby/search/previews/compact");
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {

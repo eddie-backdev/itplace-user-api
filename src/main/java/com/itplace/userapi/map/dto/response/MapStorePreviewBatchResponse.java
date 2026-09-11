@@ -1,5 +1,6 @@
 package com.itplace.userapi.map.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,9 +26,16 @@ public class MapStorePreviewBatchResponse {
         private Double latitude;
         private Double longitude;
         private String address;
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private String roadName;
         private String roadAddress;
         private String postCode;
         private Boolean hasCoupon;
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private Double distance;
+        /** Absent means use the partner's tiers; an empty list is an explicit override. */
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private List<TierBenefitDto> tierBenefit;
     }
 
     @Getter

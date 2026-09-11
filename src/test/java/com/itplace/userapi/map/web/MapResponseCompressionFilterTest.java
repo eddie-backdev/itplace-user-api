@@ -12,11 +12,24 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 class MapResponseCompressionFilterTest {
     private final MapResponseCompressionFilter filter = new MapResponseCompressionFilter();
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/maps/nearby/previews/compact", "/api/v1/maps/nearby/category/previews/compact",
+            "/api/v1/maps/nearby/search/previews/compact"})
+    void compressesNewPublicCompactEndpoints(String path) throws Exception {
+        var response = call(path, "gzip", 200);
+        assertThat(response.getHeader("Content-Encoding")).isEqualTo("gzip");
+        try (var gzip = new GZIPInputStream(new ByteArrayInputStream(response.getContentAsByteArray()))) {
+            assertThat(new String(gzip.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("{\"stores\":[\"서울\"]}");
+        }
+    }
 
     @Test
     void streamsCompressedPublicMapJsonAndPreservesVary() throws Exception {

@@ -66,6 +66,13 @@ class StorePreviewQueryIntegrationTest {
                     (15,1,'좌표 없음','소매',NULL,NULL,true),(16,1,'경계','소매',37.51,127.01,true);
                 UPDATE store SET location=ST_SetSRID(ST_MakePoint(longitude,latitude),4326)::geometry;
                 """);
+        // Preview now applies the existing service name rule before LIMIT; keep these visibility fixtures eligible.
+        jdbc.execute("UPDATE store s SET storeName=p.partnerName || ' ' || s.storeName FROM partner p WHERE p.partnerId=s.partnerId AND s.partnerId<>2");
+        try (var input = getClass().getResourceAsStream(
+                "/db/migration/V20260911_0002__store_map_read_normalization.sql")) {
+            jdbc.execute("DROP FUNCTION IF EXISTS map_store_partner_matches(text,text,text), map_normalize_name(text)");
+            jdbc.execute(new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+        }
         try (var input = getClass().getResourceAsStream(
                 "/db/migration/V20260911_0001__index_store_keyword_and_normalize_active.sql")) {
             jdbc.execute(new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
@@ -107,9 +114,9 @@ class StorePreviewQueryIntegrationTest {
     void keepsExactNumericBoundaryEvenWhenGeometryAndNumericCoordinatesDiffer() {
         jdbc.execute("""
                 INSERT INTO store (storeId,partnerId,storeName,business,latitude,longitude,location,active)
-                VALUES (30,1,'숫자 좌표는 화면 밖','소매',37.510000000001,127.0,
+                VALUES (30,1,'제휴사1 숫자 좌표는 화면 밖','소매',37.510000000001,127.0,
                         ST_SetSRID(ST_MakePoint(127,37.50),4326),true),
-                       (31,1,'geometry는 화면 밖','소매',37.50,127.0,
+                       (31,1,'제휴사1 geometry는 화면 밖','소매',37.50,127.0,
                         ST_SetSRID(ST_MakePoint(128,38),4326),true);
                 """);
         assertThat(ids(null,300)).doesNotContain(30L,31L).contains(16L);
@@ -169,7 +176,7 @@ class StorePreviewQueryIntegrationTest {
     void computesEligiblePartnersOnceForHundredsOfStores() throws Exception {
         jdbc.execute("""
                 INSERT INTO store (storeId,partnerId,storeName,business,latitude,longitude,location,active)
-                    SELECT n,1,'매장'||n,'소매',37.5,127,ST_SetSRID(ST_MakePoint(127,37.5),4326)::geometry,true
+                    SELECT n,1,'제휴사1 매장'||n,'소매',37.5,127,ST_SetSRID(ST_MakePoint(127,37.5),4326)::geometry,true
                     FROM generate_series(1000,1399) n;
                 ANALYZE store;
                 ANALYZE partner;

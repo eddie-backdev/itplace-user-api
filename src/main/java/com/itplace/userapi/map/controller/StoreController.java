@@ -103,6 +103,34 @@ public class StoreController {
                 .body(body);
     }
 
+    @GetMapping({"/nearby/previews/compact", "/nearby/category/previews/compact"})
+    public ResponseEntity<ApiResponse<MapStorePreviewBatchResponse>> getNearbyPreviewBatch(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
+            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
+    ) {
+        return ApiResponse.of(StoreCode.STORE_LIST_SUCCESS,
+                storeService.findNearbyPreviewBatch(lat, lng, radiusMeters, category, userLat, userLng))
+                .toResponseEntity();
+    }
+
+    @GetMapping("/nearby/search/previews/compact")
+    public ResponseEntity<ApiResponse<MapStorePreviewBatchResponse>> getNearbyKeywordPreviewBatch(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam("keyword") String keyword,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng
+    ) {
+        return ApiResponse.of(StoreCode.STORE_LIST_SUCCESS,
+                storeService.findNearbyByKeywordPreviewBatch(lat, lng, category, keyword, userLat, userLng))
+                .toResponseEntity();
+    }
+
     // 사용자 위치 기반 전체 지점 목록 - 지도 카드 표시용 경량 응답
     @GetMapping("/nearby/previews")
     public ResponseEntity<ApiResponse<List<MapStorePreviewResponse>>> getNearbyPreviews(

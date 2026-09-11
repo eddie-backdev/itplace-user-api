@@ -177,22 +177,14 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void previewQuery_excludesDaracPlacesOutsideStorageBusinessBeforeLimit() {
-        String sql = queryValue("findStorePreviewsInView");
-
-        assertThat(sql)
-                .contains(
-                        "REGEXP_REPLACE(",
-                        "LOWER(COALESCE(p.partnerName, ''))",
-                        "NOT IN ('다락', '미니창고다락')",
-                        "s.business LIKE '%보관%'",
-                        "s.business LIKE '%저장%'"
-                )
+    void previewQuery_appliesStoredNameAndBusinessEligibilityBeforeLimit() {
+        assertThat(queryValue("findStorePreviewsInView"))
                 .containsSubsequence(
-                        "NOT IN ('다락', '미니창고다락')",
+                        "map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)",
                         "ORDER BY",
                         "LIMIT :limit"
-                );
+                )
+                .doesNotContain("REGEXP_REPLACE", "LOWER(COALESCE(p.partnerName");
     }
 
     @Test
@@ -229,7 +221,9 @@ class StoreRepositoryQueryContractTest {
                 "findStorePreviewsInView",
                 "searchNearbyStoreIds",
                 "searchNearbyStoreIdsByPartnerId",
-                "searchNearbyStoreIdsByPartnerIds"
+                "searchNearbyStoreIdsByPartnerIds",
+                "findEligibleStoreIdsWithinRadius",
+                "searchEligibleNearbyStoreIds"
         );
 
         mapQueryMethods.forEach(methodName -> assertThat(queryValue(methodName))

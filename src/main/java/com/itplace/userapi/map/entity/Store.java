@@ -42,6 +42,14 @@ public class Store {
     @Column(name = "storeName")
     private String storeName;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "mapNormalizedName", insertable = false, updatable = false)
+    private String mapNormalizedName;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "mapNormalizedBusiness", insertable = false, updatable = false)
+    private String mapNormalizedBusiness;
+
     @Column(name = "business")
     private String business;
 

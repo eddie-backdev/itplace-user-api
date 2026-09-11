@@ -244,7 +244,7 @@ public class StoreServiceImpl implements StoreService {
         double centerLat = (normalizedMinLat + normalizedMaxLat) / 2;
         double centerLng = (normalizedMinLng + normalizedMaxLng) / 2;
 
-        List<StorePreviewProjection> matchedPreviews = filterPreviewsMatchedToPartner(storePreviewQueryService.findStorePreviewsInView(
+        List<StorePreviewProjection> matchedPreviews = storePreviewQueryService.findStorePreviewsInView(
                         normalizedMinLat,
                         normalizedMaxLat,
                         normalizedMinLng,
@@ -253,7 +253,7 @@ public class StoreServiceImpl implements StoreService {
                         centerLng,
                         normalizeCategory(category),
                         normalizeMapInViewPreviewLimit(limit)
-                ));
+                );
         if (matchedPreviews.isEmpty()) {
             return MapStorePreviewBatchResponse.builder()
                     .stores(List.of())
@@ -269,6 +269,7 @@ public class StoreServiceImpl implements StoreService {
                         .toList()
         );
 
+        Map<Long, PreviewBenefits> previewBenefits = preparePreviewBenefits(benefitsByPartner);
         Map<Long, MapStorePreviewBatchResponse.PartnerPreview> partnersById = new LinkedHashMap<>();
         for (StorePreviewProjection preview : matchedPreviews) {
             partnersById.computeIfAbsent(preview.getPartnerId(), partnerId ->
@@ -277,10 +278,8 @@ public class StoreServiceImpl implements StoreService {
                             .partnerName(preview.getPartnerName())
                             .category(preview.getCategory() != null ? preview.getCategory().trim() : null)
                             .image(preview.getImage())
-                            .tierBenefit(toDistinctTierBenefits(selectBenefits(
-                                    benefitsByPartner.getOrDefault(partnerId, List.of()),
-                                    preview.getStoreName()
-                            )))
+                            .tierBenefit(previewBenefits.getOrDefault(partnerId, PreviewBenefits.EMPTY)
+                                    .forStore(preview.getStoreName()))
                             .build()
             );
         }
@@ -296,6 +295,9 @@ public class StoreServiceImpl implements StoreService {
                         .roadAddress(preview.getRoadAddress())
                         .postCode(preview.getPostCode())
                         .hasCoupon(Boolean.TRUE.equals(preview.getHasCoupon()))
+                        .tierBenefit(previewTierOverride(
+                                previewBenefits.getOrDefault(preview.getPartnerId(), PreviewBenefits.EMPTY),
+                                preview.getStoreName(), partnersById.get(preview.getPartnerId()).getTierBenefit()))
                         .build())
                 .toList();
 
@@ -303,6 +305,98 @@ public class StoreServiceImpl implements StoreService {
                 .stores(stores)
                 .partners(new ArrayList<>(partnersById.values()))
                 .build();
+    }
+
+    @Override
+    public MapStorePreviewBatchResponse findNearbyPreviewBatch(double lat, double lng, double radiusMeters,
+                                                               String category, double userLat, double userLng) {
+        List<Long> ids = storeRepository.findEligibleStoreIdsWithinRadius(
+                normalizeCategory(category), lat, lng, radiusMeters, STORE_CANDIDATE_FETCH_LIMIT);
+        if (ids.isEmpty()) return emptyPreviewBatch();
+        List<Store> stores = storeRepository.findEligibleByStoreIdInWithPartner(sampleStoreIds(ids));
+        if (stores.isEmpty()) return emptyPreviewBatch();
+        MapStorePreviewBatchResponse response = toPreviewBatch(stores, userLat, userLng);
+        response.getStores().sort(Comparator.comparing(MapStorePreviewBatchResponse.StorePreview::getDistance));
+        return response;
+    }
+
+    @Override
+    public MapStorePreviewBatchResponse findNearbyByKeywordPreviewBatch(double lat, double lng, String category,
+                                                                        String keyword, double userLat, double userLng) {
+        return toPreviewBatch(findKeywordStores(lat, lng, category, keyword, userLat, userLng, true),
+                userLat, userLng);
+    }
+
+    /** Eligible rows enter here once; tiers are prepared once per partner, not per store. */
+    private MapStorePreviewBatchResponse toPreviewBatch(List<Store> stores, double userLat, double userLng) {
+        if (stores.isEmpty()) return emptyPreviewBatch();
+        List<Long> partnerIds = stores.stream().map(store -> store.getPartner().getPartnerId()).distinct().toList();
+        Map<Long, PreviewBenefits> benefits = preparePreviewBenefits(partnerBenefitCacheService.getBenefitsBatch(partnerIds));
+        Map<Long, MapStorePreviewBatchResponse.PartnerPreview> partners = new LinkedHashMap<>();
+        List<MapStorePreviewBatchResponse.StorePreview> previews = new ArrayList<>(stores.size());
+        for (Store store : stores) {
+            Partner partner = store.getPartner();
+            PreviewBenefits selected = benefits.getOrDefault(partner.getPartnerId(), PreviewBenefits.EMPTY);
+            partners.computeIfAbsent(partner.getPartnerId(), id -> MapStorePreviewBatchResponse.PartnerPreview.builder()
+                    .partnerId(id).partnerName(partner.getPartnerName())
+                    .category(partner.getCategory() == null ? null : partner.getCategory().trim())
+                    .image(partner.getImage()).tierBenefit(selected.forStore(store.getStoreName())).build());
+            previews.add(MapStorePreviewBatchResponse.StorePreview.builder()
+                    .storeId(store.getStoreId()).partnerId(partner.getPartnerId()).storeName(store.getStoreName())
+                    .latitude(store.getLocation().getY()).longitude(store.getLocation().getX())
+                    .address(store.getAddress()).roadName(store.getRoadName()).roadAddress(store.getRoadAddress())
+                    .postCode(store.getPostCode()).hasCoupon(store.isHasCoupon())
+                    .distance(userLat == 0 || userLng == 0 ? 0.0
+                            : calculateDistance(userLat, userLng, store.getLocation().getY(), store.getLocation().getX()))
+                    .tierBenefit(previewTierOverride(selected, store.getStoreName(),
+                            partners.get(partner.getPartnerId()).getTierBenefit())).build());
+        }
+        return MapStorePreviewBatchResponse.builder().stores(previews).partners(new ArrayList<>(partners.values())).build();
+    }
+
+    private MapStorePreviewBatchResponse emptyPreviewBatch() {
+        return MapStorePreviewBatchResponse.builder().stores(List.of()).partners(List.of()).build();
+    }
+
+    private record PreviewBenefits(List<TierBenefitDto> common, Map<String, List<TierBenefitDto>> overrides) {
+        private static final PreviewBenefits EMPTY = new PreviewBenefits(List.of(), Map.of());
+
+        private List<TierBenefitDto> forStore(String name) {
+            return overrides.getOrDefault(name, common);
+        }
+    }
+
+    private List<TierBenefitDto> previewTierOverride(PreviewBenefits benefits, String storeName,
+                                                    List<TierBenefitDto> partnerTiers) {
+        List<TierBenefitDto> tiers = benefits.forStore(storeName);
+        return tiers == partnerTiers ? null : tiers;
+    }
+
+    private Map<Long, PreviewBenefits> preparePreviewBenefits(Map<Long, List<BenefitCacheDto>> byPartner) {
+        Map<Long, PreviewBenefits> prepared = new HashMap<>();
+        byPartner.forEach((id, benefits) -> {
+            if (benefits == null || benefits.isEmpty()) {
+                prepared.put(id, PreviewBenefits.EMPTY);
+                return;
+            }
+            List<BenefitCacheDto> common = benefits.stream().filter(BenefitCacheDto::isOfflineAvailable).toList();
+            if (common.isEmpty()) {
+                common = benefits.stream().filter(benefit -> benefit.getBenefitName() != null
+                        && benefit.getBenefitName().contains("오프라인")).toList();
+            }
+            Map<String, List<TierBenefitDto>> overrides = new HashMap<>();
+            if (common.isEmpty()) {
+                common = benefits;
+                if (benefits.size() >= 3) {
+                    benefits.stream().filter(benefit -> benefit.getBenefitName() != null)
+                            .collect(Collectors.groupingBy(BenefitCacheDto::getBenefitName, LinkedHashMap::new,
+                                    Collectors.toList()))
+                            .forEach((name, selected) -> overrides.put(name, toDistinctTierBenefits(selected)));
+                }
+            }
+            prepared.put(id, new PreviewBenefits(toDistinctTierBenefits(common), overrides));
+        });
+        return prepared;
     }
 
     @Override
@@ -530,6 +624,11 @@ public class StoreServiceImpl implements StoreService {
 
     private List<Store> findKeywordStores(double lat, double lng, String category,
                                           String keyword, double userLat, double userLng) {
+        return findKeywordStores(lat, lng, category, keyword, userLat, userLng, false);
+    }
+
+    private List<Store> findKeywordStores(double lat, double lng, String category,
+                                          String keyword, double userLat, double userLng, boolean eligibleOnly) {
         if (keyword == null || keyword.isBlank()) {
             throw new StoreKeywordException(StoreCode.KEYWORD_REQUEST);
         }
@@ -548,22 +647,25 @@ public class StoreServiceImpl implements StoreService {
             searchResult = storeSearchService.searchByKeyword(normalizedKeyword, category);
         } catch (RuntimeException e) {
             log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category, e);
-            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
+            return findStoresWithPartnerInRequestedOrder(
+                    searchKeywordStoreIds(lng, lat, category, normalizedKeyword, eligibleOnly), eligibleOnly);
         }
         if (searchResult.isEmpty()) {
             log.info("ES 매장 검색 결과 없음, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
-            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
+            return findStoresWithPartnerInRequestedOrder(
+                    searchKeywordStoreIds(lng, lat, category, normalizedKeyword, eligibleOnly), eligibleOnly);
         }
 
         // 전국 ES 후보 제한 밖의 가까운 정확 일치 매장도 지리 검색으로 보충한다.
-        List<Long> nearbyIds = storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword);
+        List<Long> nearbyIds = searchKeywordStoreIds(lng, lat, category, normalizedKeyword, eligibleOnly);
         List<Long> allIds = Stream.of(nearbyIds, searchResult.brandMatchIds(), searchResult.nameMatchIds())
                 .flatMap(List::stream).distinct().toList();
 
-        List<Store> allStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(allIds));
+        List<Store> allStores = eligibleOnly ? storeRepository.findEligibleByStoreIdInWithPartner(allIds)
+                : filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(allIds));
         if (allStores.isEmpty()) {
             log.info("ES 매장 검색 ID가 DB에서 조회되지 않아 DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
-            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
+            return findStoresWithPartnerInRequestedOrder(nearbyIds, eligibleOnly);
         }
 
         Map<Long, Store> storesById = allStores.stream()
@@ -584,7 +686,7 @@ public class StoreServiceImpl implements StoreService {
         if (strictBrandMatchIds.isEmpty() && nameMatchIds.isEmpty()) {
             log.info("ES 브랜드 검색 결과가 키워드와 정확히 맞지 않아 DB 키워드 검색으로 대체: keyword={}, category={}",
                     normalizedKeyword, category);
-            return findStoresWithPartnerInRequestedOrder(storeRepository.searchNearbyStoreIds(lng, lat, category, normalizedKeyword));
+            return findStoresWithPartnerInRequestedOrder(nearbyIds, eligibleOnly);
         }
 
         // 브랜드 매치(partnerName) 그룹은 실제 파트너명이 키워드와 포함 관계일 때만 우선 노출한다.
@@ -609,13 +711,6 @@ public class StoreServiceImpl implements StoreService {
         return stores.stream().filter(store -> store != null && store.getPartner() != null
                 && isStoreMatchedToPartner(store.getStoreName(), store.getBusiness(),
                         store.getPartner().getPartnerName(), names)).toList();
-    }
-
-    private List<StorePreviewProjection> filterPreviewsMatchedToPartner(List<StorePreviewProjection> previews) {
-        Map<String, PartnerNames> names = new HashMap<>();
-        return previews.stream().filter(preview -> preview != null
-                && isStoreMatchedToPartner(preview.getStoreName(), preview.getBusiness(),
-                        preview.getPartnerName(), names)).toList();
     }
 
     private record PartnerNames(String normalized, List<String> aliases) {}
@@ -655,11 +750,22 @@ public class StoreServiceImpl implements StoreService {
 
 
     private List<Store> findStoresWithPartnerInRequestedOrder(List<Long> storeIds) {
+        return findStoresWithPartnerInRequestedOrder(storeIds, false);
+    }
+
+    private List<Long> searchKeywordStoreIds(double lng, double lat, String category, String keyword, boolean eligibleOnly) {
+        return eligibleOnly ? storeRepository.searchEligibleNearbyStoreIds(lng, lat, category, keyword)
+                : storeRepository.searchNearbyStoreIds(lng, lat, category, keyword);
+    }
+
+    private List<Store> findStoresWithPartnerInRequestedOrder(List<Long> storeIds, boolean eligibleOnly) {
         if (storeIds == null || storeIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Map<Long, Store> storesById = storeRepository.findAllByStoreIdInWithPartner(storeIds).stream()
+        List<Store> stores = eligibleOnly ? storeRepository.findEligibleByStoreIdInWithPartner(storeIds)
+                : storeRepository.findAllByStoreIdInWithPartner(storeIds);
+        Map<Long, Store> storesById = stores.stream()
                 .collect(Collectors.toMap(
                         Store::getStoreId,
                         store -> store,
@@ -677,7 +783,7 @@ public class StoreServiceImpl implements StoreService {
     private List<MapStorePreviewResponse> toMapStorePreviewResponsesFromProjection(List<StorePreviewProjection> previews,
                                                                                    double userLat, double userLng,
                                                                                    boolean includeBenefits) {
-        List<StorePreviewProjection> matchedPreviews = filterPreviewsMatchedToPartner(previews);
+        List<StorePreviewProjection> matchedPreviews = previews;
         if (matchedPreviews.isEmpty()) {
             return Collections.emptyList();
         }

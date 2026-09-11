@@ -20,6 +20,10 @@ public class Partner {
 
     private String partnerName;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "mapNormalizedName", insertable = false, updatable = false)
+    private String mapNormalizedName;
+
     @Column(length = 512)
     private String image;
 
