@@ -1,0 +1,189 @@
+{
+  "baseline": {
+    "dataset": {
+      "stores": 73715,
+      "partners": 425,
+      "benefits": 871,
+      "policies": 1011
+    },
+    "migrations": [
+      {
+        "version": "20260911.0001",
+        "description": "index store keyword and normalize active",
+        "success": true
+      },
+      {
+        "version": "20260904.0001",
+        "description": "index map region cluster lookup",
+        "success": true
+      },
+      {
+        "version": "20260815.0006",
+        "description": "add store spatial indexes",
+        "success": true
+      }
+    ],
+    "settings": [
+      {
+        "name": "effective_cache_size",
+        "setting": "524288",
+        "unit": "8kB"
+      },
+      {
+        "name": "jit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_connections",
+        "setting": "100",
+        "unit": null
+      },
+      {
+        "name": "plan_cache_mode",
+        "setting": "auto",
+        "unit": null
+      },
+      {
+        "name": "random_page_cost",
+        "setting": "4",
+        "unit": null
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "work_mem",
+        "setting": "4096",
+        "unit": "kB"
+      }
+    ],
+    "columns": [
+      {
+        "table_name": "partneralias",
+        "column_name": "normalizedalias",
+        "data_type": "character varying",
+        "is_generated": "NEVER",
+        "generation_expression": null
+      },
+      {
+        "table_name": "partneridentityreview",
+        "column_name": "normalizedname",
+        "data_type": "character varying",
+        "is_generated": "NEVER",
+        "generation_expression": null
+      }
+    ]
+  },
+  "improved": {
+    "dataset": {
+      "stores": 73715,
+      "partners": 425,
+      "benefits": 871,
+      "policies": 1011
+    },
+    "migrations": [
+      {
+        "version": "20260911.0002",
+        "description": "store map read normalization",
+        "success": true
+      },
+      {
+        "version": "20260911.0001",
+        "description": "index store keyword and normalize active",
+        "success": true
+      },
+      {
+        "version": "20260904.0001",
+        "description": "index map region cluster lookup",
+        "success": true
+      }
+    ],
+    "settings": [
+      {
+        "name": "effective_cache_size",
+        "setting": "524288",
+        "unit": "8kB"
+      },
+      {
+        "name": "jit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_connections",
+        "setting": "100",
+        "unit": null
+      },
+      {
+        "name": "plan_cache_mode",
+        "setting": "auto",
+        "unit": null
+      },
+      {
+        "name": "random_page_cost",
+        "setting": "4",
+        "unit": null
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "work_mem",
+        "setting": "4096",
+        "unit": "kB"
+      }
+    ],
+    "columns": [
+      {
+        "table_name": "partneralias",
+        "column_name": "normalizedalias",
+        "data_type": "character varying",
+        "is_generated": "NEVER",
+        "generation_expression": null
+      },
+      {
+        "table_name": "store",
+        "column_name": "mapnormalizedname",
+        "data_type": "text",
+        "is_generated": "ALWAYS",
+        "generation_expression": "map_normalize_name((storename)::text)"
+      },
+      {
+        "table_name": "store",
+        "column_name": "mapnormalizedbusiness",
+        "data_type": "text",
+        "is_generated": "ALWAYS",
+        "generation_expression": "map_normalize_name((business)::text)"
+      },
+      {
+        "table_name": "partneridentityreview",
+        "column_name": "normalizedname",
+        "data_type": "character varying",
+        "is_generated": "NEVER",
+        "generation_expression": null
+      },
+      {
+        "table_name": "partner",
+        "column_name": "mapnormalizedname",
+        "data_type": "text",
+        "is_generated": "ALWAYS",
+        "generation_expression": "map_normalize_name((partnername)::text)"
+      }
+    ]
+  },
+  "api_jvm": "SDKMAN17.0.19-tem -Xms512m -Xmx1g",
+  "runner_jvm": "SDKMAN11.0.27-tem -Xms256m -Xmx1g",
+  "pool": {
+    "source_max": 10,
+    "replica_max": 20
+  },
+  "http": "identity, HTTP1.1keepalive100000",
+  "host": "Apple M3 Pro",
+  "mem_bytes": 38654705664,
+  "redis": "Redis server v=8.4.6 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=32d06adc40c303f5"
+}

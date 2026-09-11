@@ -1,0 +1,33 @@
+{
+  "requests": 104,
+  "groups": {
+    "keyword": {
+      "requests": 50,
+      "ordered_equal": 32,
+      "sets_equal": 32,
+      "common_fields_equal": 50,
+      "common_rows": 891,
+      "before_bytes": 1934040,
+      "compact_bytes": 735784
+    },
+    "nearby": {
+      "requests": 50,
+      "ordered_equal": 50,
+      "sets_equal": 50,
+      "common_fields_equal": 50,
+      "common_rows": 1065,
+      "before_bytes": 2358577,
+      "compact_bytes": 1445743
+    },
+    "category": {
+      "requests": 4,
+      "ordered_equal": 4,
+      "sets_equal": 4,
+      "common_fields_equal": 4,
+      "common_rows": 133,
+      "before_bytes": 284343,
+      "compact_bytes": 106407
+    }
+  },
+  "warning": "Same improved application, sequential legacy/compact requests. Small-radius nearby avoids most random sampling; SQL eligibility before candidate LIMIT may intentionally add valid stores. Matching records compared all legacy fields after expansion."
+}

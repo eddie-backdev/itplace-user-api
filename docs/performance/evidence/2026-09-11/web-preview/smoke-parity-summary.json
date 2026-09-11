@@ -1,0 +1,44 @@
+{
+  "cluster10": {
+    "requests": 33,
+    "ordered_equal": 33,
+    "common_fields_equal": 33,
+    "added_rows": 0,
+    "removed_rows": 0
+  },
+  "cluster5": {
+    "requests": 25,
+    "ordered_equal": 25,
+    "common_fields_equal": 25,
+    "added_rows": 0,
+    "removed_rows": 0
+  },
+  "cluster7": {
+    "requests": 37,
+    "ordered_equal": 37,
+    "common_fields_equal": 37,
+    "added_rows": 0,
+    "removed_rows": 0
+  },
+  "keyword": {
+    "requests": 32,
+    "ordered_equal": 25,
+    "common_fields_equal": 32,
+    "added_rows": 74,
+    "removed_rows": 0
+  },
+  "nearby": {
+    "requests": 34,
+    "ordered_equal": 27,
+    "common_fields_equal": 34,
+    "added_rows": 502,
+    "removed_rows": 424
+  },
+  "preview": {
+    "requests": 139,
+    "ordered_equal": 135,
+    "common_fields_equal": 139,
+    "added_rows": 90,
+    "removed_rows": 0
+  }
+}

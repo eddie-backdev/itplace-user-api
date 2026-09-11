@@ -1,0 +1,20 @@
+{
+  "baseline": {
+    "sha256": "340839051acf396b8e01ee392ff3be2aa0c323e8027cf4fe1342b26fd23328fc",
+    "exact_bytes_match": true,
+    "flag": "--legacy-previews"
+  },
+  "improved": {
+    "sha256": "fb3ab48bf33b51f98b5c0382fa5b179ed6c46d06d8af8e96ca3a0894a446af22",
+    "exact_bytes_match": true,
+    "flag": "(default compact)"
+  },
+  "generator_sha256": "1a1ec74c2d329d9f1dace966bb9c613c991d774b6c1d682acd74dcac4360d7f5",
+  "historical_mobile": {
+    "sha256": "74ee668dcf0490f2f6bb177b2cd30d0659e37276a65a8a6a320442552b639620",
+    "exact_historical_hash_match": true,
+    "entries": 200000,
+    "flag": "--include-mobile",
+    "verification": "Offline corpus generation only; no mobile HTTP load."
+  }
+}
