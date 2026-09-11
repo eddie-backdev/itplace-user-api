@@ -120,8 +120,8 @@ public final class MapLatencyRunner {
         }
         if(options.containsKey("self-test")) { selfTest(); return; }
         URI base=URI.create(required(options,"base-url")); validateBase(base,options.containsKey("allow-remote"));
-        int concurrency=integer(options,"concurrency",500,1,10000), duration=integer(options,"duration",60,1,86400);
-        int warmup=integer(options,"warmup",20,0,86400), timeout=integer(options,"timeout",10,1,3600);
+        int concurrency=integer(options,"concurrency",1,1,10000), duration=integer(options,"duration",5,1,86400);
+        int warmup=integer(options,"warmup",1,0,86400), timeout=integer(options,"timeout",10,1,3600);
         long seed=Long.parseLong(options.getOrDefault("seed","20260911")); int threads=Math.min(32,Math.max(4,Runtime.getRuntime().availableProcessors()*2));
         Path corpus=Paths.get(required(options,"corpus")), output=Paths.get(required(options,"output"));
         String encoding=options.getOrDefault("accept-encoding","identity");

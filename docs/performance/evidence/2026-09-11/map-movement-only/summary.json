@@ -1,0 +1,122 @@
+[
+  {
+    "label": "movement-1",
+    "concurrency": 1,
+    "warmup_seconds": 1,
+    "measurement_seconds": 5,
+    "requests": 1343,
+    "errors": 0,
+    "tps": 268.5873115056648,
+    "mean_ms": 3.7014853030528667,
+    "p95_ms": 9.032743280469242,
+    "full_corpus_cycles_issued": 0,
+    "distinct_request_paths_issued": 1343,
+    "groups": {
+      "cluster10": {
+        "requests": 195,
+        "percent": 14.519731943410276,
+        "mean_ms": 1.1032434153846153,
+        "p95_ms": 1.9708314253591237
+      },
+      "cluster5": {
+        "requests": 182,
+        "percent": 13.551749813849591,
+        "mean_ms": 1.0815082362637363,
+        "p95_ms": 1.9708314253591237
+      },
+      "cluster7": {
+        "requests": 165,
+        "percent": 12.285927029039463,
+        "mean_ms": 1.1393818484848486,
+        "p95_ms": 1.8566123537488182
+      },
+      "preview": {
+        "requests": 801,
+        "percent": 59.64259121370067,
+        "mean_ms": 5.457090876404494,
+        "p95_ms": 11.243198818258627
+      }
+    },
+    "scope": "Map movement only. One local 5-second sample, no capacity/SLO/before-after claim."
+  },
+  {
+    "label": "movement-5",
+    "concurrency": 5,
+    "warmup_seconds": 1,
+    "measurement_seconds": 5,
+    "requests": 10291,
+    "errors": 0,
+    "tps": 2056.6999800107988,
+    "mean_ms": 2.4098519095326014,
+    "p95_ms": 5.77241899472841,
+    "full_corpus_cycles_issued": 0,
+    "distinct_request_paths_issued": 10291,
+    "groups": {
+      "cluster10": {
+        "requests": 1319,
+        "percent": 12.817024584588475,
+        "mean_ms": 0.6396223351023503,
+        "p95_ms": 1.2847848473477614
+      },
+      "cluster5": {
+        "requests": 1300,
+        "percent": 12.632397240307064,
+        "mean_ms": 0.6613727007692307,
+        "p95_ms": 1.2224286982084696
+      },
+      "cluster7": {
+        "requests": 1271,
+        "percent": 12.350597609561753,
+        "mean_ms": 0.6724037199055861,
+        "p95_ms": 1.2469995150424593
+      },
+      "preview": {
+        "requests": 6401,
+        "percent": 62.19998056554271,
+        "mean_ms": 3.4747249651616934,
+        "p95_ms": 6.313209642297924
+      }
+    },
+    "scope": "Map movement only. One local 5-second sample, no capacity/SLO/before-after claim."
+  },
+  {
+    "label": "movement-10",
+    "concurrency": 10,
+    "warmup_seconds": 1,
+    "measurement_seconds": 5,
+    "requests": 23507,
+    "errors": 0,
+    "tps": 4698.397879741655,
+    "mean_ms": 2.1055010788275834,
+    "p95_ms": 5.22569561294961,
+    "full_corpus_cycles_issued": 0,
+    "distinct_request_paths_issued": 23507,
+    "groups": {
+      "cluster10": {
+        "requests": 2981,
+        "percent": 12.681328965839963,
+        "mean_ms": 0.5536988641395505,
+        "p95_ms": 1.0634677003891748
+      },
+      "cluster5": {
+        "requests": 2964,
+        "percent": 12.609010082103204,
+        "mean_ms": 0.5538027999325236,
+        "p95_ms": 1.0741023773930662
+      },
+      "cluster7": {
+        "requests": 2908,
+        "percent": 12.370783170970348,
+        "mean_ms": 0.5727949477303989,
+        "p95_ms": 1.0848434011669967
+      },
+      "preview": {
+        "requests": 14654,
+        "percent": 62.33887778108649,
+        "mean_ms": 3.0391891865019787,
+        "p95_ms": 5.888444616522447
+      }
+    },
+    "scope": "Map movement only. One local 5-second sample, no capacity/SLO/before-after claim."
+  }
+]

@@ -1,4 +1,4 @@
-"""Generate seeded, unique web map requests from public store coordinate anchors (JSON)."""
+"""Generate unique viewport/cluster requests for map movement; other APIs require historical opt-in."""
 import argparse
 import collections
 import hashlib
@@ -12,9 +12,11 @@ p.add_argument('--anchors', type=Path, required=True)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--count', type=int, default=200000)
 p.add_argument('--seed', type=int, default=20260911)
+p.add_argument('--historical-mixed', action='store_true', help='Reproduce historical web mixed tests with keyword/nearby; not a map-movement test.')
 p.add_argument('--include-mobile', action='store_true', help='Reproduce the historical mobile-inclusive corpus; excluded by default.')
 p.add_argument('--legacy-previews', action='store_true', help='Use legacy web list endpoints for before/after comparisons.')
 args = p.parse_args()
+historical_mixed = args.historical_mixed or args.include_mobile
 assert args.count > 0
 anchors = json.loads(args.anchors.read_text())
 assert anchors and all(33 <= a['lat'] <= 39 and 124 <= a['lng'] <= 132 for a in anchors)
@@ -34,7 +36,7 @@ with args.output.open('w') as out:
         lat, lng = round(lat, 7), round(lng, 7)
         assert (lat, lng) not in centers
         centers.add((lat, lng))
-        slot, category = i % 20, rng.choice(categories)
+        slot, category = i % (20 if historical_mixed else 16), rng.choice(categories)
         if slot < 16:
             level = [5, 7, 10][(slot - 10) // 2] if slot >= 10 else None
             extent = {5: .035, 7: .15, 10: .65}.get(level, rng.choice([.003, .006, .012, .022]))
@@ -67,7 +69,7 @@ with args.output.open('w') as out:
         groups[group] += 1
         out.write(group + '\t' + path + '\n')
 meta = dict(seed=args.seed, entries=args.count, groups=dict(groups), distinct_centers=len(centers), distinct_paths=len(paths), available_store_anchors=len(anchors), selected_store_anchors=len(selected), store_anchor_fraction=.8, uniform_korea_rectangle_fraction=.2, bounds=dict(minLat=min(x[0] for x in centers), maxLat=max(x[0] for x in centers), minLng=min(x[1] for x in centers), maxLng=max(x[1] for x in centers)), anchors_sha256=hashlib.sha256(args.anchors.read_bytes()).hexdigest(), corpus_sha256=hashlib.sha256(args.output.read_bytes()).hexdigest(), warning='Synthetic mix, not observed production traffic. Uniform rectangle includes empty/sea locations. Each measurement must report actual issued unique paths and reject wraparound for diverse-request claims.')
-meta['scope'] = 'historical-mobile-inclusive' if args.include_mobile else 'web-only'
-meta['preview_format'] = 'legacy' if args.include_mobile or args.legacy_previews else 'compact'
+meta['scope'] = 'historical-mobile-inclusive' if args.include_mobile else ('historical-web-mixed' if historical_mixed else 'map-movement-only')
+meta['preview_format'] = 'legacy' if args.include_mobile or (historical_mixed and args.legacy_previews) else 'compact'
 args.output.with_suffix('.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2)+'\n')
 print(json.dumps(meta, ensure_ascii=False))
