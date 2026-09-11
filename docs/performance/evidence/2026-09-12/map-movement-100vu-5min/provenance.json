@@ -1,0 +1,89 @@
+{
+  "application-manifest": {
+    "jar_sha256": "6ad52161d346a5945cfd01cd1fb8f21f52a908b73dc0d63d75b73f3b29abbdeb",
+    "jar_built_source_commit": "df4ff463eb070ccb0e0f6ea398116588bbf77caa",
+    "current_source_commit": "4f5778fd0be8bee69acded725383304d518ba2e9",
+    "source_main_git_tree": "cacef5ad320906fc719ec266113b0cb56420a416",
+    "prior_source_main_git_tree": "cacef5ad320906fc719ec266113b0cb56420a416",
+    "application_paths_compared": [
+      "src/main",
+      "build.gradle",
+      "settings.gradle",
+      "gradle.properties"
+    ],
+    "committed_application_diff_empty": true,
+    "worktree_application_diff_empty": true,
+    "reused_artifact": "output/map-movement-only-2026-09-11/corrected.jar",
+    "previous_build_verification": "423 tests / 85 suites passed; preserved prior manifest; no new Gradle build needed for unchanged application source",
+    "comparison_note": "Git tree IDs are SHA-1 tree objects, distinct from the prior manifest source_main_tree_sha256 file-hash method."
+  },
+  "runner-manifest": {
+    "source_copy": "MapLatencyRunner.java",
+    "source_original": "scripts/loadtest/MapLatencyRunner.java",
+    "source_sha256": "e40a33770fee479e6f33ec42615c9eb982bf52626141ebbcc52bee736027ea86",
+    "compiled_command": [
+      "/Users/eddie/.sdkman/candidates/java/11.0.27-tem/bin/javac",
+      "--release",
+      "11",
+      "-d",
+      "/Users/eddie/dev/ITPLACE/itplace-user-api/output/map-movement-100vu-5min-2026-09-12/runner",
+      "/Users/eddie/dev/ITPLACE/itplace-user-api/output/map-movement-100vu-5min-2026-09-12/MapLatencyRunner.java"
+    ],
+    "javac_version": "javac 11.0.27",
+    "source_git_commit": "4f5778fd0be8bee69acded725383304d518ba2e9",
+    "compiled_files_sha256": {
+      "MapLatencyRunner$Phase.class": "bba330226d11df76cca9b35d1748a1494c2356c505dae39729eb4aa106595a26",
+      "MapLatencyRunner$Counters.class": "b562471c47437f70aa865fd1a7669780b81e85d3be4905d0ddd01162999c41d1",
+      "MapLatencyRunner$Entry.class": "f574ae45c081a7897f88de2dee43bec694c0d6f74e3d72033ac45fa67500bf95",
+      "MapLatencyRunner.class": "139a4ab04c80effad5164e93184be6b8ec3553c83e11ab409de232b090959c3b",
+      "MapLatencyRunner$BodyCounter.class": "eb4e2719575e77861bcd5abc348a56683d918b139ae23d8ebaad59d9a17beb8a"
+    }
+  },
+  "corpus-manifest": {
+    "source": "/Users/eddie/dev/ITPLACE/itplace-user-api/output/map-movement-100vu-2026-09-12/map-movement.tsv",
+    "source_sha256": "35d9ad7f66d294875a6020178d6bca78c7902fe45de7daa57e5cf4b5ff97f070",
+    "corpus": "/Users/eddie/dev/ITPLACE/itplace-user-api/output/map-movement-100vu-5min-2026-09-12/map-movement.tsv",
+    "corpus_sha256": "35d9ad7f66d294875a6020178d6bca78c7902fe45de7daa57e5cf4b5ff97f070",
+    "entries": 160000,
+    "distinct_urls": 160000,
+    "groups": {
+      "preview": 100000,
+      "cluster5": 20000,
+      "cluster7": 20000,
+      "cluster10": 20000
+    },
+    "allowed_url_paths": [
+      "/api/v1/maps/stores/in-view/clusters",
+      "/api/v1/maps/stores/in-view/previews/compact"
+    ],
+    "keyword_nearby_mobile_entries": 0,
+    "coordinate_selection": "Filtered existing seeded diverse web corpus, original row order preserved",
+    "concurrency": [
+      100
+    ],
+    "warmup_seconds_each": 30,
+    "measurement_seconds_each": 300,
+    "trials_per_concurrency": 1,
+    "coordinate_distribution_note": "Parent generator audit: original 20-slot corpus had uniform slots 0/5/10/15, all in retained map groups. Filtered map corpus therefore has anchor75%/uniform25%, not the new default generator80%/20%. No equivalence to new generator claimed.",
+    "anchor_fraction": 0.75,
+    "uniform_fraction": 0.25,
+    "corpus_repetition": "One seeded Fisher-Yates shuffled order is reused each cycle within a phase. Warmup uses a different XOR seed. Phase-specific unique URLs, full cycles, partial cycles and repeated issuances are recorded."
+  },
+  "snapshot-readiness": {
+    "health_up": true,
+    "snapshot_ready": true,
+    "readiness_poll_seconds": 2.0488018750000023,
+    "readiness_prom_checks": 3,
+    "no_map_requests_during_readiness": true,
+    "separate_from_30_second_load_warmup": true,
+    "snapshot_metrics": {
+      "map_cluster_snapshot_age_seconds": 1.167,
+      "map_cluster_snapshot_builds_total": 1.0,
+      "map_cluster_snapshot_failures_total": 0.0,
+      "map_cluster_snapshot_installs_total": 1.0,
+      "map_cluster_snapshot_json_bytes": 2498001.0,
+      "map_cluster_snapshot_regions": 7930.0,
+      "map_cluster_snapshot_revalidations_total": 0.0
+    }
+  }
+}
