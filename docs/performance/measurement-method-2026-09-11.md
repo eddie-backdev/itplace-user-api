@@ -1,5 +1,11 @@
 # 전국 이동 검색 비교 방법
 
+## 현재 테스트 범위: 웹 전용
+
+2026-09-11 후속 지시에 따라 앞으로 모바일 API를 성능 테스트에서 제외한다. 생성기는 기본적으로 preview 50%, cluster level 5/7/10 각 10%, keyword 10%, nearby 10%의 웹 전용 입력을 만든다. 기존 모바일 5% 슬롯은 웹 nearby로 대체한다.
+
+아래는 이미 완료한 **모바일 포함 혼합 시험의 재현 기록**이다. 기존 JSON·TSV·수치를 변경하지 않으며 이를 재현할 때만 `--include-mobile`을 사용한다. 웹 전용 혼합은 아직 재측정하지 않았다. 기존 지도 전용 시험은 처음부터 모바일을 포함하지 않았으므로 그 범위의 근거로 계속 사용한다.
+
 ## 검증하려는 주장
 
 좌표가 바뀌는 요청에서도 SQL·JPA 결과 변환·혜택 캐시·응답 조립을 개선하면 HTTP 응답이 빨라지는지 확인한다. 과거 고정 좌표 적중 시험의 TPS를 대표값으로 사용하지 않는다. 이전 자료에는 서울 5개 중심 주변에 무작위 변위를 준 시험도 있으므로 모든 과거 실험이 고정 좌표였다고 설명하지도 않는다.
@@ -25,7 +31,7 @@ API·DB·Redis·Elasticsearch·발생기가 같은 컴퓨터의 자원을 공유
 
 ## 입력 분포
 
-[`generate-map-corpus.py`](../../scripts/loadtest/generate-map-corpus.py)는 seed `20260911`로 200,000개의 서로 다른 중심 좌표와 URI를 만든다.
+[`generate-map-corpus.py`](../../scripts/loadtest/generate-map-corpus.py)에 `--include-mobile`을 지정하면 당시와 같은 seed `20260911`로 200,000개의 서로 다른 중심 좌표와 URI를 만든다.
 
 - 80%: 활성 오프라인 혜택을 가진 전국 매장 73,083곳 중 선택한 좌표에서 위·경도 각각 ±0.004도 이동한다. 실제 선택된 서로 다른 매장은 64,791곳이다.
 - 20%: 위도 33.1~38.5, 경도 126~129.6 직사각형에서 균등 추출한다. 바다·매장 없는 위치를 포함한다.
@@ -83,7 +89,7 @@ SELECT json_agg(t) FROM (
 ```
 
 ```sh
-python3 scripts/loadtest/generate-map-corpus.py --anchors anchors.json --output mixed.tsv
+python3 scripts/loadtest/generate-map-corpus.py --anchors anchors.json --output mixed.tsv --include-mobile
 /Users/eddie/.sdkman/candidates/java/11.0.27-tem/bin/javac -d output/runner scripts/loadtest/MapLatencyRunner.java
 /Users/eddie/.sdkman/candidates/java/11.0.27-tem/bin/java -Xms256m -Xmx1g \
   -cp output/runner MapLatencyRunner --base-url http://127.0.0.1:18080 \
