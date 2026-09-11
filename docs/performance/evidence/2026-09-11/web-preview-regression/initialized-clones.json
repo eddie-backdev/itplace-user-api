@@ -1,0 +1,12 @@
+{
+  "baseline": {
+    "stores": 73715,
+    "partners": 425,
+    "latest_migration": "20260911.0001"
+  },
+  "rejected": {
+    "stores": 73715,
+    "partners": 425,
+    "latest_migration": "20260911.0002"
+  }
+}

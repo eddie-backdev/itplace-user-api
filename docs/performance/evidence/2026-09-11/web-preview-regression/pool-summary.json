@@ -1,0 +1,147 @@
+{
+  "baseline": {
+    "totals": {
+      "replica-pool": {
+        "acquire_count": 167239.0,
+        "acquire_seconds": 34548.883,
+        "usage_count": 167239.0,
+        "usage_seconds": 3891.6099999999997,
+        "timeouts": 0.0,
+        "acquire_mean_ms": 206.58388892543007,
+        "usage_mean_ms": 23.269751672755753
+      },
+      "source-pool": {
+        "acquire_count": 277.0,
+        "acquire_seconds": 4.449000000000001,
+        "usage_count": 277.0,
+        "usage_seconds": 13.528,
+        "timeouts": 0.0,
+        "acquire_mean_ms": 16.06137184115524,
+        "usage_mean_ms": 48.83754512635379
+      }
+    },
+    "trials": [
+      {
+        "replica-pool": {
+          "acquire_count": 55417.0,
+          "acquire_seconds": 11518.722,
+          "usage_count": 55417.0,
+          "usage_seconds": 1297.136,
+          "timeouts": 0.0
+        },
+        "source-pool": {
+          "acquire_count": 98.0,
+          "acquire_seconds": 1.8450000000000002,
+          "usage_count": 98.0,
+          "usage_seconds": 4.885999999999999,
+          "timeouts": 0.0
+        }
+      },
+      {
+        "replica-pool": {
+          "acquire_count": 55448.0,
+          "acquire_seconds": 11521.003,
+          "usage_count": 55448.0,
+          "usage_seconds": 1297.886,
+          "timeouts": 0.0
+        },
+        "source-pool": {
+          "acquire_count": 81.0,
+          "acquire_seconds": 1.0770000000000002,
+          "usage_count": 81.0,
+          "usage_seconds": 4.126,
+          "timeouts": 0.0
+        }
+      },
+      {
+        "replica-pool": {
+          "acquire_count": 56374.0,
+          "acquire_seconds": 11509.158,
+          "usage_count": 56374.0,
+          "usage_seconds": 1296.588,
+          "timeouts": 0.0
+        },
+        "source-pool": {
+          "acquire_count": 98.0,
+          "acquire_seconds": 1.5270000000000001,
+          "usage_count": 98.0,
+          "usage_seconds": 4.516,
+          "timeouts": 0.0
+        }
+      }
+    ]
+  },
+  "corrected": {
+    "totals": {
+      "replica-pool": {
+        "acquire_count": 185761.0,
+        "acquire_seconds": 34292.356,
+        "usage_count": 185761.0,
+        "usage_seconds": 3875.779,
+        "timeouts": 0.0,
+        "acquire_mean_ms": 184.60471250693095,
+        "usage_mean_ms": 20.864331049036128
+      },
+      "source-pool": {
+        "acquire_count": 269.0,
+        "acquire_seconds": 7.5200000000000005,
+        "usage_count": 269.0,
+        "usage_seconds": 14.349,
+        "timeouts": 0.0,
+        "acquire_mean_ms": 27.955390334572495,
+        "usage_mean_ms": 53.342007434944236
+      }
+    },
+    "trials": [
+      {
+        "replica-pool": {
+          "acquire_count": 61829.0,
+          "acquire_seconds": 11447.005,
+          "usage_count": 61829.0,
+          "usage_seconds": 1292.752,
+          "timeouts": 0.0
+        },
+        "source-pool": {
+          "acquire_count": 96.0,
+          "acquire_seconds": 1.5350000000000001,
+          "usage_count": 96.0,
+          "usage_seconds": 4.569,
+          "timeouts": 0.0
+        }
+      },
+      {
+        "replica-pool": {
+          "acquire_count": 61576.0,
+          "acquire_seconds": 11397.662,
+          "usage_count": 61576.0,
+          "usage_seconds": 1290.3819999999998,
+          "timeouts": 0.0
+        },
+        "source-pool": {
+          "acquire_count": 78.0,
+          "acquire_seconds": 2.361,
+          "usage_count": 78.0,
+          "usage_seconds": 4.2620000000000005,
+          "timeouts": 0.0
+        }
+      },
+      {
+        "replica-pool": {
+          "acquire_count": 62356.0,
+          "acquire_seconds": 11447.689,
+          "usage_count": 62356.0,
+          "usage_seconds": 1292.645,
+          "timeouts": 0.0
+        },
+        "source-pool": {
+          "acquire_count": 95.0,
+          "acquire_seconds": 3.624,
+          "usage_count": 95.0,
+          "usage_seconds": 5.518,
+          "timeouts": 0.0
+        }
+      }
+    ]
+  },
+  "scope": "Prometheus counter deltas: includes runner preparation,20s warmup,45s measurement,drain,periodic background work. Not isolated measured-request-only DB latency, not causal attribution. Per-connection-operation mean; counts may change between implementations."
+}

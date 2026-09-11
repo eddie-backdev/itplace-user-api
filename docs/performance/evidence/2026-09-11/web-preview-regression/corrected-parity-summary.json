@@ -1,0 +1,19 @@
+{
+  "keyword": {
+    "requests": 32,
+    "ordered_equal": 30,
+    "sets_equal": 32,
+    "common_fields_equal": 32,
+    "common_rows": 670,
+    "http200": 32
+  },
+  "preview": {
+    "requests": 139,
+    "ordered_equal": 139,
+    "sets_equal": 139,
+    "common_fields_equal": 139,
+    "common_rows": 4603,
+    "http200": 139
+  },
+  "scope": "Preserved rejected7cc730f actual HTTP responses vs corrected on identical restored data; same171 keyword/viewport inputs. Metadata timestamps excluded; all expanded store fields and ordering compared."
+}

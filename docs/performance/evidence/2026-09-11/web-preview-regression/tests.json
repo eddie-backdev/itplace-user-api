@@ -1,0 +1,10 @@
+{
+  "tests": 423,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "suites": 85,
+  "command": "./gradlew test build",
+  "build": "SUCCESS",
+  "java": "SDKMAN 17.0.19-tem"
+}

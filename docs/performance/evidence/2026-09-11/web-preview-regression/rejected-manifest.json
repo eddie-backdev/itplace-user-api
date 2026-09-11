@@ -1,0 +1,9 @@
+{
+  "jar_sha256": "3e85ddb2014dc6116b80462b65bbd4111596e39eb1323a5e239a3e1fec9be77b",
+  "source_commit_before_pending_changes": "d2ce89f1f4b44fd27bb4e691b4c425327f5600a4",
+  "notes": "Final ./gradlew test build bootJar; source commit7cc730f;420tests85suites0failure/error/skipped; formal quiet window no concurrent builds.",
+  "source_main_tree_sha256": "9d30575af0773343628c2ad9127a1ee4291187aa86f19b535a3c6e7042584cde",
+  "source_commit": "7cc730f73567d083e43b105f4b3e0a64d7b0e88a",
+  "role": "rejected",
+  "preserved_from": "output/web-preview-renewal-2026-09-11/improved.jar"
+}

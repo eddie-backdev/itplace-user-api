@@ -1,0 +1,44 @@
+{
+  "requests": 2,
+  "verified": [
+    {
+      "path": "/api/v1/maps/nearby/search/previews/compact?lat=36.4848639&lng=127.2990532&userLat=36.4848639&userLng=127.2990532&keyword=%EB%8B%A4",
+      "changed_indices": [
+        24,
+        25
+      ],
+      "before_ids": [
+        13666,
+        5199
+      ],
+      "after_ids": [
+        5199,
+        13666
+      ],
+      "same_exact_coordinates": true,
+      "same_priority": "name-match, neither strict partner keyword match",
+      "no_store_added_or_removed": true,
+      "store_id_ascending_after": true
+    },
+    {
+      "path": "/api/v1/maps/nearby/search/previews/compact?lat=36.3815989&lng=126.5822905&userLat=36.3815989&userLng=126.5822905&keyword=%EB%8B%A4",
+      "changed_indices": [
+        24,
+        25
+      ],
+      "before_ids": [
+        13666,
+        5199
+      ],
+      "after_ids": [
+        5199,
+        13666
+      ],
+      "same_exact_coordinates": true,
+      "same_priority": "name-match, neither strict partner keyword match",
+      "no_store_added_or_removed": true,
+      "store_id_ascending_after": true
+    }
+  ],
+  "scope": "Two swaps at indices24/25, not LIMIT-boundary replacements. Full common fields already equal; exact coordinate equality proves unrounded distance tie too."
+}
