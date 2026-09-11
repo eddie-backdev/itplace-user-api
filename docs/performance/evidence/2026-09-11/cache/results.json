@@ -1,0 +1,47 @@
+[
+  {
+    "name": "com.itplace.userapi.benefit.service.BenefitImportServiceImplTest",
+    "tests": "11",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:01:22.861Z",
+    "time": "0.797"
+  },
+  {
+    "name": "com.itplace.userapi.common.redis.CacheConfigTest",
+    "tests": "2",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:01:23.660Z",
+    "time": "0.328"
+  },
+  {
+    "name": "com.itplace.userapi.common.redis.RedisConfigTest",
+    "tests": "1",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:01:23.989Z",
+    "time": "0.35"
+  },
+  {
+    "name": "com.itplace.userapi.map.service.PartnerBenefitCacheRedisTest",
+    "tests": "5",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:01:24.936Z",
+    "time": "0.77"
+  },
+  {
+    "name": "com.itplace.userapi.map.service.PartnerBenefitCacheServiceTest",
+    "tests": "5",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:01:25.873Z",
+    "time": "0.079"
+  }
+]

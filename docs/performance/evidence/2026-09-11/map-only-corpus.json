@@ -1,0 +1,14 @@
+{
+  "entries": 400000,
+  "groups": {
+    "preview": 250000,
+    "cluster5": 50000,
+    "cluster7": 50000,
+    "cluster10": 50000
+  },
+  "corpus_sha256": "98ed7b00d4e0c54d6bb543483e8db0b5b71c5832d595e89e7da663fd516c85f5",
+  "source": "500000-entry expanded corpus, seed20260911; filtered to viewport endpoints",
+  "distinct_coordinates": 400000,
+  "load_generator_max_heap": "2GiB",
+  "discarded_exploration": "160000-entry map corpus: improved trial2 exhausted corpus; all 160k exploratory map runs excluded from headline results"
+}

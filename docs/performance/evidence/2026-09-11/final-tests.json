@@ -1,0 +1,9 @@
+{
+  "tests": 398,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "suites": 82,
+  "command": "./gradlew test build",
+  "build": "SUCCESS"
+}

@@ -1,0 +1,132 @@
+{
+  "baseline": {
+    "dataset": [
+      {
+        "stores": 73715,
+        "partners": 425,
+        "benefits": 871,
+        "policies": 1011,
+        "favorites": 2
+      }
+    ],
+    "settings": [
+      {
+        "name": "effective_cache_size",
+        "setting": "524288",
+        "unit": "8kB"
+      },
+      {
+        "name": "jit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_connections",
+        "setting": "100",
+        "unit": null
+      },
+      {
+        "name": "plan_cache_mode",
+        "setting": "auto",
+        "unit": null
+      },
+      {
+        "name": "random_page_cost",
+        "setting": "4",
+        "unit": null
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "work_mem",
+        "setting": "4096",
+        "unit": "kB"
+      }
+    ],
+    "migration": [
+      {
+        "version": "20260904.0001",
+        "description": "index map region cluster lookup",
+        "success": true
+      }
+    ],
+    "indexes": [
+      {
+        "indexname": "uq_benefit_carrier_policy_id",
+        "indexdef": "CREATE UNIQUE INDEX uq_benefit_carrier_policy_id ON public.benefitcarrierpolicy USING btree (benefitcarrierpolicyid)"
+      }
+    ]
+  },
+  "improved": {
+    "dataset": [
+      {
+        "stores": 73715,
+        "partners": 425,
+        "benefits": 871,
+        "policies": 1011,
+        "favorites": 2
+      }
+    ],
+    "settings": [
+      {
+        "name": "effective_cache_size",
+        "setting": "524288",
+        "unit": "8kB"
+      },
+      {
+        "name": "jit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_connections",
+        "setting": "100",
+        "unit": null
+      },
+      {
+        "name": "plan_cache_mode",
+        "setting": "auto",
+        "unit": null
+      },
+      {
+        "name": "random_page_cost",
+        "setting": "4",
+        "unit": null
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "work_mem",
+        "setting": "4096",
+        "unit": "kB"
+      }
+    ],
+    "migration": [
+      {
+        "version": "20260911.0001",
+        "description": "index store keyword and normalize active",
+        "success": true
+      }
+    ],
+    "indexes": [
+      {
+        "indexname": "idx_favorite_user_created",
+        "indexdef": "CREATE INDEX idx_favorite_user_created ON public.favorite USING btree (userid, createddate DESC)"
+      },
+      {
+        "indexname": "idx_store_business_search",
+        "indexdef": "CREATE INDEX idx_store_business_search ON public.store USING gin (lower((COALESCE(business, ''::character varying))::text) gin_trgm_ops) WHERE ((active = true) AND (location IS NOT NULL))"
+      },
+      {
+        "indexname": "idx_store_name_search",
+        "indexdef": "CREATE INDEX idx_store_name_search ON public.store USING gin (lower((COALESCE(storename, ''::character varying))::text) gin_trgm_ops) WHERE ((active = true) AND (location IS NOT NULL))"
+      }
+    ]
+  }
+}

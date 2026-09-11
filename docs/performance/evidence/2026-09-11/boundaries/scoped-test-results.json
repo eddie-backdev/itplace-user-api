@@ -1,0 +1,42 @@
+[
+  {
+    "name": "com.itplace.userapi.ai.rag.config.ElasticsearchConfigTest",
+    "tests": "2",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "3.79"
+  },
+  {
+    "name": "com.itplace.userapi.map.client.KakaoLocalAddressClientTest",
+    "tests": "2",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.503"
+  },
+  {
+    "name": "com.itplace.userapi.map.service.MapClusterSnapshotCacheTest",
+    "tests": "12",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "1.13"
+  },
+  {
+    "name": "com.itplace.userapi.map.service.MapRegionStoreSummaryRefreshServiceTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.171"
+  },
+  {
+    "name": "com.itplace.userapi.map.service.StoreSearchServiceImplTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.091"
+  }
+]

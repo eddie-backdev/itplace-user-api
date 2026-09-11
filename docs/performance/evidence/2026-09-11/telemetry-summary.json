@@ -1,0 +1,555 @@
+{
+  "baseline-1": {
+    "replica-pool": {
+      "acquire_count": 32855.0,
+      "acquire_mean_ms": 438.57260690914626,
+      "usage_count": 32855.0,
+      "usage_mean_ms": 49.29173641759245,
+      "timeouts": 0.0,
+      "sampled_max_pending": 179.0
+    },
+    "source-pool": {
+      "acquire_count": 3.0,
+      "acquire_mean_ms": 1.0,
+      "usage_count": 3.0,
+      "usage_mean_ms": 252.33333333333334,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 3.0,
+      "installs": 3.0,
+      "revalidations": 0,
+      "failures": 0.0,
+      "hits": 14173.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 324742.0,
+      "miss": 802.0
+    },
+    "redis_commands": {
+      "get": 325544,
+      "mget": 0,
+      "eval": 0,
+      "evalsha": 3,
+      "set": 802,
+      "setnx": 0,
+      "hset": 3
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.15273229919100867,
+      "sample_max": 0.3697247085759379
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9628292816806128,
+      "sample_max": 1.0
+    }
+  },
+  "baseline-2": {
+    "replica-pool": {
+      "acquire_count": 33459.0,
+      "acquire_mean_ms": 430.45560237903106,
+      "usage_count": 33459.0,
+      "usage_mean_ms": 48.36017215099076,
+      "timeouts": 0.0,
+      "sampled_max_pending": 179.0
+    },
+    "source-pool": {
+      "acquire_count": 3.0,
+      "acquire_mean_ms": 3.3333333333333326,
+      "usage_count": 3.0,
+      "usage_mean_ms": 405.0,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 3.0,
+      "installs": 3.0,
+      "revalidations": 0,
+      "failures": 0.0,
+      "hits": 14017.0,
+      "fallbacks": 78.0
+    },
+    "benefit_cache": {
+      "hit": 331430.0,
+      "miss": 715.0
+    },
+    "redis_commands": {
+      "get": 332145,
+      "mget": 0,
+      "eval": 0,
+      "evalsha": 3,
+      "set": 715,
+      "setnx": 0,
+      "hset": 3
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.1504937626807742,
+      "sample_max": 0.33101422936968805
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9520813703151543,
+      "sample_max": 1.0
+    }
+  },
+  "baseline-3": {
+    "replica-pool": {
+      "acquire_count": 33067.0,
+      "acquire_mean_ms": 437.27299119968546,
+      "usage_count": 33067.0,
+      "usage_mean_ms": 49.16599631052107,
+      "timeouts": 0.0,
+      "sampled_max_pending": 179.0
+    },
+    "source-pool": {
+      "acquire_count": 3.0,
+      "acquire_mean_ms": 1.3333333333333333,
+      "usage_count": 3.0,
+      "usage_mean_ms": 338.0,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 3.0,
+      "installs": 3.0,
+      "revalidations": 0,
+      "failures": 0.0,
+      "hits": 14201.0,
+      "fallbacks": 62.0
+    },
+    "benefit_cache": {
+      "hit": 325539.0,
+      "miss": 1063.0
+    },
+    "redis_commands": {
+      "get": 326602,
+      "mget": 0,
+      "eval": 0,
+      "evalsha": 3,
+      "set": 1063,
+      "setnx": 0,
+      "hset": 3
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.1539495871602101,
+      "sample_max": 0.35562496501880003
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9640431030702875,
+      "sample_max": 1.0
+    }
+  },
+  "baseline-map-1": {
+    "replica-pool": {
+      "acquire_count": 102623.0,
+      "acquire_mean_ms": 18.041403973768062,
+      "usage_count": 102623.0,
+      "usage_mean_ms": 6.190473870379934,
+      "timeouts": 0.0,
+      "sampled_max_pending": 167.0
+    },
+    "source-pool": {
+      "acquire_count": 2.0,
+      "acquire_mean_ms": 0.0,
+      "usage_count": 2.0,
+      "usage_mean_ms": 388.5,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 2.0,
+      "installs": 2.0,
+      "revalidations": 0,
+      "failures": 0.0,
+      "hits": 61783.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 992334.0,
+      "miss": 737.0
+    },
+    "redis_commands": {
+      "get": 993071,
+      "mget": 0,
+      "eval": 0,
+      "evalsha": 2,
+      "set": 737,
+      "setnx": 0,
+      "hset": 2
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.5507635171711637,
+      "sample_max": 0.703256709949848
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9064932669124462,
+      "sample_max": 0.9968676585747847
+    }
+  },
+  "baseline-map-2": {
+    "replica-pool": {
+      "acquire_count": 107249.0,
+      "acquire_mean_ms": 18.50690449328199,
+      "usage_count": 107249.0,
+      "usage_mean_ms": 5.933519193652155,
+      "timeouts": 0.0,
+      "sampled_max_pending": 165.0
+    },
+    "source-pool": {
+      "acquire_count": 2.0,
+      "acquire_mean_ms": 0.5,
+      "usage_count": 2.0,
+      "usage_mean_ms": 399.5,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 2.0,
+      "installs": 2.0,
+      "revalidations": 0,
+      "failures": 0.0,
+      "hits": 63852.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 1037129.0,
+      "miss": 900.0
+    },
+    "redis_commands": {
+      "get": 1038029,
+      "mget": 0,
+      "eval": 0,
+      "evalsha": 2,
+      "set": 900,
+      "setnx": 0,
+      "hset": 2
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.5484083367613305,
+      "sample_max": 0.6872017379995763
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9187652899074013,
+      "sample_max": 0.9971943887775551
+    }
+  },
+  "baseline-map-3": {
+    "replica-pool": {
+      "acquire_count": 107545.0,
+      "acquire_mean_ms": 18.084597145381004,
+      "usage_count": 107545.0,
+      "usage_mean_ms": 5.883704495792459,
+      "timeouts": 0.0,
+      "sampled_max_pending": 169.0
+    },
+    "source-pool": {
+      "acquire_count": 2.0,
+      "acquire_mean_ms": 0.0,
+      "usage_count": 2.0,
+      "usage_mean_ms": 214.5,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 2.0,
+      "installs": 2.0,
+      "revalidations": 0,
+      "failures": 0.0,
+      "hits": 64370.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 1041822.0,
+      "miss": 839.0
+    },
+    "redis_commands": {
+      "get": 1042661,
+      "mget": 0,
+      "eval": 0,
+      "evalsha": 2,
+      "set": 839,
+      "setnx": 0,
+      "hset": 2
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.556698689241104,
+      "sample_max": 0.7059567720733042
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9278414259919626,
+      "sample_max": 0.999203187250996
+    }
+  },
+  "improved-1": {
+    "replica-pool": {
+      "acquire_count": 70300.0,
+      "acquire_mean_ms": 201.84250355618778,
+      "usage_count": 70300.0,
+      "usage_mean_ms": 22.68907539118066,
+      "timeouts": 0.0,
+      "sampled_max_pending": 179.0
+    },
+    "source-pool": {
+      "acquire_count": 97.0,
+      "acquire_mean_ms": 29.50515463917526,
+      "usage_count": 97.0,
+      "usage_mean_ms": 51.134020618556704,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 1.0,
+      "installs": 1.0,
+      "revalidations": 2.0,
+      "failures": 0.0,
+      "hits": 23621.0,
+      "fallbacks": 112.0
+    },
+    "benefit_cache": {
+      "hit": 550940.0,
+      "miss": 721.0
+    },
+    "redis_commands": {
+      "get": 94,
+      "mget": 42088,
+      "eval": 95,
+      "evalsha": 3,
+      "set": 202,
+      "setnx": 6,
+      "hset": 3
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.18446647432130375,
+      "sample_max": 0.3764049867747596
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9668432576505361,
+      "sample_max": 1.0
+    }
+  },
+  "improved-2": {
+    "replica-pool": {
+      "acquire_count": 71227.0,
+      "acquire_mean_ms": 198.5290830724304,
+      "usage_count": 71227.0,
+      "usage_mean_ms": 22.350639504682213,
+      "timeouts": 0.0,
+      "sampled_max_pending": 179.0
+    },
+    "source-pool": {
+      "acquire_count": 107.0,
+      "acquire_mean_ms": 34.86915887850467,
+      "usage_count": 107.0,
+      "usage_mean_ms": 55.570093457943926,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 1.0,
+      "installs": 1.0,
+      "revalidations": 2.0,
+      "failures": 0.0,
+      "hits": 23721.0,
+      "fallbacks": 200.0
+    },
+    "benefit_cache": {
+      "hit": 560823.0,
+      "miss": 1410.0
+    },
+    "redis_commands": {
+      "get": 104,
+      "mget": 42692,
+      "eval": 104,
+      "evalsha": 3,
+      "set": 220,
+      "setnx": 24,
+      "hset": 3
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.1825116389073595,
+      "sample_max": 0.3711990958856171
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.967045437244589,
+      "sample_max": 1.0
+    }
+  },
+  "improved-3": {
+    "replica-pool": {
+      "acquire_count": 71047.0,
+      "acquire_mean_ms": 199.32524948273678,
+      "usage_count": 71047.0,
+      "usage_mean_ms": 22.400861401607386,
+      "timeouts": 0.0,
+      "sampled_max_pending": 179.0
+    },
+    "source-pool": {
+      "acquire_count": 94.0,
+      "acquire_mean_ms": 19.882978723404257,
+      "usage_count": 94.0,
+      "usage_mean_ms": 40.308510638297875,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 1.0,
+      "installs": 1.0,
+      "revalidations": 2.0,
+      "failures": 0.0,
+      "hits": 24284.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 560378.0,
+      "miss": 1479.0
+    },
+    "redis_commands": {
+      "get": 91,
+      "mget": 42647,
+      "eval": 91,
+      "evalsha": 3,
+      "set": 199,
+      "setnx": 8,
+      "hset": 3
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.18157416896802597,
+      "sample_max": 0.38387056306052386
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.967035875634892,
+      "sample_max": 1.0
+    }
+  },
+  "improved-map-1": {
+    "replica-pool": {
+      "acquire_count": 117591.0,
+      "acquire_mean_ms": 5.828175625685639,
+      "usage_count": 117591.0,
+      "usage_mean_ms": 4.697561888239746,
+      "timeouts": 0.0,
+      "sampled_max_pending": 133.0
+    },
+    "source-pool": {
+      "acquire_count": 107.0,
+      "acquire_mean_ms": 38.485981308411205,
+      "usage_count": 107.0,
+      "usage_mean_ms": 53.71028037383178,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 1.0,
+      "installs": 1.0,
+      "revalidations": 1.0,
+      "failures": 0.0,
+      "hits": 70873.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 1139053.0,
+      "miss": 2440.0
+    },
+    "redis_commands": {
+      "get": 105,
+      "mget": 81520,
+      "eval": 105,
+      "evalsha": 2,
+      "set": 226,
+      "setnx": 11,
+      "hset": 2
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.5902303695411631,
+      "sample_max": 0.7659479580753701
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.9364400306688621,
+      "sample_max": 1.0
+    }
+  },
+  "improved-map-2": {
+    "replica-pool": {
+      "acquire_count": 144156.0,
+      "acquire_mean_ms": 8.12168067926413,
+      "usage_count": 144156.0,
+      "usage_mean_ms": 4.1225339215849495,
+      "timeouts": 0.0,
+      "sampled_max_pending": 53.0
+    },
+    "source-pool": {
+      "acquire_count": 115.0,
+      "acquire_mean_ms": 54.869565217391305,
+      "usage_count": 115.0,
+      "usage_mean_ms": 37.78260869565218,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 1.0,
+      "installs": 1.0,
+      "revalidations": 1.0,
+      "failures": 0.0,
+      "hits": 86246.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 1397111.0,
+      "miss": 2998.0
+    },
+    "redis_commands": {
+      "get": 113,
+      "mget": 99719,
+      "eval": 113,
+      "evalsha": 2,
+      "set": 259,
+      "setnx": 11,
+      "hset": 2
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.5207892616174437,
+      "sample_max": 0.7043166318981912
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.8990669176639161,
+      "sample_max": 1.0
+    }
+  },
+  "improved-map-3": {
+    "replica-pool": {
+      "acquire_count": 144136.0,
+      "acquire_mean_ms": 6.896320142088028,
+      "usage_count": 144136.0,
+      "usage_mean_ms": 4.036673697063884,
+      "timeouts": 0.0,
+      "sampled_max_pending": 133.0
+    },
+    "source-pool": {
+      "acquire_count": 108.0,
+      "acquire_mean_ms": 42.30555555555556,
+      "usage_count": 108.0,
+      "usage_mean_ms": 30.23148148148148,
+      "timeouts": 0.0
+    },
+    "snapshot": {
+      "builds": 1.0,
+      "installs": 1.0,
+      "revalidations": 1.0,
+      "failures": 0.0,
+      "hits": 86592.0,
+      "fallbacks": 0.0
+    },
+    "benefit_cache": {
+      "hit": 1394984.0,
+      "miss": 3169.0
+    },
+    "redis_commands": {
+      "get": 106,
+      "mget": 100089,
+      "eval": 106,
+      "evalsha": 2,
+      "set": 207,
+      "setnx": 5,
+      "hset": 2
+    },
+    "process_cpu_usage": {
+      "sample_mean": 0.5138610272274556,
+      "sample_max": 0.6633123871721486
+    },
+    "system_cpu_usage": {
+      "sample_mean": 0.920377806449253,
+      "sample_max": 1.0
+    }
+  },
+  "interpretation": "Per-leg before/after counters include warmup and measurement, not just measured requests. 2s gauges include startup/loading/warmup/drain. Splitting transactions changes the denominator of per-borrow usage/acquire means. Redis counters are command deltas, cache counters count keys. CPU is shared-host observation, not isolated server capacity."
+}

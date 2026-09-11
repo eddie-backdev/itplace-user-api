@@ -1,0 +1,482 @@
+[
+  {
+    "case": 0,
+    "latitude": 35.211925224027944,
+    "longitude": 128.9986285728017,
+    "half_degrees": 0.011,
+    "rows": 52,
+    "equal": true
+  },
+  {
+    "case": 1,
+    "latitude": 34.80440398271266,
+    "longitude": 126.431512178143,
+    "half_degrees": 0.005,
+    "rows": 29,
+    "equal": true
+  },
+  {
+    "case": 2,
+    "latitude": 36.097348611368446,
+    "longitude": 128.42480635889615,
+    "half_degrees": 0.011,
+    "rows": 106,
+    "equal": true
+  },
+  {
+    "case": 3,
+    "latitude": 37.31871707722508,
+    "longitude": 127.13322780819384,
+    "half_degrees": 0.011,
+    "rows": 21,
+    "equal": true
+  },
+  {
+    "case": 4,
+    "latitude": 35.16876312693782,
+    "longitude": 126.83996302183095,
+    "half_degrees": 0.011,
+    "rows": 6,
+    "equal": true
+  },
+  {
+    "case": 5,
+    "latitude": 37.641597189424594,
+    "longitude": 126.66136445356359,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 6,
+    "latitude": 37.70485498222461,
+    "longitude": 126.8591210324241,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 7,
+    "latitude": 36.08555770943055,
+    "longitude": 129.38380766868667,
+    "half_degrees": 0.005,
+    "rows": 27,
+    "equal": true
+  },
+  {
+    "case": 8,
+    "latitude": 36.60513161146424,
+    "longitude": 127.22957914058179,
+    "half_degrees": 0.005,
+    "rows": 1,
+    "equal": true
+  },
+  {
+    "case": 9,
+    "latitude": 35.192382814202105,
+    "longitude": 128.07952865992297,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 10,
+    "latitude": 35.8172633226326,
+    "longitude": 128.53574158248398,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 11,
+    "latitude": 36.7939826782513,
+    "longitude": 127.09878734563664,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 12,
+    "latitude": 37.45991605030912,
+    "longitude": 126.69023284273729,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 13,
+    "latitude": 37.446764561027884,
+    "longitude": 129.17500589749895,
+    "half_degrees": 0.15,
+    "rows": 292,
+    "equal": true
+  },
+  {
+    "case": 14,
+    "latitude": 37.560421352217936,
+    "longitude": 127.02392207530752,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 15,
+    "latitude": 37.50813356675081,
+    "longitude": 126.88687733936221,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 16,
+    "latitude": 37.4013857293428,
+    "longitude": 127.274845623205,
+    "half_degrees": 0.005,
+    "rows": 14,
+    "equal": true
+  },
+  {
+    "case": 17,
+    "latitude": 36.04065420954675,
+    "longitude": 129.36183938062635,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 18,
+    "latitude": 37.64292573024656,
+    "longitude": 126.55067758370167,
+    "half_degrees": 0.005,
+    "rows": 3,
+    "equal": true
+  },
+  {
+    "case": 19,
+    "latitude": 37.5809752199657,
+    "longitude": 127.06163023573728,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 20,
+    "latitude": 33.487716835499285,
+    "longitude": 126.42843714401575,
+    "half_degrees": 0.011,
+    "rows": 27,
+    "equal": true
+  },
+  {
+    "case": 21,
+    "latitude": 34.80493817499755,
+    "longitude": 126.4368820113156,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 22,
+    "latitude": 35.948103859659774,
+    "longitude": 126.71120628273594,
+    "half_degrees": 0.005,
+    "rows": 10,
+    "equal": true
+  },
+  {
+    "case": 23,
+    "latitude": 35.180172061663804,
+    "longitude": 126.87009535837585,
+    "half_degrees": 0.005,
+    "rows": 16,
+    "equal": true
+  },
+  {
+    "case": 24,
+    "latitude": 36.11899389814799,
+    "longitude": 128.18111966363986,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 25,
+    "latitude": 37.788304343004086,
+    "longitude": 126.82206487860614,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 26,
+    "latitude": 36.55651758837676,
+    "longitude": 128.75500344412805,
+    "half_degrees": 0.005,
+    "rows": 19,
+    "equal": true
+  },
+  {
+    "case": 27,
+    "latitude": 37.44578431208929,
+    "longitude": 126.7312343715801,
+    "half_degrees": 0.005,
+    "rows": 10,
+    "equal": true
+  },
+  {
+    "case": 28,
+    "latitude": 36.48426904635347,
+    "longitude": 127.2650594758044,
+    "half_degrees": 0.011,
+    "rows": 76,
+    "equal": true
+  },
+  {
+    "case": 29,
+    "latitude": 35.24236471623911,
+    "longitude": 128.65898278338744,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 30,
+    "latitude": 34.93896405627188,
+    "longitude": 128.60241681540802,
+    "half_degrees": 0.011,
+    "rows": 3,
+    "equal": true
+  },
+  {
+    "case": 31,
+    "latitude": 37.54435363048643,
+    "longitude": 126.84214450526508,
+    "half_degrees": 0.011,
+    "rows": 154,
+    "equal": true
+  },
+  {
+    "case": 32,
+    "latitude": 37.54649157129093,
+    "longitude": 127.0525122827289,
+    "half_degrees": 0.005,
+    "rows": 54,
+    "equal": true
+  },
+  {
+    "case": 33,
+    "latitude": 35.30735954687446,
+    "longitude": 128.9352060034373,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 34,
+    "latitude": 35.10684299050482,
+    "longitude": 126.89199041853016,
+    "half_degrees": 0.005,
+    "rows": 17,
+    "equal": true
+  },
+  {
+    "case": 35,
+    "latitude": 37.30580022768927,
+    "longitude": 126.86064937466149,
+    "half_degrees": 0.005,
+    "rows": 21,
+    "equal": true
+  },
+  {
+    "case": 36,
+    "latitude": 34.8580843877546,
+    "longitude": 128.42537828637228,
+    "half_degrees": 0.15,
+    "rows": 297,
+    "equal": true
+  },
+  {
+    "case": 37,
+    "latitude": 33.4331080063916,
+    "longitude": 126.73278311744244,
+    "half_degrees": 0.15,
+    "rows": 221,
+    "equal": true
+  },
+  {
+    "case": 38,
+    "latitude": 37.59821980534045,
+    "longitude": 127.03614198629606,
+    "half_degrees": 0.005,
+    "rows": 24,
+    "equal": true
+  },
+  {
+    "case": 39,
+    "latitude": 36.611589156447,
+    "longitude": 127.51586368355956,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 40,
+    "latitude": 36.987334065003424,
+    "longitude": 126.94522412168863,
+    "half_degrees": 0.011,
+    "rows": 18,
+    "equal": true
+  },
+  {
+    "case": 41,
+    "latitude": 35.09732267440286,
+    "longitude": 129.02325544380648,
+    "half_degrees": 0.005,
+    "rows": 32,
+    "equal": true
+  },
+  {
+    "case": 42,
+    "latitude": 37.399078150163895,
+    "longitude": 126.91824364060777,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 43,
+    "latitude": 35.63441592728228,
+    "longitude": 129.34105780711158,
+    "half_degrees": 0.011,
+    "rows": 52,
+    "equal": true
+  },
+  {
+    "case": 44,
+    "latitude": 35.96101738705664,
+    "longitude": 126.98893880373372,
+    "half_degrees": 0.011,
+    "rows": 84,
+    "equal": true
+  },
+  {
+    "case": 45,
+    "latitude": 37.461300316636596,
+    "longitude": 126.88379444899499,
+    "half_degrees": 0.011,
+    "rows": 49,
+    "equal": true
+  },
+  {
+    "case": 46,
+    "latitude": 37.60775995551483,
+    "longitude": 126.972709291093,
+    "half_degrees": 0.005,
+    "rows": 5,
+    "equal": true
+  },
+  {
+    "case": 47,
+    "latitude": 37.35866477508704,
+    "longitude": 127.24444302547583,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 48,
+    "latitude": 35.86626217979449,
+    "longitude": 128.69324168378523,
+    "half_degrees": 0.005,
+    "rows": 32,
+    "equal": true
+  },
+  {
+    "case": 49,
+    "latitude": 36.134354716996306,
+    "longitude": 128.41278122000136,
+    "half_degrees": 0.011,
+    "rows": 43,
+    "equal": true
+  },
+  {
+    "case": 50,
+    "latitude": 36.7896763131761,
+    "longitude": 127.08952361773596,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 51,
+    "latitude": 37.568514912924826,
+    "longitude": 126.90605907673253,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 52,
+    "latitude": 37.60896040734413,
+    "longitude": 127.16027830405956,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 53,
+    "latitude": 35.15601989806953,
+    "longitude": 129.1320605177335,
+    "half_degrees": 0.005,
+    "rows": 13,
+    "equal": true
+  },
+  {
+    "case": 54,
+    "latitude": 37.48165717841563,
+    "longitude": 127.03818029591027,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 55,
+    "latitude": 35.2159184183306,
+    "longitude": 129.07913828900993,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 56,
+    "latitude": 35.064886834284074,
+    "longitude": 128.07205139865698,
+    "half_degrees": 0.011,
+    "rows": 31,
+    "equal": true
+  },
+  {
+    "case": 57,
+    "latitude": 36.63201413181136,
+    "longitude": 127.46474379924125,
+    "half_degrees": 0.011,
+    "rows": 79,
+    "equal": true
+  },
+  {
+    "case": 58,
+    "latitude": 37.26409035063237,
+    "longitude": 127.01543258013885,
+    "half_degrees": 0.15,
+    "rows": 300,
+    "equal": true
+  },
+  {
+    "case": 59,
+    "latitude": 35.14340971377159,
+    "longitude": 129.0354266114382,
+    "half_degrees": 0.005,
+    "rows": 9,
+    "equal": true
+  }
+]

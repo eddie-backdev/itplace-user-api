@@ -1,0 +1,34 @@
+{
+  "database" : "PostgreSQL 16.4 on x86_64-pc-linux-musl, compiled by gcc (Alpine 13.2.1_git20240309) 13.2.1 20240309, 64-bit",
+  "fixture" : {
+    "policiesPerBenefit" : 3,
+    "favoritesPerBenefit" : 250,
+    "benefits" : 400,
+    "policies" : 1200,
+    "favorites" : 100000
+  },
+  "settings" : {
+    "jit" : "off",
+    "dataLimit" : 20,
+    "work_mem" : "4MB"
+  },
+  "largestJoinOutputRows" : {
+    "before-data" : 300000,
+    "after-data" : 1200,
+    "before-count" : 300000,
+    "after-count" : 1200
+  },
+  "executionMilliseconds" : {
+    "before-data" : [ 117.229, 113.7, 111.88, 116.555, 114.632 ],
+    "after-data" : [ 47.453, 44.852, 44.116, 45.685, 44.927 ],
+    "before-count" : [ 49.766, 47.41, 47.128, 49.385, 47.499 ],
+    "after-count" : [ 0.396, 0.396, 0.396, 0.421, 0.391 ]
+  },
+  "medianExecutionMilliseconds" : {
+    "before-data" : 114.632,
+    "after-data" : 44.927,
+    "before-count" : 47.499,
+    "after-count" : 0.396
+  },
+  "limitations" : "Synthetic single-connection PostgreSQL fixture; not production latency, TPS, HTTP, or JPA hydration evidence."
+}

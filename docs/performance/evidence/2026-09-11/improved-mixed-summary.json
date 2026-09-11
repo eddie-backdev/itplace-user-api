@@ -1,0 +1,161 @@
+{
+  "completed": 189403,
+  "errors": 0,
+  "successful_tps": 1042.8103976138173,
+  "mean_ms": 476.6659510505378,
+  "p95_trial_range_ms": [
+    887.1008208897485,
+    904.931547389632
+  ],
+  "p99_trial_range_ms": [
+    1115.230345569126,
+    1137.646475515067
+  ],
+  "mean_body_bytes": 27862.355923612613,
+  "groups": {
+    "cluster10": {
+      "completed": 19126,
+      "errors": 0,
+      "successful_tps": 105.30346227230756,
+      "mean_ms": 286.5627823485831,
+      "p95_trial_range_ms": [
+        392.30182722549023,
+        400.18709395272236
+      ],
+      "p99_trial_range_ms": [
+        437.6787309744455,
+        455.4502425437196
+      ],
+      "mean_body_bytes": 764.9133640071108
+    },
+    "cluster5": {
+      "completed": 18802,
+      "errors": 0,
+      "successful_tps": 103.51959100930287,
+      "mean_ms": 285.42080593016703,
+      "p95_trial_range_ms": [
+        392.30182722549023,
+        400.18709395272236
+      ],
+      "p99_trial_range_ms": [
+        437.6787309744455,
+        455.4502425437196
+      ],
+      "mean_body_bytes": 2438.251196681204
+    },
+    "cluster7": {
+      "completed": 19009,
+      "errors": 0,
+      "successful_tps": 104.65928653844475,
+      "mean_ms": 286.11412797117157,
+      "p95_trial_range_ms": [
+        392.30182722549023,
+        408.23085454117256
+      ],
+      "p99_trial_range_ms": [
+        442.05551828419016,
+        464.60479241884815
+      ],
+      "mean_body_bytes": 4715.99689620706
+    },
+    "keyword": {
+      "completed": 19103,
+      "errors": 0,
+      "successful_tps": 105.17682943573624,
+      "mean_ms": 793.4400757635974,
+      "p95_trial_range_ms": [
+        1160.5131696729193,
+        1183.8394843833446
+      ],
+      "p99_trial_range_ms": [
+        1333.9799626616793,
+        1388.1448984053927
+      ],
+      "mean_body_bytes": 43424.466052452495
+    },
+    "mobile": {
+      "completed": 9413,
+      "errors": 0,
+      "successful_tps": 51.82586481068864,
+      "mean_ms": 672.8791598108999,
+      "p95_trial_range_ms": [
+        989.7103061675111,
+        1009.6034833214779
+      ],
+      "p99_trial_range_ms": [
+        1160.5131696729193,
+        1219.7110045996446
+      ],
+      "mean_body_bytes": 21741.988207797727
+    },
+    "nearby": {
+      "completed": 9363,
+      "errors": 0,
+      "successful_tps": 51.5505760355336,
+      "mean_ms": 678.0067112545124,
+      "p95_trial_range_ms": [
+        979.9111942252579,
+        1009.6034833214779
+      ],
+      "p99_trial_range_ms": [
+        1160.5131696729193,
+        1207.6346580194493
+      ],
+      "mean_body_bytes": 163477.89939122077
+    },
+    "preview": {
+      "completed": 94587,
+      "errors": 0,
+      "successful_tps": 520.7747875118035,
+      "mean_ms": 487.9831452930635,
+      "p95_trial_range_ms": [
+        698.6505581425433,
+        727.0185723918695
+      ],
+      "p99_trial_range_ms": [
+        861.0113169741156,
+        923.120671492165
+      ],
+      "mean_body_bytes": 27088.87267806358
+    }
+  },
+  "trials": [
+    {
+      "file": "improved-1.json",
+      "seed": 20260911,
+      "completed": 62224,
+      "successful_tps": 1026.510937079632,
+      "mean_ms": 483.84945609348483,
+      "p95_ms": 904.931547389632,
+      "p99_ms": 1137.646475515067,
+      "errors": 0
+    },
+    {
+      "file": "improved-2.json",
+      "seed": 20260912,
+      "completed": 63797,
+      "successful_tps": 1053.5981107503005,
+      "mean_ms": 471.8890099117827,
+      "p95_ms": 887.1008208897485,
+      "p99_ms": 1115.230345569126,
+      "errors": 0
+    },
+    {
+      "file": "improved-3.json",
+      "seed": 20260913,
+      "completed": 63382,
+      "successful_tps": 1048.3482310734198,
+      "mean_ms": 474.42190851538294,
+      "p95_ms": 895.9718290986467,
+      "p99_ms": 1115.230345569126,
+      "errors": 0
+    }
+  ],
+  "conditions": {
+    "corpus_sha256": "74ee668dcf0490f2f6bb177b2cd30d0659e37276a65a8a6a320442552b639620",
+    "concurrency": 500,
+    "accept_encoding": "identity",
+    "request_timeout_seconds": 10
+  },
+  "interpretation": "Pooled count / sum(wall including drain); request-weighted mean. Percentiles remain trial ranges. No request path reuse within each measurement; paths may recur across separate trials."
+}

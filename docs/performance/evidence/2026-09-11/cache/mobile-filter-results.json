@@ -1,0 +1,20 @@
+[
+  {
+    "name": "com.itplace.userapi.map.service.StoreServiceImplTest",
+    "tests": "58",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:19:32.890Z",
+    "time": "0.793"
+  },
+  {
+    "name": "com.itplace.userapi.mobile.map.service.MobileMapServiceImplTest",
+    "tests": "8",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-11T03:19:33.685Z",
+    "time": "0.029"
+  }
+]

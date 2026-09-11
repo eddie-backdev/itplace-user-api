@@ -1,0 +1,290 @@
+[
+  {
+    "keyword": "스타벅스",
+    "version": "before",
+    "rep": 0,
+    "execution_ms": 111.116,
+    "planning_ms": 0.516,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타벅스",
+    "version": "before",
+    "rep": 1,
+    "execution_ms": 107.722,
+    "planning_ms": 0.361,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타벅스",
+    "version": "before",
+    "rep": 2,
+    "execution_ms": 107.544,
+    "planning_ms": 0.311,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타벅스",
+    "version": "after",
+    "rep": 0,
+    "execution_ms": 5.775,
+    "planning_ms": 0.27,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타벅스",
+    "version": "after",
+    "rep": 1,
+    "execution_ms": 5.546,
+    "planning_ms": 0.205,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타벅스",
+    "version": "after",
+    "rep": 2,
+    "execution_ms": 5.549,
+    "planning_ms": 0.191,
+    "rows": 30.0
+  },
+  {
+    "keyword": "존재하지않는지점xyz",
+    "version": "before",
+    "rep": 0,
+    "execution_ms": 119.523,
+    "planning_ms": 0.262,
+    "rows": 0.0
+  },
+  {
+    "keyword": "존재하지않는지점xyz",
+    "version": "before",
+    "rep": 1,
+    "execution_ms": 118.511,
+    "planning_ms": 0.295,
+    "rows": 0.0
+  },
+  {
+    "keyword": "존재하지않는지점xyz",
+    "version": "before",
+    "rep": 2,
+    "execution_ms": 118.924,
+    "planning_ms": 0.284,
+    "rows": 0.0
+  },
+  {
+    "keyword": "존재하지않는지점xyz",
+    "version": "after",
+    "rep": 0,
+    "execution_ms": 0.421,
+    "planning_ms": 0.255,
+    "rows": 0.0
+  },
+  {
+    "keyword": "존재하지않는지점xyz",
+    "version": "after",
+    "rep": 1,
+    "execution_ms": 0.371,
+    "planning_ms": 0.18,
+    "rows": 0.0
+  },
+  {
+    "keyword": "존재하지않는지점xyz",
+    "version": "after",
+    "rep": 2,
+    "execution_ms": 0.351,
+    "planning_ms": 0.169,
+    "rows": 0.0
+  },
+  {
+    "keyword": "편의점",
+    "version": "before",
+    "rep": 0,
+    "execution_ms": 109.255,
+    "planning_ms": 0.234,
+    "rows": 30.0
+  },
+  {
+    "keyword": "편의점",
+    "version": "before",
+    "rep": 1,
+    "execution_ms": 108.742,
+    "planning_ms": 0.291,
+    "rows": 30.0
+  },
+  {
+    "keyword": "편의점",
+    "version": "before",
+    "rep": 2,
+    "execution_ms": 108.377,
+    "planning_ms": 0.275,
+    "rows": 30.0
+  },
+  {
+    "keyword": "편의점",
+    "version": "after",
+    "rep": 0,
+    "execution_ms": 86.46,
+    "planning_ms": 0.229,
+    "rows": 30.0
+  },
+  {
+    "keyword": "편의점",
+    "version": "after",
+    "rep": 1,
+    "execution_ms": 86.953,
+    "planning_ms": 0.244,
+    "rows": 30.0
+  },
+  {
+    "keyword": "편의점",
+    "version": "after",
+    "rep": 2,
+    "execution_ms": 86.304,
+    "planning_ms": 0.237,
+    "rows": 30.0
+  },
+  {
+    "keyword": "다",
+    "version": "before",
+    "rep": 0,
+    "execution_ms": 59.571,
+    "planning_ms": 0.312,
+    "rows": 30.0
+  },
+  {
+    "keyword": "다",
+    "version": "before",
+    "rep": 1,
+    "execution_ms": 59.547,
+    "planning_ms": 0.289,
+    "rows": 30.0
+  },
+  {
+    "keyword": "다",
+    "version": "before",
+    "rep": 2,
+    "execution_ms": 59.874,
+    "planning_ms": 0.311,
+    "rows": 30.0
+  },
+  {
+    "keyword": "다",
+    "version": "after",
+    "rep": 0,
+    "execution_ms": 59.53,
+    "planning_ms": 0.336,
+    "rows": 30.0
+  },
+  {
+    "keyword": "다",
+    "version": "after",
+    "rep": 1,
+    "execution_ms": 58.304,
+    "planning_ms": 0.264,
+    "rows": 30.0
+  },
+  {
+    "keyword": "다",
+    "version": "after",
+    "rep": 2,
+    "execution_ms": 57.783,
+    "planning_ms": 0.226,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타%",
+    "version": "before",
+    "rep": 0,
+    "execution_ms": 63.359,
+    "planning_ms": 0.33,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타%",
+    "version": "before",
+    "rep": 1,
+    "execution_ms": 63.181,
+    "planning_ms": 0.327,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타%",
+    "version": "before",
+    "rep": 2,
+    "execution_ms": 63.266,
+    "planning_ms": 0.327,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타%",
+    "version": "after",
+    "rep": 0,
+    "execution_ms": 62.919,
+    "planning_ms": 0.257,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타%",
+    "version": "after",
+    "rep": 1,
+    "execution_ms": 63.269,
+    "planning_ms": 0.218,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타%",
+    "version": "after",
+    "rep": 2,
+    "execution_ms": 63.283,
+    "planning_ms": 0.23,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타_",
+    "version": "before",
+    "rep": 0,
+    "execution_ms": 63.206,
+    "planning_ms": 0.286,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타_",
+    "version": "before",
+    "rep": 1,
+    "execution_ms": 63.081,
+    "planning_ms": 0.292,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타_",
+    "version": "before",
+    "rep": 2,
+    "execution_ms": 63.131,
+    "planning_ms": 0.298,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타_",
+    "version": "after",
+    "rep": 0,
+    "execution_ms": 63.112,
+    "planning_ms": 0.234,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타_",
+    "version": "after",
+    "rep": 1,
+    "execution_ms": 63.348,
+    "planning_ms": 0.241,
+    "rows": 30.0
+  },
+  {
+    "keyword": "스타_",
+    "version": "after",
+    "rep": 2,
+    "execution_ms": 63.556,
+    "planning_ms": 0.205,
+    "rows": 30.0
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "checkedCases" : 420,
+  "filterCases" : 105,
+  "database" : "PostgreSQL 16.4 on x86_64-pc-linux-musl, compiled by gcc (Alpine 13.2.1_git20240309) 13.2.1 20240309, 64-bit",
+  "fixture" : {
+    "benefits" : 12,
+    "favorites" : 15,
+    "policies" : 15
+  },
+  "ordering" : "exact, including benefitId ASC tie break",
+  "sortModes" : 4,
+  "seed" : 20260911,
+  "dataCountPageEquivalent" : true
+}
