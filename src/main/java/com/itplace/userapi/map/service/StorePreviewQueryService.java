@@ -2,6 +2,7 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class StorePreviewQueryService {
 
     private final StoreRepository storeRepository;
+    private final EntityManager entityManager;
+
+    @Transactional(readOnly = true, timeout = 5)
+    public List<Long> searchEligibleNearbyStoreIds(double lng, double lat, String category, String keyword) {
+        // 짧은 검색어와 브랜드 검색의 후보 수 차이를 반영한다. 설정은 이 DB 조회에서만 유지한다.
+        entityManager.createNativeQuery("SET LOCAL plan_cache_mode = force_custom_plan").executeUpdate();
+        return storeRepository.searchEligibleNearbyStoreIds(lng, lat, category, keyword);
+    }
 
     /**
      * 지도 미리보기 조회에 필요한 DB 작업만 짧은 읽기 트랜잭션으로 실행한다.

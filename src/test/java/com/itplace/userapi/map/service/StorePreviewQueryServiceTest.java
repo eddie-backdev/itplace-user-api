@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
+import jakarta.persistence.EntityManager;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,9 @@ class StorePreviewQueryServiceTest {
 
     @Mock
     private StoreRepository storeRepository;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private StorePreviewQueryService queryService;
@@ -88,6 +92,13 @@ class StorePreviewQueryServiceTest {
         assertThat(queryTransaction.readOnly()).isTrue();
         assertThat(queryTransaction.timeout()).isEqualTo(5);
         assertThat(queryTransaction.propagation()).isEqualTo(Propagation.REQUIRED);
+
+        Transactional keywordTransaction = StorePreviewQueryService.class.getMethod(
+                "searchEligibleNearbyStoreIds", double.class, double.class, String.class, String.class
+        ).getAnnotation(Transactional.class);
+        assertThat(keywordTransaction.readOnly()).isTrue();
+        assertThat(keywordTransaction.timeout()).isEqualTo(5);
+        assertThat(keywordTransaction.propagation()).isEqualTo(Propagation.REQUIRED);
 
         Method batchMethod = StoreServiceImpl.class.getMethod(
                 "findStoresInViewPreviewBatch",

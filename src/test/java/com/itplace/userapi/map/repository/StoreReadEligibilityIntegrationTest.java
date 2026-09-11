@@ -166,6 +166,33 @@ class StoreReadEligibilityIntegrationTest {
     }
 
     @Test
+    void disjointKeywordBranchesKeepNullAliasPartnerOnlyAndWildcardMatchesWithoutDuplicates() {
+        store(1,1,"GS25 서울",null,37.501);
+        store(2,1,"지에스25 서울",null,37.502);
+        store(3,1,null,null,37.503);
+        store(4,1,"GS25_서초","소매",37.504);
+        store(5,1,"GS25%서초","소매",37.505);
+        store(6,1,"다른 가게","GS25",37.506);
+        store(7,2,"다락 창고","보관",37.507);
+        var parameters = parameters(null).addValue("keyword","gs25");
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(1L,2L,4L,5L);
+        parameters.addValue("keyword","gs25\\_");
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(4L);
+        parameters.addValue("keyword","gs25\\%");
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(5L);
+        parameters.addValue("keyword","%");
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(1L,2L,4L,5L,7L);
+        parameters.addValue("category","생활");
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(7L);
+        parameters.addValue("keyword","편의점").addValue("category",null,Types.VARCHAR);
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(1L,2L,4L,5L);
+        store(20,1,"GS25 동순위 B",null,37.508);
+        store(10,1,"GS25 동순위 A",null,37.508);
+        parameters.addValue("keyword","동순위");
+        assertThat(ids("searchEligibleNearbyStoreIds",parameters)).containsExactly(10L,20L);
+    }
+
+    @Test
     void finalHibernateJoinFetchRejectsStaleEsIdsAndLoadsPartnerWithoutLazyRead() {
         store(1,1,"GS25 정상","소매",37.5);
         store(2,1,"다른 매장","소매",37.5);

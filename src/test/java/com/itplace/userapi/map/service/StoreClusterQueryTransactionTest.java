@@ -14,7 +14,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.stubbing.Answer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -35,8 +36,8 @@ class StoreClusterQueryTransactionTest {
                     .asCompatibleSubstituteFor("postgres"));
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void customPlanAppliesToJpaConnectionAndResetsAfterCommitOrRollback(boolean failQuery) {
+    @CsvSource({"cluster,false", "cluster,true", "keyword,false", "keyword,true"})
+    void customPlanAppliesToJpaConnectionAndResetsAfterCommitOrRollback(String queryType, boolean failQuery) {
         try (HikariDataSource dataSource = new HikariDataSource()) {
             dataSource.setJdbcUrl(POSTGRES.getJdbcUrl());
             dataSource.setUsername(POSTGRES.getUsername());
@@ -57,9 +58,7 @@ class StoreClusterQueryTransactionTest {
                 assertThat(jdbc.queryForObject("SHOW plan_cache_mode", String.class)).isEqualTo("auto");
 
                 StoreRepository repository = mock(StoreRepository.class);
-                when(repository.findStoreClustersInView(
-                        anyDouble(), anyDouble(), anyDouble(), anyDouble(), isNull(), anyInt(), anyString()
-                )).thenAnswer(invocation -> {
+                Answer<List<?>> observeQuery = invocation -> {
                     assertThat(entityManager.createNativeQuery("SHOW plan_cache_mode").getSingleResult())
                             .isEqualTo("force_custom_plan");
                     assertThat(entityManager.createNativeQuery("SHOW transaction_read_only").getSingleResult())
@@ -70,11 +69,23 @@ class StoreClusterQueryTransactionTest {
                         throw new IllegalStateException("query failed");
                     }
                     return List.of();
-                });
-                StoreClusterQueryService service = new StoreClusterQueryService(repository, entityManager);
-                Runnable query = () -> transaction.executeWithoutResult(status ->
-                        assertThat(service.findStoreClustersInView(37.49, 37.52, 126.99, 127.02, null, 7, "TOWN"))
-                                .isEmpty());
+                };
+                Runnable query;
+                if (queryType.equals("keyword")) {
+                    when(repository.searchEligibleNearbyStoreIds(127.0, 37.5, null, "GS25"))
+                            .thenAnswer(observeQuery);
+                    StorePreviewQueryService service = new StorePreviewQueryService(repository, entityManager);
+                    query = () -> transaction.executeWithoutResult(status ->
+                            assertThat(service.searchEligibleNearbyStoreIds(127.0, 37.5, null, "GS25")).isEmpty());
+                } else {
+                    when(repository.findStoreClustersInView(
+                            anyDouble(), anyDouble(), anyDouble(), anyDouble(), isNull(), anyInt(), anyString()
+                    )).thenAnswer(observeQuery);
+                    StoreClusterQueryService service = new StoreClusterQueryService(repository, entityManager);
+                    query = () -> transaction.executeWithoutResult(status ->
+                            assertThat(service.findStoreClustersInView(37.49, 37.52, 126.99, 127.02, null, 7, "TOWN"))
+                                    .isEmpty());
+                }
                 if (failQuery) {
                     assertThatThrownBy(query::run).isInstanceOf(IllegalStateException.class).hasMessage("query failed");
                 } else {

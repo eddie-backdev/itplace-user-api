@@ -491,7 +491,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
-                    WITH keyword_stores AS MATERIALIZED (
+                    WITH keyword_stores AS NOT MATERIALIZED (
                         SELECT s.storeId, s.partnerId, s.storeName, s.location, s.mapNormalizedName, s.mapNormalizedBusiness
                         FROM store s
                         WHERE s.active = true
@@ -500,11 +500,16 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                               LOWER(COALESCE(s.business, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
                               OR LOWER(COALESCE(s.storeName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
                           )
-                        UNION
+                        UNION ALL
                         SELECT s.storeId, s.partnerId, s.storeName, s.location, s.mapNormalizedName, s.mapNormalizedBusiness
                         FROM store s
                         WHERE s.active = true
                           AND s.location IS NOT NULL
+                          -- 두 분기를 겹치지 않게 만들어 넓은 문자열 행의 UNION 중복 제거/디스크 임시 쓰기를 없앤다.
+                          AND (
+                              LOWER(COALESCE(s.business, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                              OR LOWER(COALESCE(s.storeName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                          ) IS NOT TRUE
                           AND s.partnerId = ANY (ARRAY(
                               SELECT p.partnerId FROM partner p
                               WHERE LOWER(COALESCE(p.partnerName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -534,7 +539,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                            ST_DistanceSphere(
                                s.location::geometry,
                                ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
-                           ) ASC
+                           ) ASC,
+                           s.storeId ASC
                     LIMIT 30
                     """,
             nativeQuery = true

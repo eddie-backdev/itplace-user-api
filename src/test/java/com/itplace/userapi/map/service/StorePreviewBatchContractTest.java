@@ -88,7 +88,7 @@ class StorePreviewBatchContractTest {
         List<Store> stores = List.of(store(1, "GS25 먼점", partner, 37.6),
                 store(2, "카페 GS25 근처", other, 37.5001));
         when(search.searchByKeyword("GS25", null)).thenReturn(new StoreSearchResult(List.of(1L), List.of(2L)));
-        when(repository.searchEligibleNearbyStoreIds(127, 37.5, null, "GS25")).thenReturn(List.of(2L, 1L));
+        when(previewQuery.searchEligibleNearbyStoreIds(127, 37.5, null, "GS25")).thenReturn(List.of(2L, 1L));
         when(repository.findEligibleByStoreIdInWithPartner(anyList())).thenReturn(stores);
         when(cache.getBenefitsBatch(anyList())).thenReturn(Map.of());
         var result = service.findNearbyByKeywordPreviewBatch(37.5, 127, null, "GS25", 37.5, 127);
@@ -103,7 +103,7 @@ class StorePreviewBatchContractTest {
     @Test
     void keywordFallbackKeepsDatabaseOrderAndSkipsLegacyEligibility() {
         when(search.searchByKeyword("GS25", null)).thenThrow(new IllegalStateException("offline"));
-        when(repository.searchEligibleNearbyStoreIds(127, 37.5, null, "GS25")).thenReturn(List.of(2L, 1L));
+        when(previewQuery.searchEligibleNearbyStoreIds(127, 37.5, null, "GS25")).thenReturn(List.of(2L, 1L));
         when(repository.findEligibleByStoreIdInWithPartner(List.of(2L, 1L)))
                 .thenReturn(List.of(store(1, "GS25 하나", partner, 37.501), store(2, "GS25 둘", partner, 37.502)));
         when(cache.getBenefitsBatch(List.of(10L))).thenReturn(Map.of());
