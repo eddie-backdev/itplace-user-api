@@ -1,0 +1,31 @@
+{
+  "source": "/Users/eddie/dev/ITPLACE/itplace-user-api/output/map-root-cause-2026-09-11/web.tsv",
+  "source_sha256": "fb3ab48bf33b51f98b5c0382fa5b179ed6c46d06d8af8e96ca3a0894a446af22",
+  "corpus": "/Users/eddie/dev/ITPLACE/itplace-user-api/output/map-movement-only-2026-09-11/map-movement.tsv",
+  "corpus_sha256": "35d9ad7f66d294875a6020178d6bca78c7902fe45de7daa57e5cf4b5ff97f070",
+  "entries": 160000,
+  "distinct_urls": 160000,
+  "groups": {
+    "preview": 100000,
+    "cluster5": 20000,
+    "cluster7": 20000,
+    "cluster10": 20000
+  },
+  "allowed_url_paths": [
+    "/api/v1/maps/stores/in-view/clusters",
+    "/api/v1/maps/stores/in-view/previews/compact"
+  ],
+  "keyword_nearby_mobile_entries": 0,
+  "coordinate_selection": "Filtered existing seeded diverse web corpus, original row order preserved",
+  "concurrency": [
+    1,
+    5,
+    10
+  ],
+  "warmup_seconds_each": 1,
+  "measurement_seconds_each": 5,
+  "trials_per_concurrency": 1,
+  "coordinate_distribution_note": "Parent generator audit: original 20-slot corpus had uniform slots 0/5/10/15, all in retained map groups. Filtered map corpus therefore has anchor75%/uniform25%, not the new default generator80%/20%. No equivalence to new generator claimed.",
+  "anchor_fraction": 0.75,
+  "uniform_fraction": 0.25
+}

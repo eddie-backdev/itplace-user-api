@@ -4,15 +4,16 @@ Java11 표준 라이브러리만 사용하는 **closed-loop HTTP 부하 발생�
 
 ## 준비와 실행
 
-현재 성능 테스트는 웹 API만 대상으로 하며 모바일 aggregate는 제외한다. 기존 `mixed.tsv`에는 모바일 5%가 있으므로 새 웹 전용 입력을 생성해 사용한다. 기본 비중은 preview 50%, cluster level 5/7/10 각 10%, keyword 10%, nearby 10%다.
+현재 성능 테스트는 **지도 이동의 매장 데이터 조회만** 대상으로 한다. 허용 경로는 `/stores/in-view/previews/compact`와 `/stores/in-view/clusters` 두 개다. 키워드·주변 검색·모바일 API는 제외한다. 기본 corpus 비중은 preview 62.5%, cluster level 5/7/10 각 12.5%다. 이 비율은 진단용 합성 구성이고 실제 사용자 줌 비율을 측정한 값은 아니다.
 
 ```sh
-python3 scripts/loadtest/generate-map-corpus.py --anchors output/performance-renewal-2026-09-11/anchors.json --output output/web-map-corpus.tsv
+python3 scripts/loadtest/generate-map-corpus.py --anchors output/performance-renewal-2026-09-11/anchors.json --output output/map-movement-corpus.tsv
+python3 scripts/loadtest/GenerateMapCorpusSelfTest.py
 ```
 
-`--include-mobile`은 과거 실험의 입력 재현용이다. 원본 결과에서 mobile 행만 빼서 웹 전용 재측정 결과로 해석하지 않는다. 같은 서버 자원을 공유하던 부하 자체가 달라지기 때문이다.
+기존 `web.tsv`·`web-map-corpus.tsv`에는 키워드·주변 검색이 들어갈 수 있고, 이전 `mixed.tsv`에는 모바일도 포함된다. 파일명만 보고 재사용하지 말고 실제 TSV 경로·그룹을 확인한다. 원본 혼합 결과에서 keyword/nearby/mobile 행만 빼서 지도 이동 재측정 결과로 해석하지 않는다. 같은 서버 자원을 공유하던 부하 자체가 달라지기 때문이다.
 
-웹 기본 입력은 검색·주변의 `/previews/compact`를 사용한다. `--legacy-previews`를 지정하면 같은 좌표·순서·파라미터를 유지하면서 해당 두 그룹만 기존 list endpoint로 생성하므로 compact 전후 비교에 사용한다. viewport compact와 cluster는 두 모드에서 동일하다. `--include-mobile`은 이전 모바일 포함 시험의 기존 경로를 그대로 재현한다.
+`--historical-mixed`는 과거 웹 혼합 구성(preview 50%, cluster 합계 30%, keyword 10%, nearby 10%)을 명시적으로 재현하는 옵션이다. `--historical-mixed --legacy-previews`는 같은 좌표·순서·파라미터에서 검색·주변의 기존 list endpoint를 재현한다. `--include-mobile`도 과거 모바일 포함 혼합 입력의 재현용이며 현재 지도 이동 시험에 사용하지 않는다.
 
 API는 SDKMAN Java17, 이 발생기는 SDKMAN Java11을 사용한다. 전후 비교 시 같은 JAR 실행 방법·API JVM/DB 설정·발생기 JVM·corpus·seed·HTTP 압축·warmup·concurrency·duration을 유지한다.
 
@@ -24,13 +25,15 @@ JAVA_HOME="$JAVA_HOME" python3 scripts/loadtest/MapLatencyRunnerSelfTest.py
 
 "$JAVA_HOME/bin/java" -Xms256m -Xmx1g -cp output/map-latency-runner MapLatencyRunner \
   --base-url http://127.0.0.1:18080 \
-  --corpus output/web-map-corpus.tsv \
-  --concurrency 500 --duration 60 --warmup 20 \
+  --corpus output/map-movement-corpus.tsv \
+  --concurrency 1 --duration 5 --warmup 1 \
   --seed 20260911 --timeout 10 --accept-encoding identity \
   --output output/map-result.json
 ```
 
 첫 검사는 shuffle/histogram/집계/원격 주소 보호를 검사한다. 두 번째 검사는 임시 localhost HTTP 서버에 concurrency2만 사용해 정상/503/headers 지연/body 지연/keep-alive/전체 요청 집계를 확인하고 종료한다. 실제 서비스 부하는 보내지 않는다.
+
+초기 진단은 1·5·10개 동시 요청으로 짧게 진행한다. 500명 검증은 개선 구현과 소규모 확인 이후에 진행한다. 브라우저 드래그·렌더링·주소 라벨 조회·coverage 재사용을 재현하는 도구가 아니라, 지도 이동에 쓰는 매장 API 응답을 측정하는 도구다.
 
 `--base-url`, `--corpus`, `--output`이 필수다. 나머지 위 값은 기본값이다. `--warmup 0`은 warmup을 생략한다. `--accept-encoding gzip`도 지원하며 전후에 동일하게 지정한다. localhost/127.0.0.1/::1 외 주소는 명시적인 `--allow-remote` 없이는 거부한다. redirect는 따라가지 않는다. base-url은 경로·인증정보·query가 없는 origin이어야 한다.
 

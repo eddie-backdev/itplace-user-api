@@ -1,0 +1,116 @@
+[
+  {
+    "label": "movement-1",
+    "http_counter_window": "Before/after includes 1-second warmup, 5-second measurement, and drain; not measurement-only",
+    "warmup_plus_measurement_requests": 1437,
+    "measurement_requests": 1343,
+    "http_api_counter_deltas": {
+      "/api/v1/maps/stores/in-view/clusters": 577.0,
+      "/api/v1/maps/stores/in-view/previews/compact": 860.0
+    },
+    "keyword_nearby_mobile_http_counter_delta": 0,
+    "http_counter_matches_client_count": true,
+    "errors": 0,
+    "distinct_measurement_urls": 1343,
+    "measurement_full_corpus_cycles": 0,
+    "pools": [
+      {
+        "pool": "replica-pool",
+        "connection_acquires": 861.0,
+        "mean_acquire_ms": 0.0023228803716608595,
+        "connection_returns": 861.0,
+        "mean_usage_ms": 2.997677119628339,
+        "timeouts": 0.0,
+        "pending_before": 0.0,
+        "pending_after": 0.0
+      },
+      {
+        "pool": "source-pool",
+        "connection_acquires": 56.0,
+        "mean_acquire_ms": 0.017857142857142856,
+        "connection_returns": 56.0,
+        "mean_usage_ms": 10.75,
+        "timeouts": 0.0,
+        "pending_before": 0.0,
+        "pending_after": 0.0
+      }
+    ],
+    "pool_note": "Pool acquire duration is observed borrowing wait; snapshots do not measure peak pending during the run. Millisecond metric resolution can round short waits to zero."
+  },
+  {
+    "label": "movement-5",
+    "http_counter_window": "Before/after includes 1-second warmup, 5-second measurement, and drain; not measurement-only",
+    "warmup_plus_measurement_requests": 11488,
+    "measurement_requests": 10291,
+    "http_api_counter_deltas": {
+      "/api/v1/maps/stores/in-view/clusters": 4347.0,
+      "/api/v1/maps/stores/in-view/previews/compact": 7141.0
+    },
+    "keyword_nearby_mobile_http_counter_delta": 0,
+    "http_counter_matches_client_count": true,
+    "errors": 0,
+    "distinct_measurement_urls": 10291,
+    "measurement_full_corpus_cycles": 0,
+    "pools": [
+      {
+        "pool": "replica-pool",
+        "connection_acquires": 7141.0,
+        "mean_acquire_ms": 0.0033608738271950706,
+        "connection_returns": 7141.0,
+        "mean_usage_ms": 2.080100826214816,
+        "timeouts": 0.0,
+        "pending_before": 0.0,
+        "pending_after": 0.0
+      },
+      {
+        "pool": "source-pool",
+        "connection_acquires": 25.0,
+        "mean_acquire_ms": 0.04,
+        "connection_returns": 25.0,
+        "mean_usage_ms": 5.52,
+        "timeouts": 0.0,
+        "pending_before": 0.0,
+        "pending_after": 0.0
+      }
+    ],
+    "pool_note": "Pool acquire duration is observed borrowing wait; snapshots do not measure peak pending during the run. Millisecond metric resolution can round short waits to zero."
+  },
+  {
+    "label": "movement-10",
+    "http_counter_window": "Before/after includes 1-second warmup, 5-second measurement, and drain; not measurement-only",
+    "warmup_plus_measurement_requests": 26466,
+    "measurement_requests": 23507,
+    "http_api_counter_deltas": {
+      "/api/v1/maps/stores/in-view/clusters": 9964.0,
+      "/api/v1/maps/stores/in-view/previews/compact": 16502.0
+    },
+    "keyword_nearby_mobile_http_counter_delta": 0,
+    "http_counter_matches_client_count": true,
+    "errors": 0,
+    "distinct_measurement_urls": 23507,
+    "measurement_full_corpus_cycles": 0,
+    "pools": [
+      {
+        "pool": "replica-pool",
+        "connection_acquires": 16502.0,
+        "mean_acquire_ms": 0.0016967640286025937,
+        "connection_returns": 16502.0,
+        "mean_usage_ms": 1.8755302387589383,
+        "timeouts": 0.0,
+        "pending_before": 0.0,
+        "pending_after": 0.0
+      },
+      {
+        "pool": "source-pool",
+        "connection_acquires": 5.0,
+        "mean_acquire_ms": 0.4,
+        "connection_returns": 5.0,
+        "mean_usage_ms": 5.600000000000005,
+        "timeouts": 0.0,
+        "pending_before": 0.0,
+        "pending_after": 0.0
+      }
+    ],
+    "pool_note": "Pool acquire duration is observed borrowing wait; snapshots do not measure peak pending during the run. Millisecond metric resolution can round short waits to zero."
+  }
+]
