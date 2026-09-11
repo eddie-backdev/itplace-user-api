@@ -1,0 +1,74 @@
+{
+  "samples": 300,
+  "status_200": 300,
+  "equal_data": 297,
+  "different_data": 3,
+  "different_groups": {
+    "nearby": 2,
+    "keyword": 1
+  },
+  "ignored_top_level_fields": [
+    "timestamp"
+  ],
+  "compatible_variations": [
+    {
+      "group": "nearby",
+      "before_count": 278,
+      "after_count": 280,
+      "common_ids": 175,
+      "reason": "Existing nearby random-sampling/candidate-limit path: selected IDs/count may vary; all common-ID fields equal"
+    },
+    {
+      "group": "keyword",
+      "before_count": 24,
+      "after_count": 24,
+      "common_ids": 24,
+      "reason": "Two stores share identical coordinates/distance; old query has no storeId tie breaker; fields and set equal"
+    },
+    {
+      "group": "nearby",
+      "before_count": 283,
+      "after_count": 284,
+      "common_ids": 233,
+      "reason": "Existing nearby random-sampling/candidate-limit path: selected IDs/count may vary; all common-ID fields equal"
+    }
+  ],
+  "groups": {
+    "preview": {
+      "samples": 139,
+      "empty": 45,
+      "bytes_sum": 3417478
+    },
+    "cluster10": {
+      "samples": 33,
+      "empty": 7,
+      "bytes_sum": 24588
+    },
+    "cluster7": {
+      "samples": 37,
+      "empty": 0,
+      "bytes_sum": 185691
+    },
+    "cluster5": {
+      "samples": 25,
+      "empty": 11,
+      "bytes_sum": 44657
+    },
+    "nearby": {
+      "samples": 18,
+      "empty": 0,
+      "bytes_sum": 3802067
+    },
+    "mobile": {
+      "samples": 16,
+      "empty": 1,
+      "bytes_sum": 545652
+    },
+    "keyword": {
+      "samples": 32,
+      "empty": 7,
+      "bytes_sum": 1324423
+    }
+  },
+  "comparison": "Exact data+envelope comparison except timestamp; 297/300 exact; 1 equal-distance keyword ordering and 2 existing nearby nondeterministic selections disclosed"
+}

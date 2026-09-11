@@ -1,0 +1,23 @@
+[
+  {
+    "name": "com.itplace.userapi.map.repository.StoreRepositoryQueryContractTest",
+    "tests": "17",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.itplace.userapi.map.service.StorePreviewQueryServiceTest",
+    "tests": "2",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.itplace.userapi.map.repository.StorePreviewQueryIntegrationTest",
+    "tests": "6",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "api_port_18080_closed": true,
+  "owned_databases_dropped": [
+    "itplace_perf_baseline_20260911",
+    "itplace_perf_improved_20260911"
+  ],
+  "owned_redis_removed": true,
+  "original_database_and_shared_redis_preserved": true,
+  "existing_ngrinder_agent_preserved": true,
+  "local_database_dump_mode": "0o600",
+  "production_changes": false
+}

@@ -1,0 +1,12 @@
+{
+  "baseline": "86cdc70",
+  "source": "output/map-latency-audit-2026-09-11/current.jfr",
+  "execution_samples": 1062,
+  "inclusive_frames": {
+    "StorePreviewSnapshot.from": 486,
+    "normalizeSearchText": 69,
+    "PartnerBenefitCacheService.readCachedBenefits": 76
+  },
+  "conditions": "Java17 bootRun; random movement around five Seoul centers; 500 VUser; JFR45s during60s diagnostic load; not comparable TPS to packaged-jar trials",
+  "interpretation": "Inclusive execution sample shares, not wall-time percentages or independent additive savings"
+}

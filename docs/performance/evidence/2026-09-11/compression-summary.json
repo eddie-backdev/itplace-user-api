@@ -1,0 +1,1419 @@
+{
+  "baseline": {
+    "samples": 100,
+    "identity_bytes": 1383567,
+    "wire_bytes": 1383562,
+    "all_data_equal": true,
+    "rows": [
+      {
+        "group": "preview",
+        "identity_bytes": 37533,
+        "wire_bytes": 37534,
+        "decoded_bytes": 37534,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 35905,
+        "wire_bytes": 35905,
+        "decoded_bytes": 35905,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 75941,
+        "wire_bytes": 75943,
+        "decoded_bytes": 75943,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 112313,
+        "wire_bytes": 112313,
+        "decoded_bytes": 112313,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 167,
+        "wire_bytes": 166,
+        "decoded_bytes": 166,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 649,
+        "wire_bytes": 649,
+        "decoded_bytes": 649,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 991,
+        "wire_bytes": 991,
+        "decoded_bytes": 991,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 167,
+        "decoded_bytes": 167,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 1150,
+        "wire_bytes": 1150,
+        "decoded_bytes": 1150,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3576,
+        "wire_bytes": 3576,
+        "decoded_bytes": 3576,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 4246,
+        "wire_bytes": 4245,
+        "decoded_bytes": 4245,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2436,
+        "wire_bytes": 2436,
+        "decoded_bytes": 2436,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 2908,
+        "wire_bytes": 2910,
+        "decoded_bytes": 2910,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 41741,
+        "wire_bytes": 41741,
+        "decoded_bytes": 41741,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 5887,
+        "wire_bytes": 5887,
+        "decoded_bytes": 5887,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 6698,
+        "wire_bytes": 6697,
+        "decoded_bytes": 6697,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 8026,
+        "wire_bytes": 8026,
+        "decoded_bytes": 8026,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 56049,
+        "wire_bytes": 56049,
+        "decoded_bytes": 56049,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 32391,
+        "wire_bytes": 32392,
+        "decoded_bytes": 32392,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 191,
+        "decoded_bytes": 191,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 1899,
+        "wire_bytes": 1899,
+        "decoded_bytes": 1899,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 34502,
+        "wire_bytes": 34502,
+        "decoded_bytes": 34502,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 2615,
+        "wire_bytes": 2615,
+        "decoded_bytes": 2615,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 403,
+        "wire_bytes": 403,
+        "decoded_bytes": 403,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 63295,
+        "wire_bytes": 63295,
+        "decoded_bytes": 63295,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 5218,
+        "wire_bytes": 5218,
+        "decoded_bytes": 5218,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 191,
+        "decoded_bytes": 191,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 639,
+        "wire_bytes": 639,
+        "decoded_bytes": 639,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3108,
+        "wire_bytes": 3108,
+        "decoded_bytes": 3108,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 660,
+        "wire_bytes": 659,
+        "decoded_bytes": 659,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3549,
+        "wire_bytes": 3548,
+        "decoded_bytes": 3548,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 877,
+        "wire_bytes": 877,
+        "decoded_bytes": 877,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 5194,
+        "wire_bytes": 5193,
+        "decoded_bytes": 5193,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 40984,
+        "wire_bytes": 40984,
+        "decoded_bytes": 40984,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 32032,
+        "wire_bytes": 32032,
+        "decoded_bytes": 32032,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3350,
+        "wire_bytes": 3350,
+        "decoded_bytes": 3350,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 894,
+        "wire_bytes": 894,
+        "decoded_bytes": 894,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 12388,
+        "wire_bytes": 12388,
+        "decoded_bytes": 12388,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 7261,
+        "wire_bytes": 7261,
+        "decoded_bytes": 7261,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 167,
+        "decoded_bytes": 167,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 19191,
+        "wire_bytes": 19192,
+        "decoded_bytes": 19192,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7849,
+        "wire_bytes": 7849,
+        "decoded_bytes": 7849,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 117229,
+        "wire_bytes": 117229,
+        "decoded_bytes": 117229,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 4762,
+        "wire_bytes": 4762,
+        "decoded_bytes": 4762,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 642,
+        "wire_bytes": 642,
+        "decoded_bytes": 642,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 14989,
+        "wire_bytes": 14989,
+        "decoded_bytes": 14989,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 167,
+        "decoded_bytes": 167,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 893,
+        "wire_bytes": 892,
+        "decoded_bytes": 892,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1113,
+        "wire_bytes": 1113,
+        "decoded_bytes": 1113,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 191,
+        "decoded_bytes": 191,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 892,
+        "wire_bytes": 892,
+        "decoded_bytes": 892,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2447,
+        "wire_bytes": 2447,
+        "decoded_bytes": 2447,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1615,
+        "wire_bytes": 1615,
+        "decoded_bytes": 1615,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2952,
+        "wire_bytes": 2952,
+        "decoded_bytes": 2952,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 3994,
+        "wire_bytes": 3994,
+        "decoded_bytes": 3994,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 4430,
+        "wire_bytes": 4430,
+        "decoded_bytes": 4430,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 12417,
+        "wire_bytes": 12417,
+        "decoded_bytes": 12417,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 1607,
+        "wire_bytes": 1607,
+        "decoded_bytes": 1607,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 83710,
+        "wire_bytes": 83710,
+        "decoded_bytes": 83710,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 79246,
+        "wire_bytes": 79246,
+        "decoded_bytes": 79246,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 4322,
+        "wire_bytes": 4322,
+        "decoded_bytes": 4322,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 62429,
+        "wire_bytes": 62429,
+        "decoded_bytes": 62429,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3796,
+        "wire_bytes": 3796,
+        "decoded_bytes": 3796,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 167,
+        "wire_bytes": 167,
+        "decoded_bytes": 167,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 167,
+        "decoded_bytes": 167,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7414,
+        "wire_bytes": 7414,
+        "decoded_bytes": 7414,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 5705,
+        "wire_bytes": 5705,
+        "decoded_bytes": 5705,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 3088,
+        "wire_bytes": 3088,
+        "decoded_bytes": 3088,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 9498,
+        "wire_bytes": 9498,
+        "decoded_bytes": 9498,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 116372,
+        "wire_bytes": 116371,
+        "decoded_bytes": 116371,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 4388,
+        "wire_bytes": 4388,
+        "decoded_bytes": 4388,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 15838,
+        "wire_bytes": 15838,
+        "decoded_bytes": 15838,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 8370,
+        "wire_bytes": 8370,
+        "decoded_bytes": 8370,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1378,
+        "wire_bytes": 1378,
+        "decoded_bytes": 1378,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 1010,
+        "wire_bytes": 1010,
+        "decoded_bytes": 1010,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 167,
+        "decoded_bytes": 167,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 22751,
+        "wire_bytes": 22751,
+        "decoded_bytes": 22751,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7448,
+        "wire_bytes": 7448,
+        "decoded_bytes": 7448,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 192,
+        "decoded_bytes": 192,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 6908,
+        "wire_bytes": 6908,
+        "decoded_bytes": 6908,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 11621,
+        "wire_bytes": 11621,
+        "decoded_bytes": 11621,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 57816,
+        "wire_bytes": 57816,
+        "decoded_bytes": 57816,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 9176,
+        "wire_bytes": 9176,
+        "decoded_bytes": 9176,
+        "encoding": null
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2281,
+        "wire_bytes": 2281,
+        "decoded_bytes": 2281,
+        "encoding": null
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1143,
+        "wire_bytes": 1143,
+        "decoded_bytes": 1143,
+        "encoding": null
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7435,
+        "wire_bytes": 7435,
+        "decoded_bytes": 7435,
+        "encoding": null
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 1661,
+        "wire_bytes": 1660,
+        "decoded_bytes": 1660,
+        "encoding": null
+      }
+    ]
+  },
+  "improved": {
+    "samples": 100,
+    "identity_bytes": 1383563,
+    "wire_bytes": 198116,
+    "all_data_equal": true,
+    "rows": [
+      {
+        "group": "preview",
+        "identity_bytes": 37533,
+        "wire_bytes": 5620,
+        "decoded_bytes": 37534,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 35905,
+        "wire_bytes": 4037,
+        "decoded_bytes": 35905,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 75943,
+        "wire_bytes": 8530,
+        "decoded_bytes": 75943,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 112312,
+        "wire_bytes": 12715,
+        "decoded_bytes": 112313,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 167,
+        "wire_bytes": 184,
+        "decoded_bytes": 167,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 648,
+        "wire_bytes": 424,
+        "decoded_bytes": 648,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 991,
+        "wire_bytes": 572,
+        "decoded_bytes": 991,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 184,
+        "decoded_bytes": 167,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 1150,
+        "wire_bytes": 537,
+        "decoded_bytes": 1150,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3576,
+        "wire_bytes": 1064,
+        "decoded_bytes": 3576,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 4245,
+        "wire_bytes": 1248,
+        "decoded_bytes": 4246,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2436,
+        "wire_bytes": 679,
+        "decoded_bytes": 2436,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 2910,
+        "wire_bytes": 911,
+        "decoded_bytes": 2910,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 41741,
+        "wire_bytes": 4785,
+        "decoded_bytes": 41741,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 5887,
+        "wire_bytes": 1244,
+        "decoded_bytes": 5887,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 6698,
+        "wire_bytes": 1180,
+        "decoded_bytes": 6698,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 8026,
+        "wire_bytes": 1994,
+        "decoded_bytes": 8026,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 56049,
+        "wire_bytes": 6587,
+        "decoded_bytes": 56048,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 32392,
+        "wire_bytes": 3637,
+        "decoded_bytes": 32392,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 1899,
+        "wire_bytes": 690,
+        "decoded_bytes": 1899,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 34501,
+        "wire_bytes": 3947,
+        "decoded_bytes": 34502,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 2615,
+        "wire_bytes": 880,
+        "decoded_bytes": 2615,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 403,
+        "wire_bytes": 354,
+        "decoded_bytes": 403,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 63295,
+        "wire_bytes": 6872,
+        "decoded_bytes": 63294,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 5218,
+        "wire_bytes": 1444,
+        "decoded_bytes": 5218,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 204,
+        "decoded_bytes": 191,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 639,
+        "wire_bytes": 421,
+        "decoded_bytes": 639,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3108,
+        "wire_bytes": 985,
+        "decoded_bytes": 3108,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 660,
+        "wire_bytes": 424,
+        "decoded_bytes": 660,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3549,
+        "wire_bytes": 1105,
+        "decoded_bytes": 3549,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 877,
+        "wire_bytes": 480,
+        "decoded_bytes": 877,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 5194,
+        "wire_bytes": 1087,
+        "decoded_bytes": 5194,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 40984,
+        "wire_bytes": 6244,
+        "decoded_bytes": 40984,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 32032,
+        "wire_bytes": 3766,
+        "decoded_bytes": 32032,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3350,
+        "wire_bytes": 1050,
+        "decoded_bytes": 3350,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 894,
+        "wire_bytes": 485,
+        "decoded_bytes": 894,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 12388,
+        "wire_bytes": 2169,
+        "decoded_bytes": 12388,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 7261,
+        "wire_bytes": 1228,
+        "decoded_bytes": 7261,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 166,
+        "wire_bytes": 183,
+        "decoded_bytes": 166,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 19192,
+        "wire_bytes": 2751,
+        "decoded_bytes": 19192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7849,
+        "wire_bytes": 2051,
+        "decoded_bytes": 7849,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 117229,
+        "wire_bytes": 14381,
+        "decoded_bytes": 117229,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 4762,
+        "wire_bytes": 1384,
+        "decoded_bytes": 4762,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 642,
+        "wire_bytes": 427,
+        "decoded_bytes": 642,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 14988,
+        "wire_bytes": 1975,
+        "decoded_bytes": 14988,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 184,
+        "decoded_bytes": 167,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 893,
+        "wire_bytes": 490,
+        "decoded_bytes": 893,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 191,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1113,
+        "wire_bytes": 542,
+        "decoded_bytes": 1113,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 892,
+        "wire_bytes": 486,
+        "decoded_bytes": 892,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2447,
+        "wire_bytes": 689,
+        "decoded_bytes": 2447,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1615,
+        "wire_bytes": 656,
+        "decoded_bytes": 1615,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2952,
+        "wire_bytes": 871,
+        "decoded_bytes": 2952,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 3994,
+        "wire_bytes": 1130,
+        "decoded_bytes": 3994,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 4430,
+        "wire_bytes": 971,
+        "decoded_bytes": 4430,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 12417,
+        "wire_bytes": 1587,
+        "decoded_bytes": 12417,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 1606,
+        "wire_bytes": 724,
+        "decoded_bytes": 1607,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 83710,
+        "wire_bytes": 9933,
+        "decoded_bytes": 83709,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 79246,
+        "wire_bytes": 9392,
+        "decoded_bytes": 79246,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 4322,
+        "wire_bytes": 1056,
+        "decoded_bytes": 4322,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 62429,
+        "wire_bytes": 6626,
+        "decoded_bytes": 62429,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 3796,
+        "wire_bytes": 1169,
+        "decoded_bytes": 3795,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 165,
+        "wire_bytes": 184,
+        "decoded_bytes": 167,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 203,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 184,
+        "decoded_bytes": 167,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7414,
+        "wire_bytes": 1973,
+        "decoded_bytes": 7414,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 5705,
+        "wire_bytes": 1091,
+        "decoded_bytes": 5705,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 3088,
+        "wire_bytes": 755,
+        "decoded_bytes": 3087,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 9498,
+        "wire_bytes": 1704,
+        "decoded_bytes": 9498,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 116372,
+        "wire_bytes": 12931,
+        "decoded_bytes": 116372,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 4388,
+        "wire_bytes": 1205,
+        "decoded_bytes": 4388,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 15838,
+        "wire_bytes": 1880,
+        "decoded_bytes": 15838,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 8370,
+        "wire_bytes": 2195,
+        "decoded_bytes": 8370,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1378,
+        "wire_bytes": 593,
+        "decoded_bytes": 1378,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 1010,
+        "wire_bytes": 570,
+        "decoded_bytes": 1010,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 167,
+        "wire_bytes": 184,
+        "decoded_bytes": 167,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 22751,
+        "wire_bytes": 2672,
+        "decoded_bytes": 22751,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7448,
+        "wire_bytes": 1977,
+        "decoded_bytes": 7448,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 192,
+        "wire_bytes": 205,
+        "decoded_bytes": 192,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 6908,
+        "wire_bytes": 1221,
+        "decoded_bytes": 6908,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 11621,
+        "wire_bytes": 1854,
+        "decoded_bytes": 11620,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 57816,
+        "wire_bytes": 6488,
+        "decoded_bytes": 57815,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 9176,
+        "wire_bytes": 1628,
+        "decoded_bytes": 9175,
+        "encoding": "gzip"
+      },
+      {
+        "group": "preview",
+        "identity_bytes": 2281,
+        "wire_bytes": 749,
+        "decoded_bytes": 2281,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster10",
+        "identity_bytes": 1143,
+        "wire_bytes": 548,
+        "decoded_bytes": 1143,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster7",
+        "identity_bytes": 7435,
+        "wire_bytes": 1971,
+        "decoded_bytes": 7435,
+        "encoding": "gzip"
+      },
+      {
+        "group": "cluster5",
+        "identity_bytes": 1661,
+        "wire_bytes": 656,
+        "decoded_bytes": 1661,
+        "encoding": "gzip"
+      }
+    ]
+  },
+  "interpretation": "100 varied public map URIs; before/after wire bytes and decoded JSON equality, timestamp ignored. Not a latency/TPS experiment; no browser parsing or cloud edge compression measurement."
+}

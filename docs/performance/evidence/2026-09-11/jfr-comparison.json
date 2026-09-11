@@ -1,0 +1,243 @@
+{
+  "baseline": {
+    "execution_samples": 2089,
+    "inclusive_selected_frames": {
+      "StorePreviewSnapshot.from": 93,
+      "PartnerBenefitCacheService.readCachedBenefits": 7,
+      "StorePreviewQueryService.findStorePreviewsInView": 0,
+      "normalizeSearchText": 17,
+      "SpelAwareProxyProjectionFactory": 2,
+      "ProjectingMethodInterceptor": 74,
+      "ObjectMapper._readMapAndClose": 3
+    },
+    "top_leaf_frames": [
+      [
+        "org/springframework/aop/framework/adapter/DefaultAdvisorAdapterRegistry.getInterceptors",
+        129
+      ],
+      [
+        "java/util/LinkedHashMap.valuesToArray",
+        61
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator._writeStringSegment2",
+        35
+      ],
+      [
+        "java/lang/StringUTF16.checkIndex",
+        32
+      ],
+      [
+        "org/springframework/core/BridgeMethodResolver.resolveBridgeMethod",
+        32
+      ],
+      [
+        "java/util/concurrent/ConcurrentHashMap.get",
+        31
+      ],
+      [
+        "org/springframework/aop/framework/JdkDynamicAopProxy.invoke",
+        27
+      ],
+      [
+        "org/springframework/core/ResolvableType.resolveType",
+        27
+      ],
+      [
+        "jdk/internal/util/Preconditions.checkIndex",
+        26
+      ],
+      [
+        "org/springframework/core/ResolvableType.resolveClass",
+        25
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar",
+        24
+      ],
+      [
+        "java/lang/StringLatin1.toLowerCase",
+        24
+      ],
+      [
+        "org/springframework/util/ConcurrentLruCache$DrainStatus$1.shouldDrainBuffers",
+        21
+      ],
+      [
+        "java/util/HashMap.getNode",
+        20
+      ],
+      [
+        "org/springframework/core/SerializableTypeWrapper$MethodParameterTypeProvider.getType",
+        20
+      ],
+      [
+        "java/util/ArrayList.toArray",
+        19
+      ],
+      [
+        "java/lang/reflect/Executable.equalParamTypes",
+        19
+      ],
+      [
+        "java/lang/StringLatin1.hashCode",
+        19
+      ]
+    ],
+    "sampled_threads": [
+      [
+        "lettuce-nioEventLoop-6-2",
+        110
+      ],
+      [
+        "http-nio-18080-exec-41",
+        20
+      ],
+      [
+        "http-nio-18080-exec-87",
+        18
+      ],
+      [
+        "http-nio-18080-exec-136",
+        18
+      ],
+      [
+        "scheduling-1",
+        17
+      ],
+      [
+        "http-nio-18080-exec-52",
+        17
+      ],
+      [
+        "http-nio-18080-exec-151",
+        17
+      ],
+      [
+        "http-nio-18080-exec-60",
+        17
+      ]
+    ]
+  },
+  "improved": {
+    "execution_samples": 2053,
+    "inclusive_selected_frames": {
+      "StorePreviewSnapshot.from": 6,
+      "PartnerBenefitCacheService.readCachedBenefits": 4,
+      "StorePreviewQueryService.findStorePreviewsInView": 0,
+      "normalizeSearchText": 7,
+      "SpelAwareProxyProjectionFactory": 0,
+      "ProjectingMethodInterceptor": 0,
+      "ObjectMapper._readMapAndClose": 5
+    },
+    "top_leaf_frames": [
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator._writeStringSegment2",
+        137
+      ],
+      [
+        "java/lang/StringUTF16.checkIndex",
+        96
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar",
+        46
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8StreamJsonParser._finishAndReturnString",
+        42
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8StreamJsonParser.nextFieldName",
+        37
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator._writeStringSegment",
+        36
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8StreamJsonParser.nextToken",
+        34
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8StreamJsonParser._parseName",
+        26
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8StreamJsonParser._finishString2",
+        25
+      ],
+      [
+        "java/lang/StringLatin1.hashCode",
+        25
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator.writeFieldName",
+        23
+      ],
+      [
+        "java/lang/String.decodeUTF8_UTF16",
+        18
+      ],
+      [
+        "com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.findName",
+        17
+      ],
+      [
+        "org/postgresql/core/PGStream.receive",
+        17
+      ],
+      [
+        "com/fasterxml/jackson/core/json/UTF8JsonGenerator._verifyValueWrite",
+        16
+      ],
+      [
+        "com/fasterxml/jackson/core/base/ParserMinimalBase._updateToken",
+        16
+      ],
+      [
+        "java/lang/StringLatin1.charAt",
+        16
+      ],
+      [
+        "com/fasterxml/jackson/databind/deser/std/EnumDeserializer._resolveCurrentLookup",
+        15
+      ]
+    ],
+    "sampled_threads": [
+      [
+        "lettuce-nioEventLoop-4-1",
+        93
+      ],
+      [
+        "http-nio-18080-exec-88",
+        21
+      ],
+      [
+        "http-nio-18080-Poller",
+        21
+      ],
+      [
+        "http-nio-18080-exec-1",
+        21
+      ],
+      [
+        "http-nio-18080-exec-36",
+        19
+      ],
+      [
+        "http-nio-18080-exec-33",
+        18
+      ],
+      [
+        "http-nio-18080-exec-45",
+        18
+      ],
+      [
+        "http-nio-18080-exec-4",
+        17
+      ]
+    ]
+  },
+  "interpretation": "Separate JFR profile runs, 500-concurrency nationwide viewport corpus, includes15s warmup and20s measurement. Inclusive samples overlap; not wall-time percentages or per-change speedup. Profile throughput excluded from headline comparison."
+}

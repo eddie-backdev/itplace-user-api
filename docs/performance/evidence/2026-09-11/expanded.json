@@ -1,0 +1,28 @@
+{
+  "seed": 20260911,
+  "entries": 500000,
+  "groups": {
+    "preview": 250000,
+    "cluster5": 50000,
+    "cluster7": 50000,
+    "cluster10": 50000,
+    "keyword": 50000,
+    "nearby": 25000,
+    "mobile": 25000
+  },
+  "distinct_centers": 500000,
+  "distinct_paths": 500000,
+  "available_store_anchors": 73083,
+  "selected_store_anchors": 72750,
+  "store_anchor_fraction": 0.8,
+  "uniform_korea_rectangle_fraction": 0.2,
+  "bounds": {
+    "minLat": 33.1000012,
+    "maxLat": 38.5143296,
+    "minLng": 124.6612366,
+    "maxLng": 130.9133311
+  },
+  "anchors_sha256": "f1136aa71ba4b2e1d7d752e3c646b9f0d54356a448ded5201b217da5294ac025",
+  "corpus_sha256": "4367d869ce69543d415af5786e3c7abae7947187168a917a77a1a35420d88135",
+  "warning": "Synthetic mix, not observed production traffic. Uniform rectangle includes empty/sea locations. Each measurement must report actual issued unique paths and reject wraparound for diverse-request claims."
+}

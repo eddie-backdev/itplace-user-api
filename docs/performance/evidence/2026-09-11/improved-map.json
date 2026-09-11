@@ -1,0 +1,5 @@
+{
+  "jar_sha256": "172c0fecb4ee0dc100865016a6853b631201bacc4b58d1d4dd963e7afe17dc8b",
+  "source_sha256": "c1db5b3725ffb6575b1bbca96ef91ce0c0fa5cb3f41bdb12cdd63408b90190e1",
+  "difference_from_mixed_jar": "Only gzip-enabled bulk write path now writes compressed byte arrays in bulk. Identity branch is unchanged. Final map-only and gzip/profile validation use this final jar."
+}

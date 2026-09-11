@@ -1,0 +1,6 @@
+{
+  "jar_sha256": "6985b8059031d285a8fee7800ef76216324f45f83d89d2b9429a10dd52d40bf2",
+  "source_sha256": "145c0556ea7b0e37540e8873444523b3cc02b56e25ddbaef7f411d0a2e3acb4d",
+  "difference_from_map_jar": "Only import invalidation skips missing partner/partnerId; measured map GET code paths unchanged. Final profile/gzip validation uses release jar.",
+  "source_commit": "b9401d8fe1d61ac6ca25684a41847fa389844698"
+}
