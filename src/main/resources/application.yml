@@ -113,6 +113,7 @@ app:
         query-timeout-seconds: ${MAP_CLUSTER_SUMMARY_REFRESH_QUERY_TIMEOUT_SECONDS:45}
         network-timeout-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_NETWORK_TIMEOUT_MS:50000}
   ai:
+    enabled: ${AI_ENABLED:false}
     indexing:
       enabled: ${AI_INDEXING_ENABLED:false}
     benefits:
@@ -123,6 +124,9 @@ app:
         initial-delay-ms: ${BENEFIT_RAG_SYNC_INITIAL_DELAY_MS:300000}
         fixed-delay-ms: ${BENEFIT_RAG_SYNC_FIXED_DELAY_MS:3600000}
         delay-ms: ${BENEFIT_RAG_SYNC_DELAY_MS:0}
+    questions:
+      seed:
+        enabled: ${QUESTION_INDEX_SEED_ENABLED:false}
     stores:
       seed:
         enabled: ${STORE_INDEX_SEED_ENABLED:${AI_INDEXING_ENABLED:false}}

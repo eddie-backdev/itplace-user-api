@@ -18,7 +18,18 @@ class BenefitIndexerTest {
     @Test
     void run_doesNotStartBenefitSyncWhenSeedIsDisabled() throws Exception {
         BenefitIndexer indexer = new BenefitIndexer(benefitRagSyncService);
+        ReflectionTestUtils.setField(indexer, "aiEnabled", true);
         ReflectionTestUtils.setField(indexer, "seedEnabled", false);
+
+        indexer.run(null);
+
+        verify(benefitRagSyncService, never()).syncAll();
+    }
+
+    @Test
+    void disabledAiOverridesEnabledSeed() throws Exception {
+        BenefitIndexer indexer = new BenefitIndexer(benefitRagSyncService);
+        ReflectionTestUtils.setField(indexer, "seedEnabled", true);
 
         indexer.run(null);
 

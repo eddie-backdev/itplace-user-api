@@ -20,6 +20,9 @@ public class StoreIndexer implements ApplicationRunner {
     private final StoreRepository storeRepository;
     private final ElasticService elasticService;
 
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
+
     @Value("${app.ai.stores.seed.enabled:false}")
     private boolean seedEnabled;
 
@@ -28,7 +31,7 @@ public class StoreIndexer implements ApplicationRunner {
         try {
             elasticService.createStoreIndexIfNotExists();
 
-            if (!seedEnabled) {
+            if (!aiEnabled || !seedEnabled) {
                 log.info("매장 ES 인덱스 확인 완료, 초기 데이터 적재는 비활성화되어 있습니다.");
                 return;
             }

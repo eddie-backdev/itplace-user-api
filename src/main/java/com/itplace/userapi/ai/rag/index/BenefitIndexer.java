@@ -14,12 +14,15 @@ public class BenefitIndexer implements ApplicationRunner {
 
     private final BenefitRagSyncService benefitRagSyncService;
 
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
+
     @Value("${app.ai.benefits.seed.enabled:false}")
     private boolean seedEnabled;
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!seedEnabled) {
+        if (!aiEnabled || !seedEnabled) {
             log.info("혜택 ES 초기 동기화가 비활성화되어 있습니다.");
             return;
         }

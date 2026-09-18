@@ -40,6 +40,9 @@ public class BenefitRagSyncService {
     private final BenefitRagSourceQueryService sourceQueryService;
     private final ObjectMapper objectMapper;
 
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
+
     @Value("${app.ai.benefits.sync.enabled:false}")
     private boolean syncEnabled;
 
@@ -51,7 +54,7 @@ public class BenefitRagSyncService {
             initialDelayString = "${app.ai.benefits.sync.initial-delay-ms:300000}"
     )
     public void scheduledSync() {
-        if (!syncEnabled) {
+        if (!aiEnabled || !syncEnabled) {
             log.debug("혜택 RAG 주기 동기화가 비활성화되어 있습니다.");
             return;
         }
@@ -64,6 +67,9 @@ public class BenefitRagSyncService {
     }
 
     public SyncResult syncAll() throws Exception {
+        if (!aiEnabled) {
+            return new SyncResult(0, 0, 0, 0, 0, 0, 0);
+        }
         elasticService.createIndexIfNotExists(INDEX_NAME);
 
         BenefitRagSourceQueryService.SourceSnapshot sourceSnapshot = sourceQueryService.loadSourceSnapshot();
