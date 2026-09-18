@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.service.PartnerBenefitBrowseService;
 import com.itplace.userapi.common.GlobalExceptionHandler;
@@ -46,7 +47,7 @@ class PartnerBenefitControllerTest {
     void getPartners_passesCarrierFiltersToPartnerBrowseService() throws Exception {
         when(service.getPartners(
                 eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null),
-                eq(List.of(Carrier.SKT, Carrier.KT)), any(Pageable.class)
+                eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class)
         )).thenReturn(PageResult.<PartnerBenefitListResponse>builder()
                 .content(List.of())
                 .totalElements(0)
@@ -62,8 +63,30 @@ class PartnerBenefitControllerTest {
 
         verify(service).getPartners(
                 eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null),
-                eq(List.of(Carrier.SKT, Carrier.KT)), any(Pageable.class)
+                eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class)
         );
+    }
+
+    @Test
+    void getPartnersPassesMembershipGradeWithoutRequiringLogin() throws Exception {
+        mockMvc.perform(get("/api/v1/benefits/partners")
+                        .param("carrier", "SKT").param("grade", "SKT_GOLD"))
+                .andExpect(status().isOk());
+        verify(service).getPartners(eq(null), eq(null), eq(null), eq(null), eq(null),
+                eq(List.of(Carrier.SKT)), eq(Grade.SKT_GOLD), any(Pageable.class));
+    }
+
+    @Test
+    void unfilteredDetailKeepsDefaultCategory() throws Exception {
+        mockMvc.perform(get("/api/v1/benefits/partners/10")).andExpect(status().isOk());
+        verify(service).getPartnerDetail(10L, MainCategory.BASIC_BENEFIT, null, null, null);
+    }
+
+    @Test
+    void carrierDetailCanCompareAllGradesIncludingVipKokCategory() throws Exception {
+        mockMvc.perform(get("/api/v1/benefits/partners/10").param("carrier", "LGU"))
+                .andExpect(status().isOk());
+        verify(service).getPartnerDetail(10L, null, null, Carrier.LGU, null);
     }
 
     @Test
