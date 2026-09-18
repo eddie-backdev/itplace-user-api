@@ -40,6 +40,15 @@ public class AuthenticationAbuseProtectionProperties {
     private int verificationConfirmPerIp = 50;
 
     @NotNull
+    private Duration smsConfirmCooldown = Duration.ofSeconds(5);
+
+    @NotNull
+    private Duration smsConfirmWindow = Duration.ofMinutes(1);
+
+    @Min(1)
+    private int smsConfirmPerIp = 120;
+
+    @NotNull
     private Duration loginIpWindow = Duration.ofMinutes(1);
 
     @Min(1)

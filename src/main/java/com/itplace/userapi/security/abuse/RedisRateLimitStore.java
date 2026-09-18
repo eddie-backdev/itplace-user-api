@@ -3,6 +3,7 @@ package com.itplace.userapi.security.abuse;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -47,6 +48,12 @@ public class RedisRateLimitStore {
 
     public boolean exists(String key) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    public long retryAfterSeconds(String key, Duration fallback) {
+        Long remainingMillis = redisTemplate.getExpire(key, TimeUnit.MILLISECONDS);
+        long millis = remainingMillis == null || remainingMillis < 0 ? fallback.toMillis() : remainingMillis;
+        return Math.max(1, (millis + 999) / 1000);
     }
 
     public void extendBlock(String key, Duration duration) {

@@ -75,6 +75,11 @@ public class AuthenticationAbuseProtectionService {
         String clientHash = fingerprint(normalizeClientAddress(clientAddress));
         String namespace = KEY_PREFIX + "verification:" + channel.key() + ":confirm:";
 
+        if (channel == VerificationChannel.SMS) {
+            checkSmsConfirmation(identifierHash, clientHash);
+            return;
+        }
+
         enforceLimit(
                 namespace + "identifier:" + identifierHash,
                 properties.getVerificationConfirmWindow(),
@@ -91,6 +96,29 @@ public class AuthenticationAbuseProtectionService {
                 identifierHash,
                 clientHash
         );
+    }
+
+    private void checkSmsConfirmation(String identifierHash, String clientHash) {
+        // SMS는 서버가 발급한 문자열의 수신 여부를 조회하므로 이메일 OTP 오입력 제한과 분리한다.
+        String namespace = KEY_PREFIX + "verification:sms:poll:";
+        String cooldownKey = namespace + "cooldown:" + identifierHash;
+        Duration cooldown = properties.getSmsConfirmCooldown();
+        if (!rateLimitStore.tryAcquire(cooldownKey, cooldown)) {
+            rejectSmsConfirmation("sms_confirm_cooldown", cooldownKey, cooldown, identifierHash, clientHash);
+        }
+
+        String ipKey = namespace + "ip:" + clientHash;
+        Duration window = properties.getSmsConfirmWindow();
+        if (rateLimitStore.increment(ipKey, window) > properties.getSmsConfirmPerIp()) {
+            rejectSmsConfirmation("sms_confirm_ip", ipKey, window, identifierHash, clientHash);
+        }
+    }
+
+    private void rejectSmsConfirmation(String reason, String key, Duration window,
+                                       String identifierHash, String clientHash) {
+        log.warn("SMS 확인 요청 제한: reason={}, identifierHash={}, clientHash={}", reason, identifierHash, clientHash);
+        throw new AuthenticationRateLimitException(SecurityCode.AUTHENTICATION_RATE_LIMITED,
+                rateLimitStore.retryAfterSeconds(key, window));
     }
 
     public boolean isLoginAllowed(String email, String clientAddress) {

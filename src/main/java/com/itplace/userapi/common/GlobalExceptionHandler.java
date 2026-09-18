@@ -1,6 +1,7 @@
 package com.itplace.userapi.common;
 
 import com.itplace.userapi.common.exception.BusinessException;
+import com.itplace.userapi.security.exception.AuthenticationRateLimitException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -31,6 +32,15 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(AuthenticationRateLimitException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationRateLimit(AuthenticationRateLimitException ex) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(ex.getCode().getStatus());
+        if (ex.getRetryAfterSeconds() != null) {
+            response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()));
+        }
+        return response.body(ApiResponse.of(ex.getCode(), null));
+    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {

@@ -85,6 +85,9 @@ app:
       verification-confirm-window: ${AUTH_VERIFICATION_CONFIRM_WINDOW:10m}
       verification-confirm-per-identifier: ${AUTH_VERIFICATION_CONFIRM_PER_IDENTIFIER:10}
       verification-confirm-per-ip: ${AUTH_VERIFICATION_CONFIRM_PER_IP:50}
+      sms-confirm-cooldown: ${AUTH_SMS_CONFIRM_COOLDOWN:5s}
+      sms-confirm-window: ${AUTH_SMS_CONFIRM_WINDOW:1m}
+      sms-confirm-per-ip: ${AUTH_SMS_CONFIRM_PER_IP:120}
       login-ip-window: ${AUTH_LOGIN_IP_WINDOW:1m}
       login-per-ip: ${AUTH_LOGIN_PER_IP:30}
       login-failure-window: ${AUTH_LOGIN_FAILURE_WINDOW:15m}
