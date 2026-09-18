@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +59,53 @@ class AuthenticationAbuseProtectionServiceTest {
                 "01012345678",
                 "127.0.0.1"
         )).isInstanceOf(AuthenticationRateLimitException.class);
+    }
+
+    @Test
+    void smsPollingCanContinueThroughoutFiveMinuteVerificationWithoutEmailAttemptLimit() {
+        when(rateLimitStore.tryAcquire(anyString(), eq(Duration.ofSeconds(5)))).thenReturn(true);
+        when(rateLimitStore.increment(anyString(), eq(Duration.ofMinutes(1)))).thenReturn(12L);
+
+        for (int seconds = 0; seconds < 300; seconds += 5) {
+            service.checkVerificationConfirm(VerificationChannel.SMS, "01012345678", "127.0.0.1");
+        }
+
+        verify(rateLimitStore, times(60)).tryAcquire(anyString(), eq(Duration.ofSeconds(5)));
+        verify(rateLimitStore, never()).increment(anyString(), eq(Duration.ofMinutes(10)));
+    }
+
+    @Test
+    void smsDuplicatePollReturnsRemainingCooldownWithoutSpendingIpBudget() {
+        when(rateLimitStore.tryAcquire(anyString(), eq(Duration.ofSeconds(5)))).thenReturn(false);
+        when(rateLimitStore.retryAfterSeconds(anyString(), eq(Duration.ofSeconds(5)))).thenReturn(3L);
+
+        assertThatThrownBy(() -> service.checkVerificationConfirm(
+                VerificationChannel.SMS, "01012345678", "127.0.0.1"))
+                .isInstanceOfSatisfying(AuthenticationRateLimitException.class,
+                        exception -> assertThat(exception.getRetryAfterSeconds()).isEqualTo(3));
+        verify(rateLimitStore, never()).increment(anyString(), eq(Duration.ofMinutes(1)));
+    }
+
+    @Test
+    void smsIpLimitReturnsRemainingWindow() {
+        when(rateLimitStore.tryAcquire(anyString(), eq(Duration.ofSeconds(5)))).thenReturn(true);
+        when(rateLimitStore.increment(anyString(), eq(Duration.ofMinutes(1)))).thenReturn(121L);
+        when(rateLimitStore.retryAfterSeconds(anyString(), eq(Duration.ofMinutes(1)))).thenReturn(37L);
+
+        assertThatThrownBy(() -> service.checkVerificationConfirm(
+                VerificationChannel.SMS, "01012345678", "127.0.0.1"))
+                .isInstanceOfSatisfying(AuthenticationRateLimitException.class,
+                        exception -> assertThat(exception.getRetryAfterSeconds()).isEqualTo(37));
+    }
+
+    @Test
+    void emailStillRejectsEleventhConfirmationInTenMinutes() {
+        when(rateLimitStore.increment(anyString(), eq(Duration.ofMinutes(10)))).thenReturn(11L);
+
+        assertThatThrownBy(() -> service.checkVerificationConfirm(
+                VerificationChannel.EMAIL, "user@example.com", "127.0.0.1"))
+                .isInstanceOf(AuthenticationRateLimitException.class);
+        verify(rateLimitStore, never()).tryAcquire(anyString(), eq(Duration.ofSeconds(5)));
     }
 
     @Test

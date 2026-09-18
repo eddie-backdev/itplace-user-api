@@ -5,10 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.exception.SmsVerificationException;
 import com.itplace.userapi.security.support.SensitiveDataMasker;
+import java.net.http.HttpClient;
+import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -28,7 +32,10 @@ public class OctomoMessageClientImpl implements OctomoMessageClient {
             @Value("${octomo.api.base-url:https://api.octoverse.kr/octomo/v1}") String baseUrl,
             @Value("${octomo.api.key:}") String apiKey
     ) {
-        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build());
+        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+        this.restClient = restClientBuilder.baseUrl(baseUrl).requestFactory(requestFactory).build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
     }
@@ -64,28 +71,35 @@ public class OctomoMessageClientImpl implements OctomoMessageClient {
                     SensitiveDataMasker.maskPhoneNumber(mobileNumber),
                     e.getMessage()
             );
-            throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
+            throw new SmsVerificationException(SecurityCode.SMS_PROVIDER_UNAVAILABLE);
         }
     }
 
     private boolean parseVerified(String responseBody) {
         if (!StringUtils.hasText(responseBody)) {
-            return false;
+            throw new SmsVerificationException(SecurityCode.SMS_PROVIDER_UNAVAILABLE);
         }
 
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            return isTrue(root, "verified")
-                    || isTrue(root, "exists")
-                    || isTrue(root.path("data"), "verified")
-                    || isTrue(root.path("data"), "exists");
+            boolean recognized = false;
+            boolean verified = false;
+            for (JsonNode node : List.of(root, root.path("data"))) {
+                for (String field : List.of("verified", "exists")) {
+                    JsonNode value = node.path(field);
+                    if (value.isBoolean() || (value.isTextual()
+                            && ("true".equals(value.asText()) || "false".equals(value.asText())))) {
+                        recognized = true;
+                        verified |= value.asBoolean();
+                    }
+                }
+            }
+            if (recognized) {
+                return verified;
+            }
         } catch (Exception e) {
-            log.warn("Octomo 응답 파싱 실패: {}", e.getMessage());
-            return false;
+            log.warn("Octomo 응답을 해석할 수 없습니다: {}", e.getClass().getSimpleName());
         }
-    }
-
-    private boolean isTrue(JsonNode node, String fieldName) {
-        return node != null && node.has(fieldName) && node.get(fieldName).asBoolean(false);
+        throw new SmsVerificationException(SecurityCode.SMS_PROVIDER_UNAVAILABLE);
     }
 }

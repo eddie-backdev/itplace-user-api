@@ -40,6 +40,7 @@ public enum SecurityCode implements BaseCode {
     SMS_VERIFICATION_FAILURE("SMS_VERIFICATION_FAILURE", HttpStatus.BAD_REQUEST, "대표번호로 인증 문자열을 문자 전송한 뒤 다시 확인해주세요."),
     SMS_CODE_EXPIRED("SMS_CODE_EXPIRED", HttpStatus.BAD_REQUEST, "문자 인증 코드가 만료되었습니다."),
     SMS_PROVIDER_NOT_CONFIGURED("SMS_PROVIDER_NOT_CONFIGURED", HttpStatus.INTERNAL_SERVER_ERROR, "문자 인증 서비스가 설정되어 있지 않습니다."),
+    SMS_PROVIDER_UNAVAILABLE("SMS_PROVIDER_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "문자 인증 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 확인해주세요."),
     DUPLICATE_PHONE_NUMBER("DUPLICATE_PHONE_NUMBER", HttpStatus.CONFLICT, "이미 사용 중인 휴대폰 번호입니다."),
 
     // 비밀번호 변경

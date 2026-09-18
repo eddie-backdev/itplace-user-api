@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import com.itplace.userapi.security.SecurityCode;
+import com.itplace.userapi.security.exception.AuthenticationRateLimitException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -133,9 +136,22 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 
+    @Test
+    void authenticationRateLimitIncludesRetryAfterAndPreservesEnvelope() throws Exception {
+        mockMvc.perform(get("/test/errors/rate-limit"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "7"))
+                .andExpect(jsonPath("$.code").value("AUTHENTICATION_RATE_LIMITED"));
+    }
+
     @RestController
     @RequestMapping("/test/errors")
     private static class ExceptionContractController {
+
+        @GetMapping("/rate-limit")
+        void rateLimit() {
+            throw new AuthenticationRateLimitException(SecurityCode.AUTHENTICATION_RATE_LIMITED, 7L);
+        }
 
         @PostMapping(value = "/body", consumes = MediaType.APPLICATION_JSON_VALUE)
         void body(@Valid @RequestBody TestRequest request) {

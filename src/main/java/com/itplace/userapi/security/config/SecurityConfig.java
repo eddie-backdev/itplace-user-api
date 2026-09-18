@@ -88,7 +88,7 @@ public class SecurityConfig {
                         ));
                         configuration.setMaxAge(3600L);
 
-                        configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN"));
+                        configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN", "Retry-After"));
                         return configuration;
                     }
                 })));
