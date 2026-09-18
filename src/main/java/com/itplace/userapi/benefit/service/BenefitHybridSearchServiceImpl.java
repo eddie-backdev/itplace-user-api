@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -53,6 +54,9 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
     private final ElasticsearchClient esClient;
     private final EmbeddingService embeddingService;
 
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
+
     @Override
     public BenefitHybridSearchResult search(String keyword,
                                             MainCategory mainCategory,
@@ -60,6 +64,9 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
                                             UsageType filter,
                                             List<Carrier> carriers,
                                             Pageable pageable) {
+        if (!aiEnabled) {
+            return searchLexical(keyword, mainCategory, category, filter, carriers, pageable);
+        }
         String normalizedKeyword = normalize(keyword)
                 .orElseThrow(() -> new IllegalArgumentException("검색어가 비어 있습니다."));
         int candidateWindow = candidateWindow(pageable);

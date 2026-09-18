@@ -73,6 +73,10 @@ KAKAO_REST_API_KEY=
 
 로컬 프로필은 `src/main/resources/application-local.yml`의 placeholder 값을 포함합니다. 실제 외부 연동이 필요한 기능은 개인 환경 값으로 교체해야 합니다.
 
+AI 기능은 현재 기본 비활성화 상태(`AI_ENABLED=false`)입니다. 질문형·맞춤 추천 및 AI 매장 API는 기존 인증 검사 후 `503 / AI_DISABLED`를 반환하며, 혜택 검색은 임베딩 없이 키워드 검색을 사용합니다. 혜택 RAG 초기·주기 동기화와 질문·매장 초기 데이터 색인도 실행하지 않습니다. 일반 지도 검색을 위한 매장 ES 인덱스 확인은 유지합니다.
+
+재개하려면 `AI_ENABLED=true`로 설정하고 재시작합니다. 자동 색인은 `BENEFIT_RAG_SEED_ENABLED`, `BENEFIT_RAG_SYNC_ENABLED`, `QUESTION_INDEX_SEED_ENABLED`, `STORE_INDEX_SEED_ENABLED` 중 필요한 항목을 별도로 켭니다. 전체 스위치가 꺼져 있으면 개별 색인 설정이 `true`여도 실행하지 않습니다. 웹 AI 화면은 `itplace-user-front/src/config/features.ts`에서 별도로 제어합니다.
+
 ### 3. 로컬 실행
 
 ```bash

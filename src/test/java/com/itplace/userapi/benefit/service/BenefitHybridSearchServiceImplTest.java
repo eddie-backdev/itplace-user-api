@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -22,12 +23,14 @@ import com.itplace.userapi.benefit.entity.enums.UsageType;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class BenefitHybridSearchServiceImplTest {
@@ -41,6 +44,24 @@ class BenefitHybridSearchServiceImplTest {
 
     @InjectMocks
     private BenefitHybridSearchServiceImpl service;
+
+    @BeforeEach
+    void enableAiForHybridSearchTests() {
+        ReflectionTestUtils.setField(service, "aiEnabled", true);
+    }
+
+    @Test
+    void disabledAiSearchReturnsKeywordResultsWithoutEmbedding() throws IOException {
+        ReflectionTestUtils.setField(service, "aiEnabled", false);
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenReturn(searchResponse(hit(1L, 2.0)));
+
+        BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 12));
+
+        assertThat(result.benefitIds()).containsExactly(1L);
+        verifyNoInteractions(embeddingService);
+        verify(esClient).search(any(SearchRequest.class), eq(JsonData.class));
+    }
 
     @Test
     void search_mergesLexicalAndVectorResultsAndPagesRankedBenefitIds() throws IOException {

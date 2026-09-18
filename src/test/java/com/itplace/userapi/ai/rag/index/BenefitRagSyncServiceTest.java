@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -61,6 +62,18 @@ class BenefitRagSyncServiceTest {
                 embeddingService,
                 sourceQueryService, new com.fasterxml.jackson.databind.ObjectMapper()
         );
+        ReflectionTestUtils.setField(syncService, "aiEnabled", true);
+    }
+
+    @Test
+    void disabledAiSkipsScheduledAndDirectSyncEvenWhenSyncIsEnabled() throws Exception {
+        ReflectionTestUtils.setField(syncService, "aiEnabled", false);
+        ReflectionTestUtils.setField(syncService, "syncEnabled", true);
+
+        syncService.scheduledSync();
+        assertThat(syncService.syncAll().candidateDocuments()).isZero();
+
+        verifyNoInteractions(esClient, elasticService, embeddingService, sourceQueryService);
     }
 
     @Test

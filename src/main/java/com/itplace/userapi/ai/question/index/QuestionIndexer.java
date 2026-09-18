@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "app.ai.questions.seed.enabled", havingValue = "true")
+@ConditionalOnProperty(name = {"app.ai.enabled", "app.ai.questions.seed.enabled"}, havingValue = "true")
 public class QuestionIndexer implements ApplicationRunner {
     private static final String INDEX_NAME = "questions";
     private static final List<String> DEFAULT_CSV_LOCATIONS = List.of(

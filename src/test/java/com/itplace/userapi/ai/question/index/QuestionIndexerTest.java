@@ -24,8 +24,16 @@ class QuestionIndexerTest {
                 .withUserConfiguration(QuestionIndexer.class)
                 .withBean(EmbeddingService.class, () -> mock(EmbeddingService.class))
                 .withBean(ElasticQuestionService.class, () -> mock(ElasticQuestionService.class))
-                .withPropertyValues("app.ai.questions.seed.enabled=true")
+                .withPropertyValues("app.ai.enabled=true", "app.ai.questions.seed.enabled=true")
                 .run(context -> assertThat(context).hasSingleBean(QuestionIndexer.class));
+    }
+
+    @Test
+    void disabledAiOverridesEnabledQuestionSeed() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(QuestionIndexer.class)
+                .withPropertyValues("app.ai.enabled=false", "app.ai.questions.seed.enabled=true")
+                .run(context -> assertThat(context).doesNotHaveBean(QuestionIndexer.class));
     }
 
     @Test
