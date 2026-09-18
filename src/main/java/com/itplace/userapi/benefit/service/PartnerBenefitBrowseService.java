@@ -10,9 +10,11 @@ import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.exception.BenefitNotFoundException;
+import com.itplace.userapi.benefit.exception.InvalidEnumException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
@@ -22,6 +24,7 @@ import com.itplace.userapi.partner.PartnerCode;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
 import com.itplace.userapi.partner.repository.PartnerRepository;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,9 +63,11 @@ public class PartnerBenefitBrowseService {
             String sort,
             String keyword,
             List<Carrier> carriers,
+            Grade grade,
             Pageable pageable
     ) {
         List<Carrier> carrierFilters = carriers == null ? List.of() : carriers;
+        List<Grade> grades = matchingGrades(carrierFilters, grade);
         boolean carrierFilterEnabled = !carrierFilters.isEmpty();
         List<String> carrierNames = carrierFilterEnabled
                 ? carrierFilters.stream().map(Carrier::name).toList()
@@ -75,6 +80,8 @@ public class PartnerBenefitBrowseService {
                 normalize(keyword),
                 carrierFilterEnabled,
                 carrierNames,
+                !grades.isEmpty(),
+                grades.isEmpty() ? List.of("") : grades.stream().map(Grade::name).toList(),
                 normalizeSort(sort),
                 pageable
         );
@@ -91,11 +98,11 @@ public class PartnerBenefitBrowseService {
                         .partnerName(partner.getPartnerName())
                         .category(partner.getCategory())
                         .image(partner.getImage())
-                        .carriers(availableCarriers(
+                        .carriers(grades.isEmpty() ? availableCarriers(
                                 benefitsByPartner.getOrDefault(partner.getPartnerId(), List.of()),
                                 policiesByBenefit,
                                 filter
-                        ))
+                        ) : carrierFilters)
                         .build())
                 .toList();
 
@@ -108,7 +115,10 @@ public class PartnerBenefitBrowseService {
                 .build();
     }
 
-    public PartnerBenefitDetailResponse getPartnerDetail(Long partnerId, MainCategory mainCategory, Long userId) {
+    public PartnerBenefitDetailResponse getPartnerDetail(
+            Long partnerId, MainCategory mainCategory, Long userId, Carrier carrier, Grade grade
+    ) {
+        List<Grade> grades = matchingGrades(carrier == null ? List.of() : List.of(carrier), grade);
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new PartnerNotFoundException(PartnerCode.PARTNER_NOT_FOUND));
         List<Benefit> benefits = activeBenefits(List.of(partnerId), mainCategory);
@@ -137,16 +147,23 @@ public class PartnerBenefitBrowseService {
 
         Map<Carrier, List<CarrierBenefit>> benefitsByCarrier = new EnumMap<>(Carrier.class);
         for (BenefitCarrierPolicy policy : policies) {
+            if (carrier != null && policy.getCarrier() != carrier) {
+                continue;
+            }
             Benefit benefit = benefitsById.get(policy.getBenefit().getBenefitId());
             if (benefit == null) {
                 continue;
             }
             List<TierBenefitInfo> tierBenefits = tierBenefitsByPolicy
                     .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
+                    .filter(tier -> grades.isEmpty() || grades.contains(tier.getGrade()))
                     .map(tier -> new TierBenefitInfo(
                             policy.getCarrier(), tier.getGrade(), tier.getContext(), tier.getIsAll()
                     ))
                     .toList();
+            if (!grades.isEmpty() && tierBenefits.isEmpty()) {
+                continue;
+            }
             CarrierBenefit carrierBenefit = CarrierBenefit.builder()
                     .benefitId(benefit.getBenefitId())
                     .benefitName(firstNonBlank(policy.getCarrierBenefitName(), benefit.getBenefitName()))
@@ -165,9 +182,9 @@ public class PartnerBenefitBrowseService {
 
         List<CarrierBenefitGroup> carrierGroups = CARRIER_DISPLAY_ORDER.stream()
                 .filter(benefitsByCarrier::containsKey)
-                .map(carrier -> CarrierBenefitGroup.builder()
-                        .carrier(carrier)
-                        .benefits(benefitsByCarrier.get(carrier).stream()
+                .map(groupCarrier -> CarrierBenefitGroup.builder()
+                        .carrier(groupCarrier)
+                        .benefits(benefitsByCarrier.get(groupCarrier).stream()
                                 .sorted(Comparator.comparing(CarrierBenefit::getBenefitId))
                                 .toList())
                         .build())
@@ -180,6 +197,19 @@ public class PartnerBenefitBrowseService {
                 .image(partner.getImage())
                 .carrierGroups(carrierGroups)
                 .build();
+    }
+
+    private List<Grade> matchingGrades(List<Carrier> carriers, Grade grade) {
+        if (grade == null) {
+            return List.of();
+        }
+        if (carriers.size() != 1 || !MembershipProfileValidator.isValid(carriers.get(0), grade)) {
+            throw new InvalidEnumException(BenefitCode.INVALID_MEMBERSHIP_FILTER);
+        }
+        // VIP콕은 LG U+ VIP·VVIP에 적용하며 다른 등급의 상속은 추정하지 않는다.
+        return carriers.get(0) == Carrier.LGU && (grade == Grade.VIP || grade == Grade.VVIP)
+                ? List.of(grade, Grade.VIP콕)
+                : List.of(grade);
     }
 
     private List<Benefit> activeBenefits(List<Long> partnerIds, MainCategory mainCategory) {

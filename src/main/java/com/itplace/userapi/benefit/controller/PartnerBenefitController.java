@@ -4,6 +4,7 @@ import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.service.PartnerBenefitBrowseService;
@@ -42,6 +43,7 @@ public class PartnerBenefitController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Carrier carrier,
             @RequestParam(required = false) List<String> carriers,
+            @RequestParam(required = false) Grade grade,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "12") @Min(1) @Max(100) int size
     ) {
@@ -53,6 +55,7 @@ public class PartnerBenefitController {
                 sort,
                 keyword,
                 CarrierFilterResolver.resolve(carrier, carriers),
+                grade,
                 pageable
         );
         return ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result).toResponseEntity();
@@ -61,12 +64,16 @@ public class PartnerBenefitController {
     @GetMapping("/{partnerId}")
     public ResponseEntity<ApiResponse<PartnerBenefitDetailResponse>> getPartnerDetail(
             @PathVariable Long partnerId,
-            @RequestParam(defaultValue = "BASIC_BENEFIT") MainCategory mainCategory,
+            @RequestParam(required = false) MainCategory mainCategory,
+            @RequestParam(required = false) Carrier carrier,
+            @RequestParam(required = false) Grade grade,
             @AuthenticationPrincipal PrincipalDetails principalDetails
     ) {
         Long userId = principalDetails == null ? null : principalDetails.getUserId();
         PartnerBenefitDetailResponse result = partnerBenefitBrowseService.getPartnerDetail(
-                partnerId, mainCategory, userId
+                partnerId, mainCategory == null && carrier == null && grade == null
+                        ? MainCategory.BASIC_BENEFIT : mainCategory,
+                userId, carrier, grade
         );
         return ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, result).toResponseEntity();
     }

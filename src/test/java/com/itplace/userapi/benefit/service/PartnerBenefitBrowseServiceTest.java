@@ -1,6 +1,7 @@
 package com.itplace.userapi.benefit.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
+import com.itplace.userapi.benefit.exception.InvalidEnumException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
@@ -55,7 +57,7 @@ class PartnerBenefitBrowseServiceTest {
 
         when(partnerRepository.findBenefitPartners(
                 eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("생활/편의"), eq(null), eq("GS25"),
-                eq(true), eq(List.of("SKT")), eq("POPULARITY"), eq(pageable)
+                eq(true), eq(List.of("SKT")), eq(false), eq(List.of("")), eq("POPULARITY"), eq(pageable)
         )).thenReturn(new PageImpl<>(List.of(partner), pageable, 1));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(skt, lgu));
@@ -67,6 +69,7 @@ class PartnerBenefitBrowseServiceTest {
                 null,
                 " GS25 ",
                 List.of(Carrier.SKT),
+                null,
                 pageable
         );
 
@@ -96,7 +99,7 @@ class PartnerBenefitBrowseServiceTest {
         when(favoriteRepository.countFavoritesByBenefitIds(List.of(20L)))
                 .thenReturn(java.util.Collections.singletonList(new Object[]{20L, 4L}));
 
-        var result = service.getPartnerDetail(10L, MainCategory.BASIC_BENEFIT, 7L);
+        var result = service.getPartnerDetail(10L, MainCategory.BASIC_BENEFIT, 7L, null, null);
 
         assertThat(result.getPartnerName()).isEqualTo("GS25");
         assertThat(result.getCarrierGroups()).extracting(group -> group.getCarrier())
@@ -113,6 +116,58 @@ class PartnerBenefitBrowseServiceTest {
             });
             assertThat(item.getIsFavorite()).isTrue();
             assertThat(item.getFavoriteCount()).isEqualTo(4L);
+        });
+    }
+
+    @Test
+    void membershipFilterRequiresOneMatchingCarrier() {
+        for (List<Carrier> carriers : List.of(List.<Carrier>of(), List.of(Carrier.KT), List.of(Carrier.LGU, Carrier.SKT))) {
+            assertThatThrownBy(() -> service.getPartners(null, null, null, null, null,
+                    carriers, Grade.VIP, PageRequest.of(0, 15)))
+                    .isInstanceOf(InvalidEnumException.class);
+        }
+    }
+
+    @Test
+    void membershipFilterIncludesVipKokAndKeepsFilteredPageTotals() {
+        PageRequest pageable = PageRequest.of(1, 1);
+        when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq(null), eq(null),
+                eq(true), eq(List.of("LGU")), eq(true), eq(List.of("VVIP", "VIP콕")),
+                eq("POPULARITY"), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(partner()), pageable, 3));
+
+        var result = service.getPartners(null, null, null, null, null,
+                List.of(Carrier.LGU), Grade.VVIP, pageable);
+
+        assertThat(result.getContent().get(0).getCarriers()).containsExactly(Carrier.LGU);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getCurrentPage()).isEqualTo(1);
+        assertThat(result.isHasNext()).isTrue();
+    }
+
+    @Test
+    void filteredDetailOnlyContainsMatchingCarrierPoliciesAndGrades() {
+        Partner partner = partner();
+        Benefit benefit = benefit(partner);
+        BenefitCarrierPolicy lgu = policy(101L, benefit, Carrier.LGU, "LGU 할인");
+        BenefitCarrierPolicy skt = policy(102L, benefit, Carrier.SKT, "SKT 할인");
+        BenefitCarrierPolicy basicOnly = policy(103L, benefit, Carrier.LGU, "우수 전용");
+        when(partnerRepository.findById(10L)).thenReturn(Optional.of(partner));
+        when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit)))
+                .thenReturn(List.of(lgu, skt, basicOnly));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(any())).thenReturn(List.of(
+                tier(lgu, Grade.VIP, "VIP 할인"), tier(lgu, Grade.VIP콕, "VIP콕 할인"),
+                tier(lgu, Grade.BASIC, "우수 할인"), tier(skt, Grade.SKT_VIP, "SKT 할인"),
+                tier(basicOnly, Grade.BASIC, "우수 전용")));
+
+        var result = service.getPartnerDetail(10L, MainCategory.BASIC_BENEFIT, null, Carrier.LGU, Grade.VIP);
+
+        assertThat(result.getCarrierGroups()).singleElement().satisfies(group -> {
+            assertThat(group.getCarrier()).isEqualTo(Carrier.LGU);
+            assertThat(group.getBenefits()).singleElement().satisfies(item ->
+                    assertThat(item.getTierBenefits()).extracting(tier -> tier.getGrade())
+                            .containsExactly(Grade.VIP, Grade.VIP콕));
         });
     }
 

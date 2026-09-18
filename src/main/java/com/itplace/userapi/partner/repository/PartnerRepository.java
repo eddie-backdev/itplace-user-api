@@ -39,6 +39,11 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                   AND (:keyword IS NULL OR
                        LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')))
                   AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
+                  AND (:gradeFilterEnabled = false OR EXISTS (
+                      SELECT 1 FROM carrierTierBenefit ctb
+                      WHERE ctb.benefitCarrierPolicyId = bcp.benefitCarrierPolicyId
+                        AND ctb.grade IN (:grades)
+                  ))
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
                 GROUP BY p.partnerId
@@ -68,6 +73,11 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                   AND (:keyword IS NULL OR
                        LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')))
                   AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
+                  AND (:gradeFilterEnabled = false OR EXISTS (
+                      SELECT 1 FROM carrierTierBenefit ctb
+                      WHERE ctb.benefitCarrierPolicyId = bcp.benefitCarrierPolicyId
+                        AND ctb.grade IN (:grades)
+                  ))
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
             """,
@@ -80,6 +90,8 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
             @Param("keyword") String keyword,
             @Param("carrierFilterEnabled") boolean carrierFilterEnabled,
             @Param("carriers") List<String> carriers,
+            @Param("gradeFilterEnabled") boolean gradeFilterEnabled,
+            @Param("grades") List<String> grades,
             @Param("sort") String sort,
             Pageable pageable
     );
