@@ -52,10 +52,8 @@ class CacheConfigTest {
 
         assertThat(cacheManager.getCacheNames()).contains("partner-benefits", "map-store-clusters");
         RedisCacheManager redisCacheManager = (RedisCacheManager) cacheManager;
-        for (int i = 0; i < 100; i++) {
-            assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits").getTtlFunction()
-                    .getTimeToLive(1L, java.util.List.of())).isBetween(Duration.ofMinutes(55), Duration.ofHours(1));
-        }
+        assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits").getTtlFunction()
+                .getTimeToLive(1L, java.util.List.of())).isEqualTo(Duration.ofDays(7));
         assertThat(redisCacheManager.getCacheConfigurations().get("map-store-clusters").getTtl())
                 .isEqualTo(Duration.ofMinutes(1));
         RedisCache cache = (RedisCache) cacheManager.getCache("partner-benefits");

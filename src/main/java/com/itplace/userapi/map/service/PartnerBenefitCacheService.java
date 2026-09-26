@@ -162,16 +162,16 @@ public class PartnerBenefitCacheService {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         transaction.setTimeout(5);
-        // readOnly=false가 source를 선택한다. replica lag로 갱신 전 혜택이 한 시간 다시 캐싱되는 것을 방지한다.
+        // readOnly=false가 source를 선택한다. replica lag로 갱신 전 혜택이 다시 캐싱되는 것을 방지한다.
         return transaction.execute(status -> loadBenefits(partnerIds));
     }
 
-    private void writeCachedBenefits(Cache cache, String generation, Map<Long, List<BenefitCacheDto>> loaded) {
-        if (cache == null) return;
+    private boolean writeCachedBenefits(Cache cache, String generation, Map<Long, List<BenefitCacheDto>> loaded) {
+        if (cache == null) return true;
         if (!(cache instanceof RedisCache redisCache)
                 || redisCache.getCacheConfiguration().isTimeToIdleEnabled()) {
             loaded.forEach(cache::put);
-            return;
+            return true;
         }
         List<Long> ids = new ArrayList<>(loaded.keySet());
         byte[][] keys = cacheKeys(redisCache, ids);
@@ -186,6 +186,18 @@ public class PartnerBenefitCacheService {
             Long written = connection.scriptingCommands().eval(FILL_SCRIPT, ReturnType.INTEGER,
                     keys.length, arguments.toArray(byte[][]::new));
             if (Long.valueOf(1).equals(written)) ids.forEach(id -> statistics.incPuts(CACHE_NAME));
+            return Long.valueOf(1).equals(written);
+        }
+    }
+
+    /** 커밋된 변경을 처리한다. 이전 세대의 진행 중 조회는 새 캐시를 덮어쓸 수 없다. */
+    public void refreshBenefits(List<Long> partnerIds) {
+        List<Long> ids = partnerIds.stream().distinct().toList();
+        if (ids.isEmpty()) return;
+        String generation = invalidate(ids);
+        if (!writeCachedBenefits(cacheManager.getCache(CACHE_NAME), generation, loadFromSource(ids))) {
+            // 다른 갱신과 겹친 경우 작업을 완료 처리하지 않고 DB 대기열에서 재시도한다.
+            throw new IllegalStateException("혜택 캐시 갱신 중 세대가 변경됐습니다.");
         }
     }
 
@@ -202,21 +214,23 @@ public class PartnerBenefitCacheService {
         }
     }
 
-    private void invalidate(List<Long> partnerIds) {
+    private String invalidate(List<Long> partnerIds) {
         Cache cache = cacheManager.getCache(CACHE_NAME);
-        if (cache == null) return;
+        if (cache == null) throw new IllegalStateException("혜택 캐시가 설정되지 않았습니다.");
         if (!(cache instanceof RedisCache redisCache)) {
             partnerIds.forEach(cache::evict);
-            return;
+            return "local";
         }
+        String generation = UUID.randomUUID().toString();
         byte[][] keys = cacheKeys(redisCache, partnerIds);
         List<byte[]> arguments = new ArrayList<>(List.of(keys));
-        arguments.add(bytes(UUID.randomUUID().toString()));
+        arguments.add(bytes(generation));
         try (var connection = redisConnectionFactory.getConnection()) {
             Long deleted = connection.scriptingCommands().eval(INVALIDATE_SCRIPT, ReturnType.INTEGER,
                     keys.length, arguments.toArray(byte[][]::new));
             if (deleted != null) statistics.incDeletesBy(CACHE_NAME, deleted.intValue());
         }
+        return generation;
     }
 
     private byte[][] cacheKeys(RedisCache cache, List<Long> ids) {

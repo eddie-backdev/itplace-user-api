@@ -80,9 +80,8 @@ public class CacheConfig {
                 .cacheDefaults(config.entryTtl(Duration.ofHours(1)))
                 .initialCacheNames(Set.of(PARTNER_BENEFITS_CACHE, MAP_STORE_CLUSTERS_CACHE))
                 .withInitialCacheConfigurations(Map.of(
-                        // 기존 1시간 상한을 늘리지 않고 동시 적재된 제휴사의 만료를 분산한다.
-                        PARTNER_BENEFITS_CACHE, config.entryTtl((key, value) -> Duration.ofSeconds(
-                                3300 + java.util.concurrent.ThreadLocalRandom.current().nextInt(301)))
+                        // 변경 시 무효화·재적재한다. 드물게 변경되는 전체 혜택은 약 1.1 MB다.
+                        PARTNER_BENEFITS_CACHE, config.entryTtl(Duration.ofDays(7))
                                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(benefitSerializer)),
                         MAP_STORE_CLUSTERS_CACHE, config.entryTtl(Duration.ofMinutes(1))
                 ))

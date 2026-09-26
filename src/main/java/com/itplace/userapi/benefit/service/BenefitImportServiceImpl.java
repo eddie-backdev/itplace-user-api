@@ -53,6 +53,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private final BenefitPolicyRepository benefitPolicyRepository;
     private final BenefitSnapshotImportStateRepository benefitSnapshotImportStateRepository;
     private final PartnerBenefitCacheService partnerBenefitCacheService;
+    private final BenefitCacheRefreshService benefitCacheRefreshService;
 
     @Value("${app.internal.api-key:}")
     private String expectedApiKey;
@@ -80,6 +81,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
                 // 제휴사 이동으로 현재 carrier에서 사라진 이전 제휴사까지 복구한다.
                 partnerBenefitCacheService.invalidateAfterCommit(partnerRepository.findAll().stream()
                         .map(Partner::getPartnerId).toList());
+                benefitCacheRefreshService.refreshAfterCommit();
             }
             return ignoredResponse(request, latestKnownCrawledAt, ignoredStatus);
         }
@@ -143,6 +145,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         changedPartnerIds.addAll(inactivateMissingPolicies(request.getCarrier(), latestRowBySourceKey.keySet(), crawledAt));
         importState.markApplied(crawledAt);
         partnerBenefitCacheService.invalidateAfterCommit(changedPartnerIds.stream().filter(Objects::nonNull).toList());
+        benefitCacheRefreshService.refreshAfterCommit();
 
         return BenefitSnapshotImportResponse.builder()
                 .carrier(request.getCarrier())
