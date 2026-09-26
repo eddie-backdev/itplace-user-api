@@ -136,7 +136,7 @@ public class SecurityConfig {
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, LoginFilter.class);
 
-        // 세션 설정 : STATELESS
+        // 로그인 이후 인증은 JWT다. OAuth2 로그인 진행 상태의 HttpSession은 Redis에서 공유한다.
         http
                 .sessionManagement((session) -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));

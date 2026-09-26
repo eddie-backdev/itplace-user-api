@@ -75,6 +75,10 @@ google:
       url: https://www.google.com/recaptcha/api/siteverify
 
 app:
+  internal:
+    api-key: ${INTERNAL_API_KEY:}
+  benefit-cache:
+    retry-delay-ms: ${BENEFIT_CACHE_RETRY_DELAY_MS:5000}
   security:
     abuse-protection:
       enabled: ${AUTH_ABUSE_PROTECTION_ENABLED:true}

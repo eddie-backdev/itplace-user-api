@@ -69,6 +69,9 @@ class BenefitImportServiceImplTest {
     @Mock
     private com.itplace.userapi.map.service.PartnerBenefitCacheService partnerBenefitCacheService;
 
+    @Mock
+    private BenefitCacheRefreshService benefitCacheRefreshService;
+
     private BenefitImportServiceImpl service;
 
     @BeforeEach
@@ -80,7 +83,8 @@ class BenefitImportServiceImplTest {
                 carrierTierBenefitRepository,
                 benefitPolicyRepository,
                 benefitSnapshotImportStateRepository,
-                partnerBenefitCacheService
+                partnerBenefitCacheService,
+                benefitCacheRefreshService
         );
         ReflectionTestUtils.setField(service, "expectedApiKey", "internal-key");
         lenient().when(benefitSnapshotImportStateRepository.findByCarrierForUpdate(any(Carrier.class)))

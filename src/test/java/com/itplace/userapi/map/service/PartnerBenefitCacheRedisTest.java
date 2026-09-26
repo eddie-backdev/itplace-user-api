@@ -119,7 +119,7 @@ class PartnerBenefitCacheRedisTest {
         assertThat(cache.getStatistics().getMisses()).isEqualTo(1);
         assertThat(cache.getStatistics().getPuts()).isEqualTo(1);
         try (var connection = factory.getConnection()) {
-            assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits::4"))).isBetween(3299L, 3600L);
+            assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits::4"))).isBetween(604799L, 604800L);
         }
         var definition = org.mockito.ArgumentCaptor.forClass(TransactionDefinition.class);
         verify(transactions).getTransaction(definition.capture());
@@ -208,6 +208,37 @@ class PartnerBenefitCacheRedisTest {
     private PartnerBenefitCacheService service(BenefitRepository repository) {
         return new PartnerBenefitCacheService(repository, mock(BenefitCarrierPolicyRepository.class),
                 mock(CarrierTierBenefitRepository.class), manager, factory, statistics, transactions);
+    }
+
+    @Test
+    void refreshWarmsNewDataImmediatelyAndRejectsDelayedOldReader() throws Exception {
+        var started = new CountDownLatch(1);
+        var finish = new CountDownLatch(1);
+        when(benefits.findAllByPartnerIdsWithPartner(List.of(1L))).thenAnswer(call -> {
+            started.countDown();
+            assertThat(finish.await(5, TimeUnit.SECONDS)).isTrue();
+            return List.of(benefit("old"));
+        });
+        var currentSource = mock(BenefitRepository.class);
+        when(currentSource.findAllByPartnerIdsWithPartner(List.of(1L))).thenReturn(List.of(benefit("new")));
+        cache.put(2L, new ArrayList<>());
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            var oldRequest = executor.submit(() -> service.getBenefits(1L));
+            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+            service(currentSource).refreshBenefits(List.of(1L));
+            finish.countDown();
+            assertThat(oldRequest.get(5, TimeUnit.SECONDS).get(0).getBenefitName()).isEqualTo("old");
+            long beforeMget = calls("mget");
+            long beforeGet = calls("get");
+            assertThat(service.getBenefits(1L).get(0).getBenefitName()).isEqualTo("new");
+            assertThat(calls("mget") - beforeMget).isEqualTo(1);
+            assertThat(calls("get") - beforeGet).isZero();
+            assertThat(cache.get(2L)).isNotNull();
+            try (var connection = factory.getConnection()) {
+                assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits::1"))).isBetween(604798L, 604800L);
+            }
+        } finally { finish.countDown(); executor.shutdownNow(); }
     }
 
     private Benefit benefit(String name) {
