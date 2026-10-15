@@ -34,7 +34,7 @@ jobs:
           cache: gradle
 
       - name: Test and build application JAR
-        run: ./gradlew test bootJar --no-daemon
+        run: ./scripts/test-required.sh --no-daemon && ./gradlew bootJar --no-daemon
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4

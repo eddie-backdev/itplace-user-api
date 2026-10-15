@@ -8,7 +8,11 @@ import lombok.Getter;
 @Getter
 public enum BenefitType {
     FREE("증정"),
-    DISCOUNT("할인");
+    DISCOUNT("할인"),
+    POINT_ACCRUAL("적립"),
+    POINT_USE("포인트 사용"),
+    MIXED("복합"),
+    UNKNOWN("미확인");
 
     private final String label;
 
