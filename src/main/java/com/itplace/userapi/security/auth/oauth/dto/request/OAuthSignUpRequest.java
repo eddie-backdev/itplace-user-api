@@ -26,9 +26,7 @@ public class OAuthSignUpRequest {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthday;
 
-    @NotNull(message = "통신사는 필수 항목입니다.")
     private Carrier carrier;
 
-    @NotNull(message = "멤버십 등급은 필수 항목입니다.")
     private Grade membershipGradeCode;
 }

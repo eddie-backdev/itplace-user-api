@@ -4,6 +4,7 @@ import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.map.StoreCode;
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewPageResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.ReverseGeocodeResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
@@ -101,6 +102,39 @@ public class StoreController {
                 .header(HttpHeaders.CACHE_CONTROL,
                         "public, max-age=30, s-maxage=60, stale-while-revalidate=30")
                 .body(body);
+    }
+
+    @GetMapping("/stores/in-view/previews/compact/page")
+    public ResponseEntity<ApiResponse<MapStorePreviewPageResponse>> getStoresInViewPreviewPage(
+            @RequestParam("minLat") @DecimalMin("-90.0") @DecimalMax("90.0") double minLat,
+            @RequestParam("minLng") @DecimalMin("-180.0") @DecimalMax("180.0") double minLng,
+            @RequestParam("maxLat") @DecimalMin("-90.0") @DecimalMax("90.0") double maxLat,
+            @RequestParam("maxLng") @DecimalMin("-180.0") @DecimalMax("180.0") double maxLng,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "pageSize", defaultValue = "300") @Min(1) @Max(2000) int pageSize,
+            @RequestParam(value = "afterStoreId", defaultValue = "0") @Min(0) long afterStoreId
+    ) {
+        ApiResponse<MapStorePreviewPageResponse> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS,
+                storeService.findStoresInViewPreviewPage(minLat, minLng, maxLat, maxLng,
+                        category, pageSize, afterStoreId));
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
+    }
+
+    @GetMapping({"/nearby/previews/compact/page", "/nearby/category/previews/compact/page"})
+    public ResponseEntity<ApiResponse<MapStorePreviewPageResponse>> getNearbyPreviewPage(
+            @RequestParam("lat") @DecimalMin("-90.0") @DecimalMax("90.0") double lat,
+            @RequestParam("lng") @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
+            @RequestParam("radiusMeters") @DecimalMin("1.0") @DecimalMax("400000.0") double radiusMeters,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam("userLat") @DecimalMin("-90.0") @DecimalMax("90.0") double userLat,
+            @RequestParam("userLng") @DecimalMin("-180.0") @DecimalMax("180.0") double userLng,
+            @RequestParam(value = "pageSize", defaultValue = "300") @Min(1) @Max(2000) int pageSize,
+            @RequestParam(value = "afterStoreId", defaultValue = "0") @Min(0) long afterStoreId
+    ) {
+        ApiResponse<MapStorePreviewPageResponse> body = ApiResponse.of(StoreCode.STORE_LIST_SUCCESS,
+                storeService.findNearbyPreviewPage(lat, lng, radiusMeters, category, userLat, userLng,
+                        pageSize, afterStoreId));
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
     }
 
     @GetMapping({"/nearby/previews/compact", "/nearby/category/previews/compact"})

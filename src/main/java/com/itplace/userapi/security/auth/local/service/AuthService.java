@@ -6,13 +6,10 @@ import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.auth.local.dto.request.SignUpRequest;
 import com.itplace.userapi.security.exception.DuplicateEmailException;
-import com.itplace.userapi.security.exception.DuplicatePhoneNumberException;
 import com.itplace.userapi.security.exception.EmailVerificationException;
 import com.itplace.userapi.security.exception.InvalidCredentialsException;
 import com.itplace.userapi.security.exception.PasswordMismatchException;
-import com.itplace.userapi.security.exception.SmsVerificationException;
 import com.itplace.userapi.security.verification.email.service.EmailService;
-import com.itplace.userapi.security.verification.sms.service.SmsVerificationService;
 import com.itplace.userapi.user.UserCode;
 import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
@@ -44,7 +41,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
-    private final SmsVerificationService smsVerificationService;
     private final EmailService emailService;
 
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -75,13 +71,17 @@ public class AuthService {
             validateRefreshTokenCategory(claims);
 
             Long userId = claims.get(JWTConstants.CLAIM_USER_ID, Long.class);
+            if (userId == null || userId <= 0) {
+                throw new IllegalArgumentException("리프레시 토큰 사용자 정보가 없습니다.");
+            }
             validateSavedRefreshToken(userId, refreshToken);
 
             String role = claims.get(JWTConstants.CLAIM_ROLE, String.class);
+            Role.fromKey(role);
             return new RefreshTokenClaims(userId, role);
         } catch (ExpiredJwtException e) {
             throw invalidCredentials(SecurityCode.REFRESH_TOKEN_EXPIRED, "리프레시 토큰이 만료되었습니다.");
-        } catch (JwtException | IllegalArgumentException e) {
+        } catch (JwtException | IllegalArgumentException | ClassCastException e) {
             log.info("유효하지 않은 리프레시 토큰입니다: {}", e.getClass().getSimpleName());
             throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
         }
@@ -122,7 +122,10 @@ public class AuthService {
         log.info("회원가입 시작");
 
         validateSignUpRequest(request);
-        consumeSignUpVerifications(request);
+        if (!emailService.consumeVerified(request.getEmail())) {
+            log.info("이메일 인증 소모 실패");
+            throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
+        }
         userRepository.save(createLocalUser(request));
         log.info("USER 저장됨");
     }
@@ -130,7 +133,6 @@ public class AuthService {
     private void validateSignUpRequest(SignUpRequest request) {
         validatePasswordConfirmation(request);
         validateUniqueEmail(request.getEmail());
-        validateUniquePhoneNumber(request.getPhoneNumber());
         validateMembershipProfile(request);
         validateVerifiedEmail(request.getEmail());
     }
@@ -149,15 +151,8 @@ public class AuthService {
         }
     }
 
-    private void validateUniquePhoneNumber(String phoneNumber) {
-        if (userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
-            log.info("휴대폰 번호 중복");
-            throw new DuplicatePhoneNumberException(SecurityCode.DUPLICATE_PHONE_NUMBER);
-        }
-    }
-
     private void validateMembershipProfile(SignUpRequest request) {
-        if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
+        if (!MembershipProfileValidator.isValidForSignUp(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
     }
@@ -169,23 +164,10 @@ public class AuthService {
         }
     }
 
-    private void consumeSignUpVerifications(SignUpRequest request) {
-        if (!smsVerificationService.consumeVerified(request.getPhoneNumber())) {
-            log.info("휴대폰 번호 인증 미완료");
-            throw new SmsVerificationException(SecurityCode.SMS_VERIFICATION_FAILURE);
-        }
-
-        if (!emailService.consumeVerified(request.getEmail())) {
-            log.info("이메일 인증 소모 실패");
-            throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
-        }
-    }
-
     private User createLocalUser(SignUpRequest request) {
         User user = User.builder()
                 .email(request.getEmail())
                 .nickname(request.getNickname())
-                .phoneNumber(request.getPhoneNumber())
                 .gender(request.getGender())
                 .carrier(request.getCarrier())
                 .membershipGradeCode(request.getMembershipGradeCode())

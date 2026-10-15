@@ -4,11 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 @Getter
 @Setter
-@ToString
 public class SmsVerificationIssueRequest {
 
     @NotBlank(message = "휴대폰 번호는 필수 항목입니다.")

@@ -6,13 +6,12 @@ import java.util.Locale;
 import org.springframework.util.StringUtils;
 
 /**
- * 제휴처 대표 이미지는 검수된 정본 스토리지(R2/S3)에 올라간 URL만 신뢰한다.
+ * 제휴처 대표 이미지는 검수된 정본 스토리지(R2)에 올라간 URL만 신뢰한다.
  * 통신사 크롤링 원본 이미지는 Benefit 원천 후보일 뿐 Partner.image를 직접 덮어쓰지 않는다.
  */
 public final class PartnerImagePolicy {
 
     private static final String R2_DEV_HOST_SUFFIX = ".r2.dev";
-    private static final String LEGACY_CANONICAL_BUCKET = "itplacepartners.s3.ap-northeast-2.amazonaws.com";
     private static final String ITPLACE_IMAGE_HOST = "images.itplace.click";
 
     private PartnerImagePolicy() {
@@ -54,8 +53,7 @@ public final class PartnerImagePolicy {
             String normalizedHost = host.toLowerCase(Locale.ROOT);
             return "https".equals(normalizedScheme)
                     && (normalizedHost.endsWith(R2_DEV_HOST_SUFFIX)
-                    || ITPLACE_IMAGE_HOST.equals(normalizedHost)
-                    || LEGACY_CANONICAL_BUCKET.equals(normalizedHost));
+                    || ITPLACE_IMAGE_HOST.equals(normalizedHost));
         } catch (URISyntaxException ignored) {
             return false;
         }

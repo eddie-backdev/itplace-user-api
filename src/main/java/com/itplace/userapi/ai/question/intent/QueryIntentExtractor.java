@@ -179,6 +179,7 @@ public class QueryIntentExtractor {
             case SKT -> grade.name().startsWith("SKT_");
             case KT -> grade.name().startsWith("KT_");
             case LGU -> !grade.name().startsWith("SKT_") && !grade.name().startsWith("KT_");
+            case MVNO -> false;
         };
     }
 

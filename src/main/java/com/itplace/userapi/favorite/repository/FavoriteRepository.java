@@ -65,11 +65,14 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     @Query("""
                 SELECT f FROM Favorite f
                 JOIN FETCH f.benefit b
-                JOIN FETCH b.partner
+                LEFT JOIN FETCH b.partner
                 WHERE f.user = :user
                   AND b.benefitName LIKE %:keyword%
             """)
-    List<Favorite> findByUserAndBenefit_BenefitNameContaining(User user, String keyword);
+    List<Favorite> findByUserAndBenefit_BenefitNameContaining(
+            @Param("user") User user,
+            @Param("keyword") String keyword
+    );
 
     boolean existsByUserAndBenefit(User user, Benefit benefit);
 

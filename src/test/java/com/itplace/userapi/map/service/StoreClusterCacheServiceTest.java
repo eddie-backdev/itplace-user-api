@@ -1,6 +1,7 @@
 package com.itplace.userapi.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -15,6 +16,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -105,5 +107,56 @@ class StoreClusterCacheServiceTest {
 
         assertThat(loadCount).hasValue(1);
         verify(cache, times(1)).put(eq("viewport"), eq(loaded));
+    }
+
+    @Test
+    void failedSingleFlightLoadReachesWaiterAndNextRequestCanRetry() throws Exception {
+        when(cache.get("viewport")).thenReturn(null);
+        CountDownLatch loaderStarted = new CountDownLatch(1);
+        CountDownLatch releaseLoader = new CountDownLatch(1);
+        CountDownLatch waiterStarted = new CountDownLatch(1);
+        AtomicReference<Thread> waiterThread = new AtomicReference<>();
+        AtomicInteger retryLoads = new AtomicInteger();
+        IllegalStateException failure = new IllegalStateException("temporary map query failure");
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<List<MapStoreClusterResponse>> first = executor.submit(() -> cacheService.getOrLoad("viewport", () -> {
+                loaderStarted.countDown();
+                try {
+                    if (!releaseLoader.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("test timeout");
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(interrupted);
+                }
+                throw failure;
+            }));
+            assertThat(loaderStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            Future<List<MapStoreClusterResponse>> waiter = executor.submit(() -> {
+                waiterThread.set(Thread.currentThread());
+                waiterStarted.countDown();
+                return cacheService.getOrLoad("viewport", List::of);
+            });
+            assertThat(waiterStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (waiterThread.get().getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertThat(waiterThread.get().getState()).isEqualTo(Thread.State.WAITING);
+            releaseLoader.countDown();
+
+            assertThatThrownBy(() -> first.get(5, TimeUnit.SECONDS)).hasCause(failure);
+            assertThatThrownBy(() -> waiter.get(5, TimeUnit.SECONDS)).hasCause(failure);
+
+            List<MapStoreClusterResponse> recovered = List.of(mock(MapStoreClusterResponse.class));
+            assertThat(cacheService.getOrLoad("viewport", () -> {
+                retryLoads.incrementAndGet();
+                return recovered;
+            })).isSameAs(recovered);
+            assertThat(retryLoads).hasValue(1);
+            verify(cache, times(1)).put(eq("viewport"), eq(recovered));
+        } finally {
+            releaseLoader.countDown();
+            executor.shutdownNow();
+        }
     }
 }

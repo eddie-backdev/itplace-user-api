@@ -5,6 +5,7 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewPageResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
@@ -254,13 +255,52 @@ public class StoreServiceImpl implements StoreService {
                         normalizeCategory(category),
                         normalizeMapInViewPreviewLimit(limit)
                 );
-        if (matchedPreviews.isEmpty()) {
-            return MapStorePreviewBatchResponse.builder()
-                    .stores(List.of())
-                    .partners(List.of())
-                    .build();
-        }
+        return toPreviewBatch(matchedPreviews);
+    }
 
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public MapStorePreviewPageResponse findStoresInViewPreviewPage(double minLat, double minLng, double maxLat,
+                                                                   double maxLng, String category, int pageSize,
+                                                                   long afterStoreId) {
+        double normalizedMinLat = Math.min(minLat, maxLat);
+        double normalizedMaxLat = Math.max(minLat, maxLat);
+        double normalizedMinLng = Math.min(minLng, maxLng);
+        double normalizedMaxLng = Math.max(minLng, maxLng);
+        List<StorePreviewProjection> rows = storePreviewQueryService.findStorePreviewPageInView(
+                normalizedMinLat, normalizedMaxLat, normalizedMinLng, normalizedMaxLng,
+                normalizeCategory(category), afterStoreId, pageSize + 1);
+        return toPreviewPage(rows, pageSize, 0, 0, false);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public MapStorePreviewPageResponse findNearbyPreviewPage(double lat, double lng, double radiusMeters,
+                                                              String category, double userLat, double userLng,
+                                                              int pageSize, long afterStoreId) {
+        List<StorePreviewProjection> rows = storePreviewQueryService.findNearbyStorePreviewPage(
+                normalizeCategory(category), lat, lng, radiusMeters, afterStoreId, pageSize + 1);
+        return toPreviewPage(rows, pageSize, userLat, userLng, true);
+    }
+
+    private MapStorePreviewPageResponse toPreviewPage(List<StorePreviewProjection> rows, int pageSize,
+                                                       double userLat, double userLng, boolean includeDistance) {
+        boolean hasMore = rows.size() > pageSize;
+        List<StorePreviewProjection> included = hasMore ? rows.subList(0, pageSize) : rows;
+        MapStorePreviewBatchResponse batch = toPreviewBatch(included, userLat, userLng, includeDistance);
+        Long nextCursor = hasMore && !included.isEmpty()
+                ? included.get(included.size() - 1).getStoreId() : null;
+        return MapStorePreviewPageResponse.builder()
+                .stores(batch.getStores()).partners(batch.getPartners()).hasMore(hasMore).nextCursor(nextCursor).build();
+    }
+
+    private MapStorePreviewBatchResponse toPreviewBatch(List<StorePreviewProjection> matchedPreviews) {
+        return toPreviewBatch(matchedPreviews, 0, 0, false);
+    }
+
+    private MapStorePreviewBatchResponse toPreviewBatch(List<StorePreviewProjection> matchedPreviews,
+                                                         double userLat, double userLng, boolean includeDistance) {
+        if (matchedPreviews.isEmpty()) return emptyPreviewBatch();
         Map<Long, List<BenefitCacheDto>> benefitsByPartner = partnerBenefitCacheService.getBenefitsBatch(
                 matchedPreviews.stream()
                         .map(StorePreviewProjection::getPartnerId)
@@ -292,9 +332,12 @@ public class StoreServiceImpl implements StoreService {
                         .latitude(preview.getLatitude())
                         .longitude(preview.getLongitude())
                         .address(preview.getAddress())
+                        .roadName(preview.getRoadName())
                         .roadAddress(preview.getRoadAddress())
                         .postCode(preview.getPostCode())
                         .hasCoupon(Boolean.TRUE.equals(preview.getHasCoupon()))
+                        .distance(includeDistance ? (userLat == 0 || userLng == 0 ? 0.0
+                                : calculateDistance(userLat, userLng, preview.getLatitude(), preview.getLongitude())) : null)
                         .tierBenefit(previewTierOverride(
                                 previewBenefits.getOrDefault(preview.getPartnerId(), PreviewBenefits.EMPTY),
                                 preview.getStoreName(), partnersById.get(preview.getPartnerId()).getTierBenefit()))
@@ -646,12 +689,13 @@ public class StoreServiceImpl implements StoreService {
             // 1단계: ES nori 형태소 분석으로 브랜드 매치 / 매장명 매치 분리
             searchResult = storeSearchService.searchByKeyword(normalizedKeyword, category);
         } catch (RuntimeException e) {
-            log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category, e);
+            log.warn("ES 매장 검색 실패, DB 키워드 검색으로 대체: category={}, errorType={}",
+                    category, e.getClass().getSimpleName());
             return findStoresWithPartnerInRequestedOrder(
                     searchKeywordStoreIds(lng, lat, category, normalizedKeyword, eligibleOnly), eligibleOnly);
         }
         if (searchResult.isEmpty()) {
-            log.info("ES 매장 검색 결과 없음, DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
+            log.info("ES 매장 검색 결과 없음, DB 키워드 검색으로 대체: category={}", category);
             return findStoresWithPartnerInRequestedOrder(
                     searchKeywordStoreIds(lng, lat, category, normalizedKeyword, eligibleOnly), eligibleOnly);
         }
@@ -664,7 +708,7 @@ public class StoreServiceImpl implements StoreService {
         List<Store> allStores = eligibleOnly ? storeRepository.findEligibleByStoreIdInWithPartner(allIds)
                 : filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(allIds));
         if (allStores.isEmpty()) {
-            log.info("ES 매장 검색 ID가 DB에서 조회되지 않아 DB 키워드 검색으로 대체: keyword={}, category={}", normalizedKeyword, category);
+            log.info("ES 매장 검색 ID가 DB에서 조회되지 않아 DB 키워드 검색으로 대체: category={}", category);
             return findStoresWithPartnerInRequestedOrder(nearbyIds, eligibleOnly);
         }
 
@@ -684,8 +728,7 @@ public class StoreServiceImpl implements StoreService {
         List<Long> nameMatchIds = Stream.concat(nearbyIds.stream(), searchResult.nameMatchIds().stream())
                 .distinct().filter(id -> !brandIds.contains(id)).toList();
         if (strictBrandMatchIds.isEmpty() && nameMatchIds.isEmpty()) {
-            log.info("ES 브랜드 검색 결과가 키워드와 정확히 맞지 않아 DB 키워드 검색으로 대체: keyword={}, category={}",
-                    normalizedKeyword, category);
+            log.info("ES 브랜드 검색 결과가 키워드와 정확히 맞지 않아 DB 키워드 검색으로 대체: category={}", category);
             return findStoresWithPartnerInRequestedOrder(nearbyIds, eligibleOnly);
         }
 

@@ -26,12 +26,21 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     @Override
     @Transactional(readOnly = true)
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OAuth2User oAuth2User = super.loadUser(userRequest);
         String provider = userRequest.getClientRegistration().getRegistrationId(); // "kakao"
+        if (!"kakao".equals(provider)) {
+            throw new OAuth2AuthenticationException("Unsupported OAuth provider");
+        }
+        OAuth2User oAuth2User;
+        try {
+            oAuth2User = super.loadUser(userRequest);
+        } catch (IllegalArgumentException exception) {
+            throw new OAuth2AuthenticationException("Invalid Kakao profile");
+        }
         Map<String, Object> attributes = oAuth2User.getAttributes();
         String providerId = String.valueOf(attributes.get("id"));
-
-        log.info("OAuth2 User Attributes: {}", attributes);
+        if (!isPositiveKakaoId(providerId)) {
+            throw new OAuth2AuthenticationException("Kakao provider id is required");
+        }
 
         // provider와 providerId로 인증 수단을 찾습니다.
         Optional<AuthCredential> credentialOpt = authCredentialRepository.findByTypeAndProviderAndProviderUserId(
@@ -86,6 +95,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private String nestedString(Map<String, Object> root, String... keys) {
         Object value = nestedValue(root, keys);
         return value == null ? null : String.valueOf(value);
+    }
+
+    private boolean isPositiveKakaoId(String providerId) {
+        if (providerId == null || !providerId.matches("[0-9]+")) {
+            return false;
+        }
+        try {
+            return Long.parseLong(providerId) > 0;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")

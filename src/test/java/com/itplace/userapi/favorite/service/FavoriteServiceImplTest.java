@@ -1,14 +1,20 @@
 package com.itplace.userapi.favorite.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
+import com.itplace.userapi.benefit.entity.BenefitPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Grade;
+import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
@@ -55,6 +61,62 @@ class FavoriteServiceImplTest {
 
     @InjectMocks
     private FavoriteServiceImpl favoriteService;
+
+    @Test
+    void addingAnExistingFavoriteDoesNotWriteOrEmitAnotherSignal() {
+        User user = User.builder().id(7L).build();
+        Benefit benefit = Benefit.builder().benefitId(100L).build();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(benefitRepository.findAllByIdWithPartner(List.of(100L))).thenReturn(List.of(benefit));
+        when(favoriteRepository.existsByUserAndBenefit(user, benefit)).thenReturn(true);
+
+        assertThatThrownBy(() -> favoriteService.addFavorite(7L, 100L))
+                .isInstanceOf(com.itplace.userapi.favorite.exception.DuplicateFavoriteException.class);
+
+        verify(favoriteRepository, never()).save(any(Favorite.class));
+        org.mockito.Mockito.verifyNoInteractions(logService);
+    }
+
+    @Test
+    void addingFavoriteForMissingUserStopsBeforeLoadingBenefitOrWriting() {
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> favoriteService.addFavorite(7L, 100L))
+                .isInstanceOf(com.itplace.userapi.user.exception.UserNotFoundException.class);
+
+        org.mockito.Mockito.verifyNoInteractions(benefitRepository, favoriteRepository, logService);
+    }
+
+    @Test
+    void addingMissingBenefitDoesNotCreateFavoriteOrSignal() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(User.builder().id(7L).build()));
+        when(benefitRepository.findAllByIdWithPartner(List.of(100L))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> favoriteService.addFavorite(7L, 100L))
+                .isInstanceOf(com.itplace.userapi.benefit.exception.BenefitNotFoundException.class);
+
+        verify(favoriteRepository, never()).save(any(Favorite.class));
+        org.mockito.Mockito.verifyNoInteractions(logService);
+    }
+
+    @Test
+    void removingFavoritesForMissingUserStopsBeforeBenefitLookupOrDeletion() {
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> favoriteService.removeFavorites(7L, List.of(100L)))
+                .isInstanceOf(com.itplace.userapi.user.exception.UserNotFoundException.class);
+
+        org.mockito.Mockito.verifyNoInteractions(benefitRepository, favoriteRepository, logService);
+    }
+
+    @Test
+    void removingEmptyFavoriteListDoesNotQueryOrMutateFavorites() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(User.builder().id(7L).build()));
+
+        favoriteService.removeFavorites(7L, List.of());
+
+        org.mockito.Mockito.verifyNoInteractions(benefitRepository, favoriteRepository, logService);
+    }
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
@@ -141,9 +203,107 @@ class FavoriteServiceImplTest {
             assertThat(response.getBenefitId()).isEqualTo(100L);
             assertThat(response.getPartnerName()).isEqualTo("파트너");
             assertThat(response.getPartnerImage()).isEqualTo("logo.png");
+            assertThat(response.getPreviews()).isEmpty();
         });
         verify(favoriteRepository).findPageByUserWithBenefitAndPartner(user, pageable);
     }
+
+    @Test
+    void getFavoritesAddsActiveCarrierPreviewsAndTierContextInBatches() {
+        User user = User.builder().id(7L).role(Role.USER).build();
+        Benefit benefit = Benefit.builder()
+                .benefitId(100L)
+                .benefitName("공통 혜택")
+                .partner(Partner.builder().partnerId(200L).partnerName("파트너").build())
+                .build();
+        Favorite favorite = Favorite.builder().user(user).benefit(benefit).build();
+        PageRequest pageable = PageRequest.of(0, 6);
+        BenefitCarrierPolicy skt = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(10L)
+                .benefit(benefit)
+                .carrier(Carrier.SKT)
+                .carrierBenefitName("SKT 멤버십 할인")
+                .benefitPolicy(BenefitPolicy.builder().code(BenefitPolicyCode.MONTHLY_ONCE).name("월 1회").build())
+                .usageType(UsageType.OFFLINE)
+                .active(true)
+                .build();
+        BenefitCarrierPolicy inactiveKt = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(11L)
+                .benefit(benefit)
+                .carrier(Carrier.KT)
+                .active(false)
+                .build();
+        CarrierTierBenefit tier = CarrierTierBenefit.builder()
+                .benefitCarrierPolicy(skt)
+                .grade(Grade.SKT_VIP)
+                .context("VIP 매장 할인")
+                .isAll(false)
+                .discountValue(10)
+                .build();
+
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(favoriteRepository.findPageByUserWithBenefitAndPartner(user, pageable))
+                .thenReturn(new PageImpl<>(List.of(favorite), pageable, 1));
+        when(benefitCarrierPolicyRepository.findAllForFavoritePreviews(List.of(benefit)))
+                .thenReturn(List.of(inactiveKt, skt));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(skt)))
+                .thenReturn(List.of(tier));
+
+        FavoriteResponse response = favoriteService.getFavorites(7L, null, pageable).getContent().get(0);
+
+        assertThat(response.getPreviews()).singleElement().satisfies(preview -> {
+            assertThat(preview.carrier()).isEqualTo(Carrier.SKT);
+            assertThat(preview.benefitId()).isEqualTo(100L);
+            assertThat(preview.benefitName()).isEqualTo("SKT 멤버십 할인");
+            assertThat(preview.benefitLimit()).isEqualTo("월 1회");
+            assertThat(preview.usageType()).isEqualTo(UsageType.OFFLINE);
+            assertThat(preview.tierBenefits()).containsExactly(
+                    new com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.PreviewTierBenefit(
+                            Grade.SKT_VIP, "VIP 매장 할인", false));
+        });
+        verify(benefitCarrierPolicyRepository).findAllForFavoritePreviews(List.of(benefit));
+        verify(carrierTierBenefitRepository).findAllByBenefitCarrierPolicyIn(List.of(skt));
+    }
+
+    @Test
+    void searchFavoritesAddsCarrierPreviewsWithoutPerFavoriteLookups() {
+        User user = User.builder().id(7L).role(Role.USER).build();
+        Benefit benefit = Benefit.builder()
+                .benefitId(100L)
+                .benefitName("공통 혜택")
+                .partner(Partner.builder().partnerId(200L).partnerName("파트너").build())
+                .build();
+        Favorite favorite = Favorite.builder().user(user).benefit(benefit).build();
+        BenefitCarrierPolicy policy = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(10L)
+                .benefit(benefit)
+                .carrier(Carrier.KT)
+                .usageType(UsageType.BOTH)
+                .active(true)
+                .build();
+
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(favoriteRepository.findByUserAndBenefit_BenefitNameContaining(user, "혜택"))
+                .thenReturn(List.of(favorite));
+        when(benefitCarrierPolicyRepository.findAllForFavoritePreviews(List.of(benefit)))
+                .thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(policy)))
+                .thenReturn(List.of());
+
+        List<FavoriteResponse> responses = favoriteService.searchFavorites(7L, "혜택", "전체");
+
+        assertThat(responses).singleElement().satisfies(response -> {
+            assertThat(response.getPreviews()).singleElement().satisfies(preview -> {
+                assertThat(preview.carrier()).isEqualTo(Carrier.KT);
+                assertThat(preview.benefitName()).isEqualTo("공통 혜택");
+                assertThat(preview.usageType()).isEqualTo(UsageType.BOTH);
+                assertThat(preview.tierBenefits()).isEmpty();
+            });
+        });
+        verify(benefitCarrierPolicyRepository).findAllForFavoritePreviews(List.of(benefit));
+        verify(carrierTierBenefitRepository).findAllByBenefitCarrierPolicyIn(List.of(policy));
+    }
+
     @Test
     void getBenefitDetailReturnsTiersForEveryCarrierPolicy() {
         Partner partner = Partner.builder().partnerId(200L).partnerName("파트너").image("logo.png").build();
@@ -156,11 +316,13 @@ class FavoriteServiceImplTest {
                 .benefit(benefit)
                 .carrier(Carrier.SKT)
                 .description("SKT 설명")
+                .benefitPolicy(BenefitPolicy.builder().code(BenefitPolicyCode.MONTHLY_ONCE).name("SKT 월 1회").build())
                 .build();
         BenefitCarrierPolicy ktPolicy = BenefitCarrierPolicy.builder()
                 .benefit(benefit)
                 .carrier(Carrier.KT)
                 .description("KT 설명")
+                .benefitPolicy(BenefitPolicy.builder().code(BenefitPolicyCode.DAILY_ONCE).name("KT 일 1회").build())
                 .build();
         CarrierTierBenefit sktTier = CarrierTierBenefit.builder()
                 .benefitCarrierPolicy(sktPolicy)
@@ -190,6 +352,13 @@ class FavoriteServiceImplTest {
                 .containsExactlyInAnyOrder(
                         org.assertj.core.groups.Tuple.tuple(Carrier.SKT, Grade.SKT_VIP),
                         org.assertj.core.groups.Tuple.tuple(Carrier.KT, Grade.KT_VIP)
+                );
+        assertThat(response.getPartnerId()).isEqualTo(200L);
+        assertThat(response.getCarrierPolicies())
+                .extracting("carrier", "description", "benefitLimit")
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(Carrier.SKT, "SKT 설명", "SKT 월 1회"),
+                        org.assertj.core.groups.Tuple.tuple(Carrier.KT, "KT 설명", "KT 일 1회")
                 );
     }
 

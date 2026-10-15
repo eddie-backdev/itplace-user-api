@@ -56,7 +56,7 @@ public class KakaoLocalAddressClient {
             }
             return Optional.ofNullable(response.toRegionAddress());
         } catch (RestClientException e) {
-            log.warn("Kakao Local reverse geocoding failed: lat={}, lng={}, reason={}", lat, lng, e.getMessage());
+            log.warn("Kakao Local reverse geocoding failed: errorType={}", e.getClass().getSimpleName());
             return Optional.empty();
         }
     }

@@ -21,4 +21,10 @@ public final class MembershipProfileValidator {
                 && membershipGradeCode != null
                 && VALID_GRADES.getOrDefault(carrier, Set.of()).contains(membershipGradeCode);
     }
+
+    public static boolean isValidForSignUp(Carrier carrier, Grade membershipGradeCode) {
+        return carrier == Carrier.MVNO
+                ? membershipGradeCode == null
+                : carrier == null && membershipGradeCode == null || isValid(carrier, membershipGradeCode);
+    }
 }

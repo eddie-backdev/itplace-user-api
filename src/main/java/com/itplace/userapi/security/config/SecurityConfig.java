@@ -1,8 +1,10 @@
 package com.itplace.userapi.security.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itplace.userapi.common.ApiResponse;
 import com.itplace.userapi.security.CookieUtil;
 import com.itplace.userapi.security.LegacyAwarePasswordEncoder;
+import com.itplace.userapi.security.SecurityCode;
 import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService;
 import com.itplace.userapi.security.auth.local.filter.LoginFilter;
 import com.itplace.userapi.security.auth.local.service.CustomUserDetailsService;
@@ -19,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -31,6 +34,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -126,6 +132,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated());
 
         http
+                .exceptionHandling(exceptions -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                apiAuthenticationEntryPoint(objectMapper),
+                                apiAuthenticationRequestMatcher()));
+
+        http
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService))
@@ -195,8 +207,6 @@ public class SecurityConfig {
                 "/api/v1/auth/oauth/link",
                 "/api/v1/verification/email",
                 "/api/v1/verification/email/confirm",
-                "/api/v1/verification/sms",
-                "/api/v1/verification/sms/confirm",
                 "/api/v1/users/findPassword",
                 "/api/v1/users/findPassword/confirm",
                 "/api/v1/users/resetPassword",
@@ -211,8 +221,11 @@ public class SecurityConfig {
         return new String[]{
                 "/api/v1/users",
                 "/api/v1/users/**",
+                "/api/v1/verification/sms/**",
                 "/api/v1/favorites",
                 "/api/v1/favorites/**",
+                "/api/v1/benefit-usages",
+                "/api/v1/benefit-usages/**",
                 "/api/v1/auth/logout",
                 "/api/v1/auth/oauth/result",
                 "/api/v1/questions/recommend",
@@ -225,6 +238,20 @@ public class SecurityConfig {
                 "/api/v1/questions/search",
                 "/api/v1/questions/save"
         };
+    }
+
+    static AuthenticationEntryPoint apiAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        return (request, response, authException) -> {
+            ApiResponse<Void> body = ApiResponse.ok(SecurityCode.UNAUTHORIZED_ACCESS);
+            response.setStatus(body.getStatus().value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
+            objectMapper.writeValue(response.getOutputStream(), body);
+        };
+    }
+
+    static RequestMatcher apiAuthenticationRequestMatcher() {
+        return new AntPathRequestMatcher("/api/**");
     }
 
     private CookieCsrfTokenRepository csrfTokenRepository() {

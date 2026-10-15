@@ -39,7 +39,7 @@ public class StorePreviewQueryService {
             String category,
             int limit
     ) {
-        return storeRepository.findStorePreviewsInView(
+        return mapRows(storeRepository.findStorePreviewsInView(
                         minLat,
                         maxLat,
                         minLng,
@@ -48,7 +48,25 @@ public class StorePreviewQueryService {
                         centerLng,
                         category,
                         limit
-                ).stream()
+                ));
+    }
+
+    @Transactional(readOnly = true, timeout = 5)
+    public List<StorePreviewProjection> findStorePreviewPageInView(
+            double minLat, double maxLat, double minLng, double maxLng, String category, long afterStoreId, int limit) {
+        return mapRows(storeRepository.findStorePreviewPageInView(
+                minLat, maxLat, minLng, maxLng, category, afterStoreId, limit));
+    }
+
+    @Transactional(readOnly = true, timeout = 5)
+    public List<StorePreviewProjection> findNearbyStorePreviewPage(
+            String category, double lat, double lng, double radiusMeters, long afterStoreId, int limit) {
+        return mapRows(storeRepository.findNearbyStorePreviewPage(
+                category, lat, lng, radiusMeters, afterStoreId, limit));
+    }
+
+    private List<StorePreviewProjection> mapRows(List<Object[]> rows) {
+        return rows.stream()
                 .<StorePreviewProjection>map(StorePreviewSnapshot::from)
                 .toList();
     }

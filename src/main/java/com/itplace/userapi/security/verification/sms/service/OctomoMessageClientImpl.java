@@ -67,9 +67,9 @@ public class OctomoMessageClientImpl implements OctomoMessageClient {
             return verified;
         } catch (RestClientException e) {
             log.warn(
-                    "Octomo 문자 인증 조회 실패: mobileNumber={}, reason={}",
+                    "Octomo 문자 인증 조회 실패: mobileNumber={}, errorType={}",
                     SensitiveDataMasker.maskPhoneNumber(mobileNumber),
-                    e.getMessage()
+                    e.getClass().getSimpleName()
             );
             throw new SmsVerificationException(SecurityCode.SMS_PROVIDER_UNAVAILABLE);
         }

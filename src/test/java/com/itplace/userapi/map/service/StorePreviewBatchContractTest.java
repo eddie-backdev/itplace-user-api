@@ -12,6 +12,7 @@ import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.map.dto.BenefitCacheDto;
 import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
+import com.itplace.userapi.map.repository.projection.StorePreviewProjection;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.repository.StoreRepository;
@@ -122,6 +123,51 @@ class StorePreviewBatchContractTest {
         verifyNoInteractions(cache);
     }
 
+    @Test
+    void cursorPageUsesLookaheadAndPreservesStoreSpecificTierOverrides() {
+        var rows = List.of(projection(10,"GS25 첫점"), projection(11,"GS25 둘째점"), projection(12,"GS25 셋째점"));
+        when(previewQuery.findStorePreviewPageInView(37.49,37.51,126.99,127.01,"생활",0,3))
+                .thenReturn(rows);
+        when(cache.getBenefitsBatch(List.of(10L))).thenReturn(Map.of(10L, List.of(
+                benefit(100,"GS25 첫점",null,"첫점 할인"), benefit(200,"GS25 둘째점",null,"둘째점 할인"),
+                benefit(300,"GS25 셋째점",null,"셋째점 할인"))));
+
+        var page = service.findStoresInViewPreviewPage(37.51,127.01,37.49,126.99," 생활 ",2,0);
+
+        assertThat(page.isHasMore()).isTrue();
+        assertThat(page.getNextCursor()).isEqualTo(11L);
+        assertThat(page.getStores()).extracting(MapStorePreviewBatchResponse.StorePreview::getStoreId)
+                .containsExactly(10L,11L);
+        assertThat(page.getStores()).extracting(MapStorePreviewBatchResponse.StorePreview::getRoadName)
+                .containsExactly("테헤란로", "테헤란로");
+        assertThat(page.getPartners().get(0).getTierBenefit()).extracting(TierBenefitDto::getBenefitId)
+                .containsExactly(100L);
+        assertThat(page.getStores().get(0).getTierBenefit()).isNull();
+        assertThat(page.getStores().get(1).getTierBenefit()).extracting(TierBenefitDto::getBenefitId)
+                .containsExactly(200L);
+        verify(previewQuery).findStorePreviewPageInView(37.49,37.51,126.99,127.01,"생활",0,3);
+    }
+
+    @Test
+    void cursorPageHasNullCursorForEmptyAndTerminalPages() {
+        when(previewQuery.findStorePreviewPageInView(37.49,37.51,126.99,127.01,null,20,3))
+                .thenReturn(List.of(projection(21,"GS25 첫점"), projection(22,"GS25 둘째점")));
+        when(previewQuery.findStorePreviewPageInView(37.49,37.51,126.99,127.01,null,22,3))
+                .thenReturn(List.of());
+        when(cache.getBenefitsBatch(anyList())).thenReturn(Map.of());
+
+        var terminal = service.findStoresInViewPreviewPage(37.49,126.99,37.51,127.01,null,2,20);
+        var empty = service.findStoresInViewPreviewPage(37.49,126.99,37.51,127.01,null,2,22);
+
+        assertThat(terminal.isHasMore()).isFalse();
+        assertThat(terminal.getNextCursor()).isNull();
+        assertThat(terminal.getStores()).hasSize(2);
+        assertThat(empty.isHasMore()).isFalse();
+        assertThat(empty.getNextCursor()).isNull();
+        assertThat(empty.getStores()).isEmpty();
+        assertThat(empty.getPartners()).isEmpty();
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void viewportKeepsFirstStorePartnerTiersForOldClientsAndOverridesCommonStore(boolean firstEmpty) {
@@ -180,5 +226,24 @@ class StorePreviewBatchContractTest {
         return Store.builder().storeId(id).storeName(name).partner(partner)
                 .location(new GeometryFactory().createPoint(new Coordinate(127, lat)))
                 .address("서울").roadName("테헤란로").roadAddress("테헤란로 " + id).postCode("06200").build();
+    }
+
+    private StorePreviewProjection projection(long id, String name) {
+        return new StorePreviewProjection() {
+            public Long getStoreId() { return id; }
+            public Long getPartnerId() { return 10L; }
+            public String getStoreName() { return name; }
+            public String getBusiness() { return "편의점"; }
+            public String getPartnerName() { return "GS25"; }
+            public String getCategory() { return "생활/편의"; }
+            public String getImage() { return "https://example.com/gs25.png"; }
+            public Double getLatitude() { return 37.5; }
+            public Double getLongitude() { return 127.0; }
+            public String getAddress() { return "서울"; }
+            public String getRoadName() { return "테헤란로"; }
+            public String getRoadAddress() { return "서울 테헤란로"; }
+            public String getPostCode() { return "06234"; }
+            public Boolean getHasCoupon() { return false; }
+        };
     }
 }

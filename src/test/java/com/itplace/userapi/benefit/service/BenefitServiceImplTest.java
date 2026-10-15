@@ -31,7 +31,6 @@ import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -162,7 +161,7 @@ class BenefitServiceImplTest {
                 .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
         when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
-                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT, Carrier.LGU))))
                 .thenReturn(List.of(kt, lgu));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(kt, lgu))).thenReturn(List.of(ktPolicy, lguPolicy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy, lguPolicy)))
@@ -209,7 +208,7 @@ class BenefitServiceImplTest {
                 .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
         when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
-                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT, Carrier.LGU))))
                 .thenReturn(List.of(kt, lgu));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(ktPolicy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy))).thenReturn(List.of());
@@ -385,7 +384,7 @@ class BenefitServiceImplTest {
                 .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
         when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
-                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT, Carrier.LGU))))
                 .thenReturn(List.of(kt, lgu));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(kt, lgu))).thenReturn(List.of(ktPolicy, lguPolicy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy, lguPolicy)))
@@ -428,7 +427,7 @@ class BenefitServiceImplTest {
                 .thenReturn(new BenefitHybridSearchResult(List.of(510L), 1, 0, 1, false));
         when(benefitRepository.findAllByIdWithPartner(List.of(510L))).thenReturn(List.of(kt));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
-                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(Arrays.stream(Carrier.values()).toList())))
+                eq(List.of(30L)), eq(null), eq(null), eq(null), eq(List.of(Carrier.SKT, Carrier.KT, Carrier.LGU))))
                 .thenReturn(List.of(kt, lgu));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(ktPolicy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy))).thenReturn(List.of());
@@ -486,6 +485,35 @@ class BenefitServiceImplTest {
         assertThat(response.getManual()).isNull();
         assertThat(response.getUrl()).isNull();
         assertThat(response.getPartnerName()).isEqualTo("파트너");
+    }
+
+    @Test
+    void getBenefitDetailMissingBenefitReturnsDomainNotFound() {
+        when(benefitRepository.findBenefitWithPartnerById(404L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> benefitService.getBenefitDetail(404L))
+                .isInstanceOf(com.itplace.userapi.benefit.exception.BenefitNotFoundException.class);
+        verify(benefitCarrierPolicyRepository, never()).findAllByBenefitIn(anyList());
+    }
+
+    @Test
+    void mapBenefitDetailWithoutActiveOfflinePolicyReturnsOfflineNotFoundBeforeFavoriteLookup() {
+        Benefit benefit = Benefit.builder().benefitId(20L).build();
+        BenefitCarrierPolicy onlineOnly = BenefitCarrierPolicy.builder()
+                .benefitCarrierPolicyId(120L).benefit(benefit).carrier(Carrier.SKT)
+                .usageType(UsageType.ONLINE).active(true).build();
+        when(storeRepository.findByIdAndPartnerId(30L, 40L))
+                .thenReturn(Optional.of(Store.builder().storeId(30L).partner(Partner.builder().partnerId(40L).build()).build()));
+        when(benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(40L, MainCategory.BASIC_BENEFIT))
+                .thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(onlineOnly));
+
+        assertThatThrownBy(() -> benefitService.getMapBenefitDetail(
+                30L, 40L, MainCategory.BASIC_BENEFIT, Carrier.SKT, 7L))
+                .isInstanceOf(com.itplace.userapi.benefit.exception.BenefitOfflineNotFoundException.class);
+
+        verify(favoriteRepository, never()).existsByUser_IdAndBenefit_BenefitId(7L, 20L);
+        verify(carrierTierBenefitRepository, never()).findAllByBenefitCarrierPolicyIn(anyList());
     }
 
     @Test

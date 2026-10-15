@@ -112,6 +112,31 @@ class BenefitHybridSearchServiceImplTest {
     }
 
     @Test
+    void searchUsesVectorResultsWhenLexicalProviderThrowsIOException() throws IOException {
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenThrow(new IOException("lexical unavailable"))
+                .thenReturn(searchResponse(hit(8L, 1.0)));
+        when(embeddingService.embed("커피")).thenReturn(List.of(0.1f));
+
+        BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 5));
+
+        assertThat(result.benefitIds()).containsExactly(8L);
+        verify(esClient, org.mockito.Mockito.times(2)).search(any(SearchRequest.class), eq(JsonData.class));
+    }
+
+    @Test
+    void searchUsesVectorResultsWhenLexicalProviderThrowsRuntimeFailure() throws IOException {
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenThrow(new IllegalStateException("lexical unavailable"))
+                .thenReturn(searchResponse(hit(8L, 1.0)));
+        when(embeddingService.embed("커피")).thenReturn(List.of(0.1f));
+
+        BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 5));
+
+        assertThat(result.benefitIds()).containsExactly(8L);
+    }
+
+    @Test
     void searchLexical_usesOnlyLexicalSearchAndPagesBenefitIds() throws IOException {
         when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
                 .thenReturn(searchResponse(

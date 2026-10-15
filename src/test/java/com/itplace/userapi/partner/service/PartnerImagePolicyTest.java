@@ -38,5 +38,31 @@ class PartnerImagePolicyTest {
         )).isNull();
         assertThat(PartnerImagePolicy.resolveCanonicalImage(null, "https://carrier.example.com/cgv.png"))
                 .isNull();
+        assertThat(PartnerImagePolicy.isCanonicalStorageUrl(
+                "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/cgv.png"
+        )).isFalse();
+        assertThat(PartnerImagePolicy.resolveCanonicalImage(
+                null,
+                "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/cgv.png"
+        )).isNull();
+    }
+
+    @Test
+    void replacesExistingS3ImageWithValidR2Candidate() {
+        String candidate = "https://brand-assets.r2.dev/partners/gs25/logo.webp";
+
+        assertThat(PartnerImagePolicy.resolveCanonicalImage(
+                "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/gs25.png",
+                candidate
+        )).isEqualTo(candidate);
+    }
+
+    @Test
+    void malformedCanonicalCandidateIsRejectedAndExistingValueIsPreserved() {
+        String existing = "https://membership.example.com/working-logo.png";
+
+        assertThat(PartnerImagePolicy.isCanonicalStorageUrl("https://foo.r2.dev/bad uri.png")).isFalse();
+        assertThat(PartnerImagePolicy.resolveCanonicalImage(existing, "https://foo.r2.dev/bad uri.png"))
+                .isEqualTo(existing);
     }
 }

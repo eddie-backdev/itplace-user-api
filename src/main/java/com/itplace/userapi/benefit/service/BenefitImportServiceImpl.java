@@ -12,6 +12,7 @@ import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
 import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitPolicyRepository;
@@ -327,6 +328,22 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         target.setSourceCategory(item.getSourceCategory());
         target.setLastCrawledAt(crawledAt);
         target.setCarrierBenefitName(item.getBenefitName());
+        MembershipOptionType incomingOption = item.getMembershipOptionType();
+        String incomingOptionLabel = item.getSourceOptionLabel();
+        boolean hasIncomingOptionMetadata = incomingOption != null || incomingOptionLabel != null;
+        boolean inferredLegacyOption = false;
+        if (incomingOption == null && incomingOptionLabel == null && (target.getMembershipOptionType() == null
+                || target.getMembershipOptionType() == MembershipOptionType.UNKNOWN)) {
+            MembershipOptionType legacyOption = legacySktOption(carrier, item.getBenefitName());
+            if (legacyOption != null) {
+                incomingOption = legacyOption;
+                incomingOptionLabel = legacyOption.getDisplayLabel();
+                inferredLegacyOption = true;
+            }
+        }
+        if (incomingOption != null) target.setMembershipOptionType(incomingOption);
+        else if (target.getMembershipOptionType() == null) target.setMembershipOptionType(MembershipOptionType.UNKNOWN);
+        if (hasIncomingOptionMetadata || inferredLegacyOption) target.setSourceOptionLabel(incomingOptionLabel);
         target.setType(item.getType());
         target.setDescription(item.getDescription());
         target.setManual(item.getManual());
@@ -336,6 +353,13 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         target.setUrl(resolveBenefitUrl(item));
 
         return target;
+    }
+
+    private MembershipOptionType legacySktOption(Carrier carrier, String benefitName) {
+        if (carrier != Carrier.SKT || benefitName == null) return null;
+        if (benefitName.endsWith(" 할인형")) return MembershipOptionType.DISCOUNT;
+        if (benefitName.endsWith(" 적립형")) return MembershipOptionType.POINT_ACCRUAL;
+        return null;
     }
 
     private BenefitPolicy resolveBenefitPolicy(BenefitPolicyCode requestedCode) {

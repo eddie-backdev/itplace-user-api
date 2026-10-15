@@ -26,6 +26,16 @@ class SecurityConfigAuthorizationRulesTest {
         assertThat(isAuthenticatedEndpoint("/api/v1/users/changePassword")).isTrue();
         assertThat(isAuthenticatedEndpoint("/api/v1/favorites")).isTrue();
         assertThat(isAuthenticatedEndpoint("/api/v1/favorites/search")).isTrue();
+        assertThat(isAuthenticatedEndpoint("/api/v1/benefit-usages")).isTrue();
+        assertThat(isAuthenticatedEndpoint("/api/v1/benefit-usages/42")).isTrue();
+    }
+
+    @Test
+    void smsPhoneBindingRequiresAuthentication() {
+        assertThat(isPublicPostEndpoint("/api/v1/verification/sms")).isFalse();
+        assertThat(isPublicPostEndpoint("/api/v1/verification/sms/confirm")).isFalse();
+        assertThat(isAuthenticatedEndpoint("/api/v1/verification/sms")).isTrue();
+        assertThat(isAuthenticatedEndpoint("/api/v1/verification/sms/confirm")).isTrue();
     }
 
     @Test
