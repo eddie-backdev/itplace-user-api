@@ -71,8 +71,8 @@ public class OAuthServiceImpl implements OAuthService {
     @Transactional
     public OAuthResult signUpWithOAuth(String tempToken, OAuthSignUpRequest request) {
         Claims claims = getVerifiedClaims(tempToken);
-        String provider = claims.get("provider", String.class);
-        String providerId = claims.get("providerId", String.class);
+        String provider = requireProvider(claims);
+        String providerId = requireProviderId(claims);
 
         String verifiedEmail = requireVerifiedEmail(claims);
         if (userRepository.findByEmail(verifiedEmail).isPresent()) {
@@ -88,8 +88,8 @@ public class OAuthServiceImpl implements OAuthService {
     @Transactional
     public OAuthResult linkOAuthAccount(String tempToken, OAuthLinkRequest request) {
         Claims claims = getVerifiedClaims(tempToken);
-        String provider = claims.get("provider", String.class);
-        String providerId = claims.get("providerId", String.class);
+        String provider = requireProvider(claims);
+        String providerId = requireProviderId(claims);
 
         User user = userRepository.findByEmail(requireVerifiedEmail(claims))
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
@@ -121,21 +121,52 @@ public class OAuthServiceImpl implements OAuthService {
                 throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
             }
             return claims;
-        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException exception) {
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException | ClassCastException exception) {
+            throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+        }
+    }
+
+    private String requireProvider(Claims claims) {
+        String provider = requireClaim(claims, "provider");
+        if (!"kakao".equals(provider)) {
+            throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+        }
+        return provider;
+    }
+
+    private String requireProviderId(Claims claims) {
+        String providerId = requireClaim(claims, "providerId");
+        if (!providerId.matches("[0-9]+")) {
+            throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+        }
+        try {
+            if (Long.parseLong(providerId) <= 0) {
+                throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+            }
+        } catch (NumberFormatException exception) {
+            throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+        }
+        return providerId;
+    }
+
+    private String requireClaim(Claims claims, String name) {
+        try {
+            String value = claims.get(name, String.class);
+            if (value == null || value.isBlank()) {
+                throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
+            }
+            return value;
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException | ClassCastException exception) {
             throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
         }
     }
 
     private String requireVerifiedEmail(Claims claims) {
-        String email = claims.get("email", String.class);
-        if (email == null || email.isBlank()) {
-            throw new InvalidCredentialsException(SecurityCode.INVALID_TOKEN);
-        }
-        return email;
+        return requireClaim(claims, "email");
     }
 
     private User createNewSocialUser(OAuthSignUpRequest request, String provider, String providerId, String email) {
-        if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
+        if (!MembershipProfileValidator.isValidForSignUp(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
 

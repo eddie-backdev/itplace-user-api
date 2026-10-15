@@ -27,7 +27,7 @@ public class RecaptchaService {
 
     public boolean verifyRecaptcha(RecaptchaRequest request) {
         String recaptchaToken = request.getRecaptchaToken();
-        if (recaptchaToken == null || recaptchaToken.isEmpty()) {
+        if (!org.springframework.util.StringUtils.hasText(recaptchaToken)) {
             return false;
         }
 
@@ -35,13 +35,17 @@ public class RecaptchaService {
         formData.add("secret", recaptchaSecret);
         formData.add("response", recaptchaToken);
 
-        RecaptchaResponse response = webClient.post()
-                .uri(recaptchaUrl)
-                .body(BodyInserters.fromFormData(formData))
-                .retrieve()
-                .bodyToMono(RecaptchaResponse.class)
-                .block(RECAPTCHA_TIMEOUT);
+        try {
+            RecaptchaResponse response = webClient.post()
+                    .uri(recaptchaUrl)
+                    .body(BodyInserters.fromFormData(formData))
+                    .retrieve()
+                    .bodyToMono(RecaptchaResponse.class)
+                    .block(RECAPTCHA_TIMEOUT);
 
-        return response != null && response.isSuccess();
+            return response != null && response.isSuccess();
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
 }

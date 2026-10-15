@@ -203,6 +203,72 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("limit") int limit
     );
 
+    @Transactional(readOnly = true, timeout = 5)
+    @Query(value = """
+            WITH visible_store AS MATERIALIZED (
+                SELECT s.storeId AS "storeId", p.partnerId AS "partnerId", s.storeName AS "storeName",
+                       s.business AS "business", p.partnerName AS "partnerName", p.category AS "category",
+                       p.image AS "image", ST_Y(s.location::geometry) AS "latitude",
+                       ST_X(s.location::geometry) AS "longitude", s.address AS "address", s.roadName AS "roadName",
+                       s.roadAddress AS "roadAddress", s.postCode AS "postCode", s.hasCoupon AS "hasCoupon",
+                       s.latitude::double precision AS numeric_latitude,
+                       s.longitude::double precision AS numeric_longitude
+                FROM store s
+                JOIN partner p ON s.partnerId = p.partnerId
+                WHERE s.location IS NOT NULL AND s.active = true
+                  AND s.storeId > :afterStoreId
+                  AND s.partnerId = ANY (ARRAY(
+                      SELECT DISTINCT b.partnerId FROM benefit b
+                      JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
+                      WHERE b.active = true AND bcp.active = true AND bcp.usageType IN ('offline', 'both')
+                  ))
+                  AND (:category IS NULL OR p.category = :category)
+                  AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
+                  AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
+            )
+            SELECT "storeId", "partnerId", "storeName", "business", "partnerName", "category", "image",
+                   "latitude", "longitude", "address", "roadName", "roadAddress", "postCode", "hasCoupon"
+            FROM visible_store
+            WHERE numeric_longitude BETWEEN :minLng AND :maxLng
+              AND numeric_latitude BETWEEN :minLat AND :maxLat
+            ORDER BY "storeId" ASC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> findStorePreviewPageInView(
+            @Param("minLat") double minLat, @Param("maxLat") double maxLat,
+            @Param("minLng") double minLng, @Param("maxLng") double maxLng,
+            @Param("category") String category, @Param("afterStoreId") long afterStoreId,
+            @Param("limit") int limit);
+
+    @Transactional(readOnly = true, timeout = 5)
+    @Query(value = """
+            SELECT s.storeId AS "storeId", p.partnerId AS "partnerId", s.storeName AS "storeName",
+                   s.business AS "business", p.partnerName AS "partnerName", p.category AS "category",
+                   p.image AS "image", ST_Y(s.location::geometry) AS "latitude",
+                   ST_X(s.location::geometry) AS "longitude", s.address AS "address", s.roadName AS "roadName",
+                   s.roadAddress AS "roadAddress", s.postCode AS "postCode", s.hasCoupon AS "hasCoupon"
+            FROM store s
+            JOIN partner p ON p.partnerId = s.partnerId
+            WHERE s.active = true AND s.location IS NOT NULL
+              AND s.storeId > :afterStoreId
+              AND (:category IS NULL OR p.category = :category)
+              AND EXISTS (
+                  SELECT 1 FROM benefit b
+                  JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
+                  WHERE b.partnerId = p.partnerId AND b.active = true AND bcp.active = true
+                    AND bcp.usageType IN ('offline', 'both')
+              )
+              AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
+              AND ST_DWithin(s.location::geography,
+                    ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)
+            ORDER BY s.storeId ASC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> findNearbyStorePreviewPage(
+            @Param("category") String category, @Param("lat") double lat, @Param("lng") double lng,
+            @Param("radiusMeters") double radiusMeters, @Param("afterStoreId") long afterStoreId,
+            @Param("limit") int limit);
+
 
 
     @Transactional(readOnly = true, timeout = 5)

@@ -1,6 +1,7 @@
 package com.itplace.userapi.security.auth.local.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.user.entity.Gender;
@@ -12,15 +13,20 @@ import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SignUpRequest {
     @NotBlank(message = "닉네임은 필수 항목입니다.")
     private String nickname;
@@ -39,17 +45,11 @@ public class SignUpRequest {
     @Pattern(regexp = PasswordPolicy.SPECIAL_CHARACTER_PATTERN, message = PasswordPolicy.SPECIAL_CHARACTER_MESSAGE)
     private String passwordConfirm;
 
-    @NotBlank(message = "휴대폰 번호는 필수 항목입니다.")
-    @Pattern(regexp = "^01\\d{8,9}$", message = "휴대폰 번호는 '-' 없이 입력해주세요.")
-    private String phoneNumber;
-
     @NotNull(message = "성별은 필수 항목입니다.")
     private Gender gender;
 
-    @NotNull(message = "통신사는 필수 항목입니다.")
     private Carrier carrier;
 
-    @NotNull(message = "멤버십 등급은 필수 항목입니다.")
     private Grade membershipGradeCode;
 
     @NotNull(message = "생년월일은 필수 입력입니다.")

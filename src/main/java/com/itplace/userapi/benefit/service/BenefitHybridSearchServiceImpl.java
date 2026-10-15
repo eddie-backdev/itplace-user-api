@@ -80,7 +80,7 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
             searchSucceeded = true;
         } catch (IOException | RuntimeException exception) {
             lastFailure = exception;
-            log.warn("혜택 lexical 검색 실패: keyword={}, reason={}", normalizedKeyword, exception.getMessage());
+            log.warn("혜택 lexical 검색 실패: errorType={}", exception.getClass().getSimpleName());
         }
 
         try {
@@ -89,7 +89,7 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
             searchSucceeded = true;
         } catch (IOException | RuntimeException exception) {
             lastFailure = exception;
-            log.warn("혜택 vector 검색 실패: keyword={}, reason={}", normalizedKeyword, exception.getMessage());
+            log.warn("혜택 vector 검색 실패: errorType={}", exception.getClass().getSimpleName());
         }
 
         if (!searchSucceeded) {

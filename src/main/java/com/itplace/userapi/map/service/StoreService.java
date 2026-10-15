@@ -2,6 +2,7 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
+import com.itplace.userapi.map.dto.response.MapStorePreviewPageResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
 import java.util.List;
@@ -23,6 +24,12 @@ public interface StoreService {
 
     MapStorePreviewBatchResponse findNearbyPreviewBatch(double lat, double lng, double radiusMeters,
                                                        String category, double userLat, double userLng);
+
+    MapStorePreviewPageResponse findStoresInViewPreviewPage(double minLat, double minLng, double maxLat, double maxLng,
+                                                            String category, int pageSize, long afterStoreId);
+
+    MapStorePreviewPageResponse findNearbyPreviewPage(double lat, double lng, double radiusMeters, String category,
+                                                       double userLat, double userLng, int pageSize, long afterStoreId);
 
     MapStorePreviewBatchResponse findNearbyByKeywordPreviewBatch(double lat, double lng, String category,
                                                                  String keyword, double userLat, double userLng);

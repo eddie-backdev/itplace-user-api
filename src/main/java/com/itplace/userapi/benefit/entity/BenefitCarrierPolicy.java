@@ -6,6 +6,8 @@ import com.itplace.userapi.benefit.entity.enums.BenefitTypeConverter;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.entity.enums.UsageTypeConverter;
+import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
+import com.itplace.userapi.benefit.service.MembershipDisplayName;
 import com.itplace.userapi.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -76,9 +78,17 @@ public class BenefitCarrierPolicy extends BaseTimeEntity {
     @JoinColumn(name = "benefitLimit")
     private BenefitPolicy benefitPolicy;
 
-    /** 통신사 사이트에 노출되는 원문 혜택명. 공통 Benefit 이름과 다를 수 있다. */
+    /** 수집된 통신사별 혜택명. 공통 Benefit 이름과 다를 수 있다. */
     @Column(length = 512)
     private String carrierBenefitName;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "membershipoptiontype", nullable = false, length = 32)
+    private MembershipOptionType membershipOptionType = MembershipOptionType.UNKNOWN;
+
+    @Column(name = "sourceoptionlabel", length = 100)
+    private String sourceOptionLabel;
 
     @Convert(converter = BenefitTypeConverter.class)
     private BenefitType type;
@@ -112,5 +122,13 @@ public class BenefitCarrierPolicy extends BaseTimeEntity {
             return url.trim();
         }
         return sourceUrl == null || sourceUrl.isBlank() ? null : sourceUrl.trim();
+    }
+
+    public String getDisplayBenefitName() {
+        String partnerName = benefit == null || benefit.getPartner() == null
+                ? null : benefit.getPartner().getPartnerName();
+        String rawName = carrierBenefitName != null && !carrierBenefitName.isBlank()
+                ? carrierBenefitName : benefit == null ? null : benefit.getBenefitName();
+        return MembershipDisplayName.fullName(this, rawName, partnerName);
     }
 }

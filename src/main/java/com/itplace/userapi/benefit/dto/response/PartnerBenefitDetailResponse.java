@@ -2,6 +2,7 @@ package com.itplace.userapi.benefit.dto.response;
 
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
+import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,6 +36,10 @@ public class PartnerBenefitDetailResponse {
     public static class CarrierBenefit {
         private Long benefitId;
         private String benefitName;
+        private String displayName;
+        private MembershipOptionType membershipOptionType;
+        private String sourceOptionLabel;
+        private String sourceBenefitName;
         private String description;
         private String benefitLimit;
         private String manual;

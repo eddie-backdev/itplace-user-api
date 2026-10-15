@@ -17,6 +17,7 @@ public class UserInfoResponse {
     private String nickname;
     private String email;
     private String phoneNumber;
+    private Boolean phoneVerified;
     private Gender gender;
     private LocalDate birthday;
     private Carrier carrier;
@@ -37,6 +38,7 @@ public class UserInfoResponse {
                 .nickname(user.getNickname())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
+                .phoneVerified(user.getPhoneNumber() != null && !user.getPhoneNumber().isBlank())
                 .gender(user.getGender())
                 .birthday(user.getBirthday())
                 .carrier(user.getCarrier())

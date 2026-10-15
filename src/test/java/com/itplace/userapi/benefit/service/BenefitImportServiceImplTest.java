@@ -25,6 +25,7 @@ import com.itplace.userapi.benefit.entity.enums.BenefitType;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
+import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
@@ -199,6 +200,7 @@ class BenefitImportServiceImplTest {
         assertThat(policy.getSourceUrl()).isEqualTo("https://source.example/skt-benefit-1");
         assertThat(policy.getUrl()).isEqualTo("https://benefit.example/skt-benefit-1");
         assertThat(policy.getCarrierBenefitName()).isEqualTo("할인 혜택");
+        assertThat(policy.getMembershipOptionType()).isEqualTo(MembershipOptionType.UNKNOWN);
         assertThat(policy.getActive()).isTrue();
         assertThat(policy.getBenefitPolicy().getCode()).isEqualTo(BenefitPolicyCode.DAILY_ONCE);
 
@@ -210,6 +212,60 @@ class BenefitImportServiceImplTest {
         assertThat(carrierTiers.get(0).getGrade()).isEqualTo(Grade.SKT_VIP);
 
         verify(partnerRepository, never()).findByPartnerName(any(String.class));
+    }
+
+    @Test
+    void keepsKnownMetadataWhenLaterSnapshotOmitsIt() {
+        BenefitSnapshotImportRequest request = request();
+        request.getBenefits().get(0).setBenefitName("GS25 할인형");
+        BenefitCarrierPolicy existing = BenefitCarrierPolicy.builder()
+                .benefit(Benefit.builder().benefitId(55L).partner(Partner.builder().partnerId(7L).build()).build())
+                .carrier(Carrier.SKT).sourceKey("skt-benefit-1")
+                .membershipOptionType(MembershipOptionType.POINT_ACCRUAL)
+                .sourceOptionLabel("적립형").build();
+        when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(Carrier.SKT, List.of("skt-benefit-1")))
+                .thenReturn(List.of(existing));
+
+        service.importSnapshot(request, "internal-key");
+
+        ArgumentCaptor<Iterable<BenefitCarrierPolicy>> policies = iterableCaptor();
+        verify(benefitCarrierPolicyRepository).saveAll(policies.capture());
+        BenefitCarrierPolicy policy = toList(policies.getValue()).get(0);
+        assertThat(policy.getMembershipOptionType()).isEqualTo(MembershipOptionType.POINT_ACCRUAL);
+        assertThat(policy.getSourceOptionLabel()).isEqualTo("적립형");
+    }
+
+    @Test
+    void explicitNotApplicableClearsPreviouslyKnownOptionLabel() {
+        BenefitSnapshotImportRequest request = request();
+        request.getBenefits().get(0).setMembershipOptionType(MembershipOptionType.NOT_APPLICABLE);
+        BenefitCarrierPolicy existing = BenefitCarrierPolicy.builder()
+                .benefit(Benefit.builder().benefitId(55L).partner(Partner.builder().partnerId(7L).build()).build())
+                .carrier(Carrier.SKT).sourceKey("skt-benefit-1")
+                .membershipOptionType(MembershipOptionType.DISCOUNT)
+                .sourceOptionLabel("할인형").build();
+        when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(Carrier.SKT, List.of("skt-benefit-1")))
+                .thenReturn(List.of(existing));
+
+        service.importSnapshot(request, "internal-key");
+
+        ArgumentCaptor<Iterable<BenefitCarrierPolicy>> policies = iterableCaptor();
+        verify(benefitCarrierPolicyRepository).saveAll(policies.capture());
+        BenefitCarrierPolicy policy = toList(policies.getValue()).get(0);
+        assertThat(policy.getMembershipOptionType()).isEqualTo(MembershipOptionType.NOT_APPLICABLE);
+        assertThat(policy.getSourceOptionLabel()).isNull();
+    }
+
+    @Test
+    void infersLegacySktOptionFromTrailingTypeLabel() {
+        BenefitSnapshotImportRequest request = request();
+        request.getBenefits().get(0).setBenefitName("GS25 적립형");
+        service.importSnapshot(request, "internal-key");
+        ArgumentCaptor<Iterable<BenefitCarrierPolicy>> policies = iterableCaptor();
+        verify(benefitCarrierPolicyRepository).saveAll(policies.capture());
+        BenefitCarrierPolicy policy = toList(policies.getValue()).get(0);
+        assertThat(policy.getMembershipOptionType()).isEqualTo(MembershipOptionType.POINT_ACCRUAL);
+        assertThat(policy.getSourceOptionLabel()).isEqualTo("적립형");
     }
 
     @Test

@@ -22,7 +22,8 @@ class MapResponseCompressionFilterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/maps/nearby/previews/compact", "/api/v1/maps/nearby/category/previews/compact",
-            "/api/v1/maps/nearby/search/previews/compact"})
+            "/api/v1/maps/nearby/search/previews/compact", "/api/v1/maps/stores/in-view/previews/compact/page",
+            "/api/v1/maps/nearby/previews/compact/page", "/api/v1/maps/nearby/category/previews/compact/page"})
     void compressesNewPublicCompactEndpoints(String path) throws Exception {
         var response = call(path, "gzip", 200);
         assertThat(response.getHeader("Content-Encoding")).isEqualTo("gzip");

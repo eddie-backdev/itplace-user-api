@@ -50,6 +50,7 @@ public class User extends BaseTimeEntity {
     private String email;
 
     @Column(name = "phoneNumber", length = 11, unique = true)
+    @Setter
     private String phoneNumber;
 
     @Setter

@@ -27,7 +27,6 @@ import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.map.service.StorePartnerBusinessPolicy;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -76,7 +75,7 @@ public class BenefitServiceImpl implements BenefitService {
         boolean carrierFilterEnabled = !carrierFilters.isEmpty();
         List<String> carrierNames = carrierFilterEnabled
                 ? carrierFilters.stream().map(Carrier::name).toList()
-                : Arrays.stream(Carrier.values()).map(Carrier::name).toList();
+                : CARRIER_DISPLAY_ORDER.stream().map(Carrier::name).toList();
         String normalizedKeyword = normalizeKeyword(keyword);
         BenefitListSort sortMode = BenefitListSort.from(sort, normalizedKeyword != null);
 
@@ -92,8 +91,8 @@ public class BenefitServiceImpl implements BenefitService {
                         expansionFetchPageable()
                 );
             } catch (RuntimeException exception) {
-                log.warn("혜택 하이브리드 검색 실패로 DB 검색으로 대체합니다. keyword={}, reason={}",
-                        normalizedKeyword, exception.getMessage());
+                log.warn("혜택 하이브리드 검색 실패로 DB 검색으로 대체합니다. errorType={}",
+                        exception.getClass().getSimpleName());
             }
             if (hybridResult != null) {
                 List<Benefit> orderedBenefits = expandSamePartnerBenefits(
@@ -131,8 +130,8 @@ public class BenefitServiceImpl implements BenefitService {
                         expansionFetchPageable()
                 );
             } catch (RuntimeException exception) {
-                log.warn("혜택 lexical 검색 실패로 DB 검색으로 대체합니다. keyword={}, sort={}, reason={}",
-                        normalizedKeyword, sortMode.repositoryKey(), exception.getMessage());
+                log.warn("혜택 lexical 검색 실패로 DB 검색으로 대체합니다. sort={}, errorType={}",
+                        sortMode.repositoryKey(), exception.getClass().getSimpleName());
             }
             if (lexicalResult != null) {
                 List<Benefit> sortedBenefits = sortBenefits(
@@ -292,7 +291,7 @@ public class BenefitServiceImpl implements BenefitService {
 
                     return BenefitListResponse.builder()
                             .benefitId(benefitId)
-                            .benefitName(b.getBenefitName())
+                            .benefitName(policy.getDisplayBenefitName())
                             .mainCategory(b.getMainCategory())
                             .usageType(policy.getUsageType())
                             .carrier(policy.getCarrier())
@@ -415,7 +414,7 @@ public class BenefitServiceImpl implements BenefitService {
         }
 
         List<Carrier> effectiveCarriers = carrierFilters == null || carrierFilters.isEmpty()
-                ? Arrays.stream(Carrier.values()).toList()
+                ? CARRIER_DISPLAY_ORDER
                 : carrierFilters;
         Map<Long, List<Benefit>> siblingsByPartnerId = benefitRepository
                 .findActiveBenefitsByPartnerIdsWithPartner(partnerIds, mainCategory, category, filter, effectiveCarriers)
@@ -518,7 +517,7 @@ public class BenefitServiceImpl implements BenefitService {
 
         return BenefitDetailResponse.builder()
                 .benefitId(benefit.getBenefitId())
-                .benefitName(benefit.getBenefitName())
+                .benefitName(policy == null ? benefit.getBenefitName() : policy.getDisplayBenefitName())
                 .description(policy.getDescription())
                 .benefitLimit(policy.getDisplayBenefitLimit())
                 .manual(trimNullable(policy.getManual()))
@@ -566,7 +565,7 @@ public class BenefitServiceImpl implements BenefitService {
 
         return MapBenefitDetailResponse.builder()
                 .benefitId(selected.getBenefitId())
-                .benefitName(selected.getBenefitName())
+                .benefitName(selectedPolicy.getDisplayBenefitName())
                 .image(selected.getPartner().getImage())
                 .mainCategory(selected.getMainCategory())
                 .manual(trimNullable(selectedPolicy.getManual()))

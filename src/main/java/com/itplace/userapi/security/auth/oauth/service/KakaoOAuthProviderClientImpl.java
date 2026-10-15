@@ -42,7 +42,7 @@ public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
         String accessToken = requestAccessToken(authorizationCode, StringUtils.hasText(redirectUri) ? redirectUri : defaultRedirectUri);
         Map<String, Object> userInfo = requestUserInfo(accessToken);
         String providerId = String.valueOf(userInfo.get("id"));
-        if (!StringUtils.hasText(providerId) || "null".equals(providerId)) {
+        if (!isPositiveProviderId(providerId)) {
             throw new InvalidCredentialsException(SecurityCode.INVALID_INPUT_VALUE);
         }
 
@@ -118,6 +118,17 @@ public class KakaoOAuthProviderClientImpl implements KakaoOAuthProviderClient {
     private Boolean nestedBoolean(Map<String, Object> root, String firstKey, String secondKey) {
         Object value = nestedValue(root, firstKey, secondKey);
         return value instanceof Boolean booleanValue ? booleanValue : null;
+    }
+
+    private boolean isPositiveProviderId(String providerId) {
+        if (!StringUtils.hasText(providerId) || !providerId.matches("[0-9]+")) {
+            return false;
+        }
+        try {
+            return Long.parseLong(providerId) > 0;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")

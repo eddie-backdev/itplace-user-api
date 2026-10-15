@@ -9,9 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse;
+import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.BenefitPreview;
+import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.PreviewTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
+import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.service.PartnerBenefitBrowseService;
 import com.itplace.userapi.common.GlobalExceptionHandler;
 import com.itplace.userapi.common.PageResult;
@@ -74,6 +77,35 @@ class PartnerBenefitControllerTest {
                 .andExpect(status().isOk());
         verify(service).getPartners(eq(null), eq(null), eq(null), eq(null), eq(null),
                 eq(List.of(Carrier.SKT)), eq(Grade.SKT_GOLD), any(Pageable.class));
+    }
+
+    @Test
+    void getPartnersReturnsPublicPreviewContractWithMatchingFilters() throws Exception {
+        when(service.getPartners(eq(MainCategory.BASIC_BENEFIT), eq(null), eq(UsageType.OFFLINE),
+                eq(null), eq(null), eq(List.of(Carrier.SKT)), eq(Grade.SKT_GOLD), any(Pageable.class)))
+                .thenReturn(PageResult.<PartnerBenefitListResponse>builder()
+                        .content(List.of(PartnerBenefitListResponse.builder()
+                                .partnerId(10L).partnerName("GS25").carriers(List.of(Carrier.SKT))
+                                .previews(List.of(new BenefitPreview(Carrier.SKT, 20L, "GS25 할인",
+                                        "제한없음", UsageType.BOTH,
+                                        List.of(new PreviewTierBenefit(Grade.SKT_GOLD, "1천원당 100원 할인", true)))))
+                                .build()))
+                        .totalElements(1).totalPages(1).currentPage(0).hasNext(false).build());
+
+        mockMvc.perform(get("/api/v1/benefits/partners")
+                        .param("mainCategory", "BASIC_BENEFIT").param("filter", "OFFLINE")
+                        .param("carrier", "SKT").param("grade", "SKT_GOLD"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].previews[0].carrier").value("SKT"))
+                .andExpect(jsonPath("$.data.content[0].previews[0].benefitId").value(20))
+                .andExpect(jsonPath("$.data.content[0].previews[0].benefitName").value("GS25 할인"))
+                .andExpect(jsonPath("$.data.content[0].previews[0].benefitLimit").value("제한없음"))
+                .andExpect(jsonPath("$.data.content[0].previews[0].usageType").value("BOTH"))
+                .andExpect(jsonPath("$.data.content[0].previews[0].tierBenefits[0].grade").value("SKT_GOLD"))
+                .andExpect(jsonPath("$.data.content[0].previews[0].tierBenefits[0].context").value("1천원당 100원 할인"))
+                .andExpect(jsonPath("$.data.content[0].previews[0].tierBenefits[0].isAll").value(true))
+                .andExpect(jsonPath("$.data.content[0].previews[0].isFavorite").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].previews[0].favoriteCount").doesNotExist());
     }
 
     @Test

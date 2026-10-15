@@ -2,6 +2,7 @@ package com.itplace.userapi.map.service;
 
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
+import com.itplace.userapi.benefit.service.MembershipDisplayName;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
@@ -313,9 +314,17 @@ public class PartnerBenefitCacheService {
                         .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
                         .map(tier -> toTierBenefitDto(benefit, policy, tier)))
                 .collect(Collectors.toCollection(ArrayList::new));
+        BenefitCarrierPolicy representativePolicy = policies.stream().findFirst().orElse(null);
+        String sourceName = representativePolicy == null || representativePolicy.getCarrierBenefitName() == null
+                ? benefit.getBenefitName() : representativePolicy.getCarrierBenefitName();
+        String displayName = MembershipDisplayName.commonName(sourceName,
+                benefit.getPartner() == null ? null : benefit.getPartner().getPartnerName());
         return new BenefitCacheDto(
                 benefit.getBenefitId(),
-                benefit.getBenefitName(),
+                representativePolicy == null ? benefit.getBenefitName() : representativePolicy.getDisplayBenefitName(),
+                displayName,
+                representativePolicy == null ? null : representativePolicy.getMembershipOptionType(),
+                representativePolicy == null ? null : representativePolicy.getSourceOptionLabel(),
                 representativeUsageType(policies),
                 benefit.getMainCategory(),
                 normalizedTiers

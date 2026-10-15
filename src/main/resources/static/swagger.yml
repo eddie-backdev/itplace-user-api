@@ -142,7 +142,7 @@ paths:
         - Auth
       summary: 최종 회원가입
       description: |
-        이메일, 비밀번호, 이름 등을 사용하여 새로운 사용자를 등록합니다.
+        이메일, 비밀번호, 닉네임 등을 사용하여 새로운 사용자를 등록합니다. 가입은 이메일 인증 후 진행되며 휴대폰 번호는 가입 후 로그인 상태에서 인증합니다.
         
         이메일 인증이 사전에 완료되어야 하며, 인증 시 사용한 정보를 기반으로 가입을 처리합니다.
       operationId: signUp
@@ -154,9 +154,8 @@ paths:
             schema:
               $ref: '#/components/schemas/SignUpRequest'
             example:
-              name: "홍길동"
+              nickname: "홍길동"
               email: "user@example.com"
-              phoneNumber: "01011112222"
               password: "!Password123"
               passwordConfirm: "!Password123"
               gender: "MALE"
@@ -495,8 +494,10 @@ paths:
       tags:
         - Verification
       summary: MO 문자 인증 문구 생성
-      description: 서버가 인증 문구를 생성해 반환합니다. 사용자는 반환된 문구를 옥토모 대표번호(1666-3538)로 직접 문자 발송해야 합니다.
+      description: 로그인된 계정의 휴대폰 인증 문구를 생성합니다. 사용자는 반환된 128비트 난수 문구를 자신의 휴대폰에서 옥토모 대표번호(1666-3538)로 직접 문자 발송해야 합니다. 재발급하면 기존 문구는 무효가 됩니다.
       operationId: issueSmsVerificationCode
+      security:
+        - bearerAuth: [ ]
       requestBody:
         description: 인증 코드를 생성할 휴대폰 번호
         required: true
@@ -524,7 +525,7 @@ paths:
                 message: "문자 인증 코드가 생성되었습니다."
                 data:
                   phoneNumber: "01012345678"
-                  verificationText: "adsjJdjfjJjsai873u"
+                  verificationText: "0123456789ABCDEF0123456789ABCDEF"
                   receiverPhoneNumber: "1666-3538"
                   expiresInSeconds: 300
                 timestamp: "2026-05-15T11:27:06.789Z"
@@ -552,10 +553,12 @@ paths:
       tags:
         - Verification
       summary: MO 문자 인증 확인
-      description: 최근 5분 내 사용자가 옥토모 대표번호로 발송한 인증 코드 문자를 Octomo API로 조회합니다.
+      description: 현재 로그인 계정이 요청한 phoneNumber와 verificationText 조합으로 최근 5분 내 발송한 MO 문자를 확인하고, 성공하면 해당 번호를 계정에 저장합니다. 다른 계정의 인증 문구는 사용할 수 없습니다.
       operationId: confirmSmsVerificationCode
+      security:
+        - bearerAuth: [ ]
       requestBody:
-        description: 인증 확인할 휴대폰 번호
+        description: 인증 확인할 휴대폰 번호와 발급된 인증 문구
         required: true
         content:
           application/json:
@@ -563,6 +566,7 @@ paths:
               $ref: '#/components/schemas/SmsConfirmRequest'
             example:
               phoneNumber: "01012345678"
+              verificationText: "0123456789ABCDEF0123456789ABCDEF"
       responses:
         '200':
           description: 인증 성공
@@ -935,7 +939,7 @@ paths:
                   - benefitId: 1
                     benefitName: "할리스"
                     partnerName: "할리스"
-                    partnerImage: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/hollys.png"
+                    partnerImage: "https://images.itplace.click/img/hollys.png"
                 timestamp: '2025-07-15T02:20:54.631Z'
 
         '404':
@@ -982,7 +986,7 @@ paths:
                   benefitDescription: "영화 그 이상의 감동 CGV"
                   benefitLimit: "VVIP/VIP 등급 전용\r VIP콕 내 무료예매 연3회/1+1예매 연9회(총 12회)\r (월 1회 사용 가능, CGV/메가박스 중 택 1)"
                   partnerName: "CGV"
-                  partnerImage: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/cgv.png"
+                  partnerImage: "https://images.itplace.click/img/cgv.png"
                   tiers:
                     - grade: VIP콕
                       isAll: false
@@ -1638,7 +1642,7 @@ paths:
                         partner:
                           partnerId: 22
                           partnerName: "롯데월드"
-                          image: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/lotteworldadventure.jpg"
+                          image: "https://images.itplace.click/img/lotteworldadventure.jpg"
                           category: "엑티비티"
                         tierBenefit:
                           - grade: "VIP콕"
@@ -2058,7 +2062,7 @@ paths:
                       - rank: 1
                         partnerName: "DBR동아비즈니스리뷰"
                         reason: "사용자님이 경제와 비즈니스에 관심이 많다면, DBR의 다양한 콘텐츠를 2,500원 할인된 가격에 무제한으로 즐기실 수 있어서 추천 드리는 걸요!"
-                        imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/DBRBusiness.png"
+                        imgUrl: "https://images.itplace.click/img/DBRBusiness.png"
                         benefitIds: [101]
                         requestId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000"
                         impressionId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000-imp-1-550e8400-e29b-41d4-a716-446655440001"
@@ -2068,7 +2072,7 @@ paths:
                       - rank: 2
                         partnerName: "네이버플러스 멤버십"
                         reason: "네이버 쇼핑 적립 혜택도 받고, 디지털 콘텐츠도 누릴 수 있어 유용할 것 같아 추천합니다!"
-                        imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/naverplus.jpg"
+                        imgUrl: "https://images.itplace.click/img/naverplus.jpg"
                         benefitIds: [102]
                         requestId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000"
                         impressionId: "rec-req-7-550e8400-e29b-41d4-a716-446655440000-imp-2-550e8400-e29b-41d4-a716-446655440002"
@@ -2176,9 +2180,9 @@ paths:
                   reason: "패밀리 레스토랑을 즐기고 싶다면 VIPS와 온더보더가 좋은 선택입니다. VIPS는 신선한 재료로 만든 다양한 샐러드바와 스테이크를 제공하며, 가족 모두가 함께 즐길 수 있는 편안한 분위기를 자랑합니다. 온더보더는 멕시코 요리의 진수를 경험할 수 있는 곳으로, 색다른 메뉴와 활기찬 분위기가 가족 모임에 안성맞춤입니다. 두 곳 모두 다양한 메뉴와 넓은 공간을 제공하여 가족들이 즐거운 시간을 보낼 수 있는 이상적인 장소입니다."
                   partners:
                     - partnerName: "VIPS"
-                      imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/vips.png"
+                      imgUrl: "https://images.itplace.click/img/vips.png"
                     - partnerName: "온더보더"
-                      imgUrl: "https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/ontheborder.png"
+                      imgUrl: "https://images.itplace.click/img/ontheborder.png"
                 timestamp: "2025-07-30T13:08:37.4218203"
         
         '400':
@@ -2256,11 +2260,11 @@ components:
 
     SignUpRequest:
       type: object
-      required: [ name, email, password, passwordConfirm, phoneNumber, gender, birthday ]
+      required: [ nickname, email, password, passwordConfirm, gender, birthday ]
       properties:
-        name:
+        nickname:
           type: string
-          description: "이름"
+          description: "닉네임"
           example: "홍길동"
         email:
           type: string
@@ -2279,11 +2283,6 @@ components:
           description: "비밀번호 확인"
           example: "!Password123"
           minLength: 6
-        phoneNumber:
-          type: string
-          format: phoneNumber
-          description: "전화번호"
-          example: "01011112222"
         gender:
           type: string
           description: "성별"
@@ -2295,14 +2294,16 @@ components:
           example: "20000101"
         carrier:
           type: string
-          description: "자가 선택 통신사"
-          enum: [ LGU, SKT, KT ]
+          description: "자가 선택 통신사. 미선택이면 생략 또는 null, 알뜰폰은 MVNO"
+          enum: [ LGU, SKT, KT, MVNO ]
           example: "LGU"
+          nullable: true
         membershipGradeCode:
           type: string
-          description: "통신사별 자가 선택 멤버십 등급 코드"
+          description: "통신사별 멤버십 등급 코드. 미선택 또는 MVNO면 생략 또는 null"
           enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "VIP"
+          nullable: true
 
 
     SmsVerificationRequest:
@@ -2324,8 +2325,9 @@ components:
           example: "01012345678"
         verificationText:
           type: string
-          description: "사용자별로 발급되는 랜덤 영문/숫자 인증 문자열"
-          example: "adsjJdjfjJjsai873u"
+          description: "사용자별로 발급되는 SecureRandom 128비트 이상 대문자 16진수 문구 (32자)"
+          pattern: "^[0-9A-F]{32}$"
+          example: "0123456789ABCDEF0123456789ABCDEF"
         receiverPhoneNumber:
           type: string
           description: "Octomo 대표 수신 번호"
@@ -2338,12 +2340,17 @@ components:
     SmsConfirmRequest:
       type: object
       description: "MO 문자 인증 확인 요청 DTO"
-      required: [ phoneNumber ]
+      required: [ phoneNumber, verificationText ]
       properties:
         phoneNumber:
           type: string
           description: "인증을 진행할 휴대폰 번호('-' 제외)"
           example: "01012345678"
+        verificationText:
+          type: string
+          pattern: "^[0-9A-F]{32}$"
+          description: "해당 계정의 현재 발급된 MO 인증 문자열"
+          example: "0123456789ABCDEF0123456789ABCDEF"
 
 
     EmailVerificationRequest:
@@ -2407,11 +2414,11 @@ components:
 
     OAuthSignUpRequest:
       type: object
-      required: [ name, gender, birthday, phoneNumber ]
+      required: [ nickname, gender, birthday ]
       properties:
-        name:
+        nickname:
           type: string
-          description: "사용자 이름"
+          description: "닉네임"
           example: "홍길동"
         gender:
           type: string
@@ -2423,20 +2430,18 @@ components:
           format: date
           description: "생년월일 (yyyy-MM-dd 형식)"
           example: "2000-01-01"
-        phoneNumber:
-          type: string
-          description: "휴대폰 번호 ('-' 제외)"
-          example: "01012345678"
         carrier:
           type: string
-          description: "자가 선택 통신사"
-          enum: [ LGU, SKT, KT ]
+          description: "자가 선택 통신사. 미선택이면 생략 또는 null, 알뜰폰은 MVNO"
+          enum: [ LGU, SKT, KT, MVNO ]
           example: "LGU"
+          nullable: true
         membershipGradeCode:
           type: string
-          description: "통신사별 자가 선택 멤버십 등급 코드"
+          description: "통신사별 멤버십 등급 코드. 미선택 또는 MVNO면 생략 또는 null"
           enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "VIP"
+          nullable: true
 
     ChangePasswordRequest:
       type: object
@@ -2478,7 +2483,7 @@ components:
           type: string
           nullable: true
           example: "LGU"
-          enum: [ LGU, SKT, KT ]
+          enum: [ LGU, SKT, KT, MVNO ]
         membershipGradeCode:
           type: string
           nullable: true
@@ -2665,8 +2670,13 @@ components:
           example: "hong@example.com"
         phoneNumber:
           type: string
-          description: 사용자 전화번호
+          description: 로그인 계정에서 인증한 사용자 휴대폰 번호 (인증 전 null)
           example: "010-1234-5678"
+          nullable: true
+        phoneVerified:
+          type: boolean
+          description: 휴대폰 번호 인증 완료 여부; phoneNumber가 저장된 경우 true
+          example: false
         gender:
           type: string
           description: 사용자 성별
@@ -2680,7 +2690,7 @@ components:
         carrier:
           type: string
           description: 자가 선택 통신사 (없는 경우 null)
-          enum: [ LGU, SKT, KT ]
+          enum: [ LGU, SKT, KT, MVNO ]
           example: "LGU"
           nullable: true
         membershipGradeCode:
@@ -2937,4 +2947,4 @@ components:
         imgUrl:
           type: string
           format: uri
-          example: https://itplacepartners.s3.ap-northeast-2.amazonaws.com/img/vips.png
+          example: https://images.itplace.click/img/vips.png

@@ -25,6 +25,8 @@ class StorePreviewQueryIntegrationTest {
     JdbcTemplate jdbc;
     NamedParameterJdbcTemplate named;
     String sql;
+    String pageSql;
+    String nearbyPageSql;
 
     @BeforeEach
     void prepare() throws Exception {
@@ -34,6 +36,8 @@ class StorePreviewQueryIntegrationTest {
         sql = StoreRepository.class.getMethod("findStorePreviewsInView", double.class, double.class,
                 double.class, double.class, double.class, double.class, String.class, int.class)
                 .getAnnotation(Query.class).value();
+        pageSql = query("findStorePreviewPageInView");
+        nearbyPageSql = query("findNearbyStorePreviewPage");
         jdbc.execute("""
                 DROP TABLE IF EXISTS store, partner, benefit, benefitCarrierPolicy, favorite, policy_reference;
                 CREATE TABLE partner (partnerId bigint PRIMARY KEY, partnerName text, category text, image text);
@@ -189,6 +193,78 @@ class StorePreviewQueryIntegrationTest {
         assertThat(policyScan).isNotNull();
         assertThat(policyScan.path("Actual Loops").asInt()).isEqualTo(1);
         assertThat(ids(null,300)).hasSize(300).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void cursorPagesReturnEveryEligibleViewportStoreOnceAndExcludeInvalidRowsBeforeLimit() {
+        jdbc.execute("""
+                INSERT INTO store (storeId,partnerId,storeName,business,latitude,longitude,location,active)
+                    SELECT n,1,'제휴사1 지점'||n,'소매',37.5,127,
+                           ST_SetSRID(ST_MakePoint(127,37.5),4326)::geometry,true
+                    FROM generate_series(1000,1649) n;
+                ANALYZE store;
+                """);
+        List<Long> combined = new java.util.ArrayList<>();
+        long cursor = 0;
+        boolean hasMore;
+        do {
+            var page = pageIds(cursor, 300, null);
+            combined.addAll(page);
+            hasMore = page.size() == 300;
+            cursor = page.get(page.size() - 1);
+        } while (hasMore);
+
+        assertThat(combined).hasSize(656).doesNotHaveDuplicates().isSorted();
+        assertThat(combined).contains(1L, 2L, 3L, 9L, 11L, 16L)
+                .doesNotContain(4L, 5L, 6L, 7L, 8L, 10L, 12L, 13L, 14L, 15L);
+        assertThat(pageIds(0, 300, "생활")).hasSize(300);
+        assertThat(pageIds(0, 300, "없는 분류")).isEmpty();
+        assertThat(pageIds(9999, 300, null)).isEmpty();
+
+        List<Long> nearby = new java.util.ArrayList<>();
+        cursor = 0;
+        do {
+            var page = nearbyPageIds(cursor, 300, null);
+            nearby.addAll(page);
+            hasMore = page.size() == 300;
+            if (hasMore) cursor = page.get(page.size() - 1);
+        } while (hasMore);
+        assertThat(nearby).hasSize(655).doesNotHaveDuplicates().isSorted();
+        assertThat(nearbyPageIds(0, 300, "생활")).hasSize(300);
+    }
+
+    @Test
+    void nearbyCursorSqlAppliesRadiusEligibilityCategoryAndCursorBeforeLimit() {
+        var parameters = new MapSqlParameterSource().addValue("lat",37.5).addValue("lng",127.0)
+                .addValue("radiusMeters",1000.0).addValue("category",null,Types.VARCHAR)
+                .addValue("afterStoreId",2L).addValue("limit",2);
+        assertThat(named.query(nearbyPageSql, parameters, (row,index) -> row.getLong("storeId")))
+                .containsExactly(3L,9L);
+        parameters.addValue("category","보관").addValue("afterStoreId",0L);
+        assertThat(named.query(nearbyPageSql, parameters, (row,index) -> row.getLong("storeId")))
+                .containsExactly(3L);
+        parameters.addValue("category","없는 분류");
+        assertThat(named.query(nearbyPageSql, parameters, (row,index) -> row.getLong("storeId"))).isEmpty();
+    }
+
+    private List<Long> pageIds(long afterStoreId, int limit, String category) {
+        return named.query(pageSql, new MapSqlParameterSource().addValue("minLat",37.49).addValue("maxLat",37.51)
+                        .addValue("minLng",126.99).addValue("maxLng",127.01)
+                        .addValue("category",category,Types.VARCHAR).addValue("afterStoreId",afterStoreId)
+                        .addValue("limit",limit), (row,index) -> row.getLong("storeId"));
+    }
+
+    private List<Long> nearbyPageIds(long afterStoreId, int limit, String category) {
+        return named.query(nearbyPageSql, new MapSqlParameterSource().addValue("lat",37.5).addValue("lng",127.0)
+                        .addValue("radiusMeters",1000.0).addValue("category",category,Types.VARCHAR)
+                        .addValue("afterStoreId",afterStoreId).addValue("limit",limit),
+                (row,index) -> row.getLong("storeId"));
+    }
+
+    private String query(String methodName) {
+        return java.util.Arrays.stream(StoreRepository.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals(methodName)).findFirst().orElseThrow()
+                .getAnnotation(Query.class).value();
     }
 
     private List<Long> ids(String category, int limit) {

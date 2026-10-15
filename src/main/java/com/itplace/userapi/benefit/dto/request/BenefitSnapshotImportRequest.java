@@ -2,6 +2,7 @@ package com.itplace.userapi.benefit.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.itplace.userapi.benefit.entity.enums.BenefitType;
+import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
 import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Getter;
@@ -51,6 +53,10 @@ public class BenefitSnapshotImportRequest {
 
         @NotBlank(message = "혜택명은 필수 항목입니다.")
         private String benefitName;
+
+        private MembershipOptionType membershipOptionType;
+        @Size(max = 100, message = "sourceOptionLabel은 100자 이하여야 합니다.")
+        private String sourceOptionLabel;
 
         @NotNull(message = "혜택 타입은 필수 항목입니다.")
         private BenefitType type;

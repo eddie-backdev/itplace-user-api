@@ -200,7 +200,7 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(13);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(16);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
@@ -215,6 +215,7 @@ class FlywayMigrationIntegrationTest {
             assertThat(tableExists(connection, "authcredential")).isTrue();
             assertThat(tableExists(connection, "inquiries")).isTrue();
             assertThat(tableExists(connection, "recommendation_rank_traces")).isTrue();
+            assertThat(tableExists(connection, "benefitusagerecord")).isTrue();
             assertThat(columnExists(connection, "users", "nickname")).isTrue();
             assertThat(columnExists(connection, "benefit", "carrier")).isFalse();
             assertThat(columnExists(connection, "recommendations", "cachebatchid")).isTrue();
@@ -222,6 +223,7 @@ class FlywayMigrationIntegrationTest {
             assertThat(indexExists(connection, "idx_store_location")).isTrue();
             assertThat(indexExists(connection, "idx_store_name_search")).isTrue();
             assertThat(indexExists(connection, "idx_favorite_user_created")).isTrue();
+            assertThat(indexExists(connection, "idx_benefit_usage_user_used_at")).isTrue();
             assertThat(indexExists(connection, "idx_inquiries_status_created")).isTrue();
             assertThat(indexExists(connection, "idx_map_region_anchor_viewport")).isTrue();
             assertThat(indexExists(connection, "idx_map_region_store_summary_cluster_lookup")).isTrue();
@@ -251,7 +253,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20260926.0001");
+                    """)).isEqualTo("20261006.0002");
 
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("UPDATE store SET active = false WHERE storeId = 1");

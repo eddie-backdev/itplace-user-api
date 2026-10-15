@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,7 +48,7 @@ public class FavoriteController {
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> removeFavorite(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @RequestBody RemoveFavoritesRequest request) {
+            @Valid @RequestBody RemoveFavoritesRequest request) {
         favoriteService.removeFavorites(principalDetails.getUserId(), request.getBenefitIds());
         ApiResponse<Void> body = ApiResponse.ok(FavoriteCode.FAVORITE_DELETE_SUCCESS);
         return body.toResponseEntity();
@@ -88,4 +89,3 @@ public class FavoriteController {
         return body.toResponseEntity();
     }
 }
-

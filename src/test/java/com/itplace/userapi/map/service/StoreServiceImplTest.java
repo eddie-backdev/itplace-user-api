@@ -1,6 +1,7 @@
 package com.itplace.userapi.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -73,6 +74,37 @@ class StoreServiceImplTest {
 
     @InjectMocks
     private StoreServiceImpl storeService;
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void keywordSearchRejectsBlankKeywordBeforeExternalOrDatabaseSearch(String keyword) {
+        assertThatThrownBy(() -> storeService.findNearbyByKeyword(37.5, 127.0, null, keyword, 37.5, 127.0))
+                .isInstanceOf(com.itplace.userapi.map.exception.StoreKeywordException.class);
+
+        org.mockito.Mockito.verifyNoInteractions(storeSearchService, storeRepository, partnerBenefitCacheService);
+    }
+
+    @Test
+    void partnerSearchRejectsMissingPartnerWithoutSearchingStores() {
+        when(partnerRepository.findByPartnerName("미등록 제휴처")).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> storeService.findNearbyByPartnerName(
+                37.5, 127.0, "미등록 제휴처", 37.5, 127.0))
+                .isInstanceOf(com.itplace.userapi.partner.exception.PartnerNotFoundException.class);
+
+        org.mockito.Mockito.verifyNoInteractions(storeSearchService, storeRepository, partnerBenefitCacheService);
+    }
+
+    @Test
+    void benefitCandidateSearchRejectsMissingPartnerSelectorBeforeRepositoryQueries() {
+        assertThatThrownBy(() -> storeService.findNearbyByBenefitCandidate(
+                37.5, 127.0, null, "  ", null, 20L, 37.5, 127.0))
+                .isInstanceOf(com.itplace.userapi.map.exception.StoreKeywordException.class);
+
+        org.mockito.Mockito.verifyNoInteractions(partnerRepository, storeRepository, storeSearchService,
+                partnerBenefitCacheService);
+    }
 
     @BeforeEach
     @SuppressWarnings("unchecked")
