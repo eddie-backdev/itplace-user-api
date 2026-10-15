@@ -14,8 +14,9 @@ Applies to `itplace-user-api/`.
 
 ## Verification
 Run from this directory:
-- `./gradlew test`
-- `./gradlew build -x test`
+- Required full verification: `./scripts/test-required.sh --no-daemon`
+- Required build check after tests: `./gradlew build -x test --no-daemon`
+- Focused `./gradlew test --tests ...` runs are useful during development but do not count as full verification.
 
 ## Commit / push
 - Commit from this repo, not the workspace root.
