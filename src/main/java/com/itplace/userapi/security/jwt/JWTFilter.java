@@ -23,6 +23,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
 
+    public static final String AUTHENTICATION_ATTRIBUTE = JWTFilter.class.getName() + ".authentication";
+
     private final JWTUtil jwtUtil;
 
     @Override
@@ -73,6 +75,7 @@ public class JWTFilter extends OncePerRequestFilter {
                             principal, null, principal.getAuthorities()
                     );
             SecurityContextHolder.getContext().setAuthentication(authToken);
+            request.setAttribute(AUTHENTICATION_ATTRIBUTE, authToken);
 
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("유효하지 않은 토큰: {}", e.getMessage());

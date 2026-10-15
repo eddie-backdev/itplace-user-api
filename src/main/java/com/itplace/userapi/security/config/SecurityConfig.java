@@ -28,6 +28,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -62,6 +65,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
+        CookieCsrfTokenRepository csrfTokenRepository = csrfTokenRepository();
+        CsrfTokenRequestAttributeHandler csrfTokenRequestHandler = new CsrfTokenRequestAttributeHandler();
+        SessionAuthenticationStrategy csrfAuthenticationStrategy = jwtAwareCsrfAuthenticationStrategy(
+                csrfTokenRepository,
+                csrfTokenRequestHandler);
 
         http
                 .cors((corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
@@ -95,8 +103,9 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(csrfTokenRepository())
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .csrfTokenRepository(csrfTokenRepository)
+                        .csrfTokenRequestHandler(csrfTokenRequestHandler)
+                        .sessionAuthenticationStrategy(csrfAuthenticationStrategy)
                         .ignoringRequestMatchers(
                                 "/api/v1/internal/benefits/**",
                                 "/internal/benefits/**"
@@ -131,6 +140,7 @@ public class SecurityConfig {
                 cookieUtil,
                 abuseProtectionService);
         loginFilter.setFilterProcessesUrl("/api/v1/auth/login");
+        loginFilter.setSessionAuthenticationStrategy(csrfAuthenticationStrategy);
 
         http
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
@@ -228,6 +238,20 @@ public class SecurityConfig {
             }
         });
         return repository;
+    }
+
+    static SessionAuthenticationStrategy jwtAwareCsrfAuthenticationStrategy(
+            CsrfTokenRepository tokenRepository,
+            CsrfTokenRequestAttributeHandler requestHandler
+    ) {
+        CsrfAuthenticationStrategy csrfAuthenticationStrategy = new CsrfAuthenticationStrategy(tokenRepository);
+        csrfAuthenticationStrategy.setRequestHandler(requestHandler);
+        return (authentication, request, response) -> {
+            // JWTFilter restores authentication on every request; only a different identity is a new login.
+            if (request.getAttribute(JWTFilter.AUTHENTICATION_ATTRIBUTE) != authentication) {
+                csrfAuthenticationStrategy.onAuthentication(authentication, request, response);
+            }
+        };
     }
 
     @Bean
