@@ -109,8 +109,15 @@ class PartnerBenefitControllerTest {
     }
 
     @Test
-    void unfilteredDetailKeepsDefaultCategory() throws Exception {
+    void unfilteredDetailIncludesAllCategories() throws Exception {
         mockMvc.perform(get("/api/v1/benefits/partners/10")).andExpect(status().isOk());
+        verify(service).getPartnerDetail(10L, null, null, null, null);
+    }
+
+    @Test
+    void detailKeepsExplicitCategoryFilter() throws Exception {
+        mockMvc.perform(get("/api/v1/benefits/partners/10").param("mainCategory", "BASIC_BENEFIT"))
+                .andExpect(status().isOk());
         verify(service).getPartnerDetail(10L, MainCategory.BASIC_BENEFIT, null, null, null);
     }
 

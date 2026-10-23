@@ -3,8 +3,7 @@ package com.itplace.userapi.benefit.entity;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.Convert;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -33,7 +32,7 @@ public class CarrierTierBenefit {
     @JoinColumn(name = "benefitCarrierPolicyId", nullable = false)
     private BenefitCarrierPolicy benefitCarrierPolicy;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.itplace.userapi.benefit.entity.enums.GradeConverter.class)
     @Column(nullable = false)
     private Grade grade;
 
@@ -43,4 +42,7 @@ public class CarrierTierBenefit {
     private Boolean isAll;
 
     private Integer discountValue;
+
+    @Column(name = "offerkey", length = 512)
+    private String offerKey;
 }

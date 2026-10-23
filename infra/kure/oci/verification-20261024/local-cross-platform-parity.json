@@ -1,0 +1,13 @@
+{
+  "comparison": "existing macOS CPU encoder vs Linux ARM64 CPU image, same pinned model",
+  "queryCount": 5,
+  "cosineSimilarities": [
+    0.999999999998193,
+    0.9999999999986557,
+    0.9999999999985676,
+    0.9999999999983005,
+    0.9999999999981284
+  ],
+  "threshold": 0.99999,
+  "passed": true
+}

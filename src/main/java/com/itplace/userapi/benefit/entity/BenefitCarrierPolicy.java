@@ -7,6 +7,8 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.entity.enums.UsageTypeConverter;
 import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
+import com.itplace.userapi.benefit.entity.enums.PublicationStatus;
+import com.itplace.userapi.benefit.dto.BenefitConditions;
 import com.itplace.userapi.benefit.service.MembershipDisplayName;
 import com.itplace.userapi.common.BaseTimeEntity;
 import jakarta.persistence.Column;
@@ -23,7 +25,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -63,6 +68,17 @@ public class BenefitCarrierPolicy extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean active = true;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publicationstatus", length = 16)
+    private PublicationStatus publicationStatus = PublicationStatus.APPROVED;
+
+    @Column(name = "holdreason", length = 512)
+    private String holdReason;
+
+    @Column(name = "publicationreviewedat")
+    private Instant publicationReviewedAt;
+
     @Column(length = 512)
     private String sourceKey;
 
@@ -73,6 +89,17 @@ public class BenefitCarrierPolicy extends BaseTimeEntity {
     private String sourceCategory;
 
     private LocalDateTime lastCrawledAt;
+
+    private Long sourceEvidenceId;
+
+    private Instant sourceCapturedAt;
+
+    @Column(length = 32600)
+    private String sourceLimitText;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private BenefitConditions conditions;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "benefitLimit")
@@ -110,11 +137,29 @@ public class BenefitCarrierPolicy extends BaseTimeEntity {
     private List<CarrierTierBenefit> tierBenefits = new ArrayList<>();
 
     public String getDisplayBenefitLimit() {
-        // 수집기의 UNLIMITED는 해석하지 못한 조건에도 사용되므로 무제한 이용을 보장하지 않는다.
-        if (benefitPolicy == null || benefitPolicy.getCode() == BenefitPolicyCode.UNLIMITED) {
+        String sourceLimit = joinLimits(sourceLimitText, conditions == null ? List.of() : conditions.limits());
+        if (sourceLimit != null) {
+            return sourceLimit;
+        }
+        // 레거시 UNLIMITED는 횟수 제한이 없다는 해석이 아니라 확인 필요 상태로 표시한다.
+        if (benefitPolicy == null || benefitPolicy.getCode() == BenefitPolicyCode.UNKNOWN
+                || benefitPolicy.getCode() == BenefitPolicyCode.UNLIMITED) {
             return "이용 방법에서 횟수·한도 확인";
         }
         return benefitPolicy.getName();
+    }
+
+    private String joinLimits(String sourceLimit, List<String> limits) {
+        java.util.LinkedHashSet<String> distinct = new java.util.LinkedHashSet<>();
+        if (sourceLimit != null && !sourceLimit.isBlank()) {
+            java.util.Arrays.stream(sourceLimit.split("\\n"))
+                    .map(String::trim)
+                    .filter(value -> !value.isEmpty())
+                    .forEach(distinct::add);
+        }
+        if (limits != null) limits.stream().filter(value -> value != null && !value.isBlank())
+                .map(String::trim).forEach(distinct::add);
+        return distinct.isEmpty() ? null : String.join("\n", distinct);
     }
 
     public String getPublicUrl() {

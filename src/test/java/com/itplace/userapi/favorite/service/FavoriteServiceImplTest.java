@@ -28,6 +28,8 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.reference.ReferenceDataService;
+import com.itplace.userapi.benefit.service.BenefitPreviewSummaryBuilder;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,12 @@ class FavoriteServiceImplTest {
 
     @Mock
     private LogService logService;
+
+    @Mock
+    private ReferenceDataService referenceDataService;
+
+    @Mock
+    private BenefitPreviewSummaryBuilder previewSummaryBuilder;
 
     @InjectMocks
     private FavoriteServiceImpl favoriteService;

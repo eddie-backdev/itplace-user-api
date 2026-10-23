@@ -61,12 +61,13 @@ class PartnerBenefitCacheRedisTest {
         factory.afterPropertiesSet();
         try (var connection = factory.getConnection()) {
             connection.serverCommands().flushDb();
-            connection.stringCommands().set(bytes("test:partner-benefits::__generation"), bytes("initial-generation"));
+            connection.stringCommands().set(bytes("test:partner-benefits-v3::__generation"), bytes("initial-generation"));
         }
         statistics = CacheStatisticsCollector.create();
         var original = (RedisCacheManager) new CacheConfig().cacheManager(factory, statistics);
         original.afterPropertiesSet();
-        var configuration = original.getCacheConfigurations().get("partner-benefits");
+        original.getCache("partner-benefits-v3");
+        var configuration = original.getCacheConfigurations().get("partner-benefits-v3");
         var values = configuration.getValueSerializationPair();
         var instrumentedValues = SerializationPair.fromSerializer(new RedisSerializer<Object>() {
             @Override public byte[] serialize(Object value) { return ByteUtils.getBytes(values.write(value)); }
@@ -77,10 +78,10 @@ class PartnerBenefitCacheRedisTest {
         });
         manager = RedisCacheManager.builder(RedisCacheWriter.nonLockingRedisCacheWriter(factory)
                         .withStatisticsCollector(statistics))
-                .withInitialCacheConfigurations(Map.of("partner-benefits", configuration
+                .withInitialCacheConfigurations(Map.of("partner-benefits-v3", configuration
                         .prefixCacheNameWith("test:").serializeValuesWith(instrumentedValues))).build();
         manager.afterPropertiesSet();
-        cache = (RedisCache) manager.getCache("partner-benefits");
+        cache = (RedisCache) manager.getCache("partner-benefits-v3");
         benefits = mock(BenefitRepository.class);
         transactions = mock(PlatformTransactionManager.class);
         when(transactions.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
@@ -99,7 +100,7 @@ class PartnerBenefitCacheRedisTest {
         cache.put(1L, populated);
         cache.put(2L, new ArrayList<>());
         cache.put(3L, null);
-        statistics.reset("partner-benefits");
+        statistics.reset("partner-benefits-v3");
         long before = calls("mget");
         long beforeGet = calls("get");
         when(benefits.findAllByPartnerIdsWithPartner(List.of(4L))).thenReturn(List.of());
@@ -119,7 +120,7 @@ class PartnerBenefitCacheRedisTest {
         assertThat(cache.getStatistics().getMisses()).isEqualTo(1);
         assertThat(cache.getStatistics().getPuts()).isEqualTo(1);
         try (var connection = factory.getConnection()) {
-            assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits::4"))).isBetween(604799L, 604800L);
+            assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits-v3::4"))).isBetween(604799L, 604800L);
         }
         var definition = org.mockito.ArgumentCaptor.forClass(TransactionDefinition.class);
         verify(transactions).getTransaction(definition.capture());
@@ -236,7 +237,7 @@ class PartnerBenefitCacheRedisTest {
             assertThat(calls("get") - beforeGet).isZero();
             assertThat(cache.get(2L)).isNotNull();
             try (var connection = factory.getConnection()) {
-                assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits::1"))).isBetween(604798L, 604800L);
+                assertThat(connection.keyCommands().ttl(bytes("test:partner-benefits-v3::1"))).isBetween(604798L, 604800L);
             }
         } finally { finish.countDown(); executor.shutdownNow(); }
     }

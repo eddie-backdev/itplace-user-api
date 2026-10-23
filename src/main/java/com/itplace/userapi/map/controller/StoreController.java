@@ -8,6 +8,7 @@ import com.itplace.userapi.map.dto.response.MapStorePreviewPageResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.ReverseGeocodeResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.StoreSeoResponse;
 import com.itplace.userapi.map.service.ReverseGeocodeService;
 import com.itplace.userapi.map.service.StoreService;
 import jakarta.validation.constraints.DecimalMax;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,6 +34,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class StoreController {
     private final StoreService storeService;
     private final ReverseGeocodeService reverseGeocodeService;
+
+    /** Active store and partner facts for public, crawlable location pages. */
+    @GetMapping("/stores/{storeId}")
+    public ResponseEntity<ApiResponse<StoreSeoResponse>> getStoreSeoDetail(
+            @PathVariable("storeId") @Min(1) long storeId
+    ) {
+        return storeService.findActiveStoreSeoDetail(storeId)
+                .map(detail -> ApiResponse.of(StoreCode.STORE_LIST_SUCCESS, detail).toResponseEntity())
+                .orElseGet(() -> ApiResponse.<StoreSeoResponse>of(StoreCode.STORE_NOT_FOUND, null)
+                        .toResponseEntity());
+    }
 
     // 좌표 기반 주소 조회
     @GetMapping("/address")

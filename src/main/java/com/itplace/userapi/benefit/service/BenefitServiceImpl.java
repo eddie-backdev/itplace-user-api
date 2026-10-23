@@ -17,6 +17,7 @@ import com.itplace.userapi.benefit.exception.BenefitOfflineNotFoundException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.reference.ReferenceDataService;
 import com.itplace.userapi.benefit.support.BenefitContextSplitter;
 import com.itplace.userapi.benefit.support.BenefitPolicySelector;
 import com.itplace.userapi.favorite.repository.FavoriteRepository;
@@ -48,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class BenefitServiceImpl implements BenefitService {
+    private final ReferenceDataService referenceDataService;
 
     private final FavoriteRepository favoriteRepository;
     private final BenefitRepository benefitRepository;
@@ -71,6 +73,7 @@ public class BenefitServiceImpl implements BenefitService {
             Long userId,
             Pageable pageable
     ) {
+        validateReferenceFilters(mainCategory, category);
         List<Carrier> carrierFilters = carriers == null ? List.of() : carriers;
         boolean carrierFilterEnabled = !carrierFilters.isEmpty();
         List<String> carrierNames = carrierFilterEnabled
@@ -164,7 +167,7 @@ public class BenefitServiceImpl implements BenefitService {
 
         Pageable repositoryPageable = normalizedKeyword == null ? pageable : expansionFetchPageable();
         Page<Benefit> benefitPage = benefitRepository.findFilteredBenefits(
-                mainCategory != null ? mainCategory.getLabel() : null,
+                mainCategory != null ? mainCategory.getCode() : null,
                 category,
                 filter != null ? filter.name() : null,
                 normalizedKeyword,
@@ -284,9 +287,14 @@ public class BenefitServiceImpl implements BenefitService {
                     boolean isFavorite = userFavoriteBenefitIds.contains(benefitId);
                     long favoriteCount = favoriteCountMap.getOrDefault(benefitId, 0L);
 
-                    List<TierBenefitInfo> tierBenefits = tierMap
-                            .getOrDefault(policy.getBenefitCarrierPolicyId(), Collections.emptyList()).stream()
-                            .map(tb -> new TierBenefitInfo(policy.getCarrier(), tb.getGrade(), tb.getContext(), tb.getIsAll()))
+                    List<CarrierTierBenefit> policyTiers = tierMap
+                            .getOrDefault(policy.getBenefitCarrierPolicyId(), Collections.emptyList());
+                    Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(
+                            policyTiers, referenceDataService.allGradeMembers(policy.getCarrier()));
+                    List<TierBenefitInfo> tierBenefits = policyTiers.stream()
+                            .map(tb -> new TierBenefitInfo(
+                                    policy.getCarrier(), tb.getGrade(), tb.getContext(),
+                                    allGradeContexts.contains(tb.getContext())))
                             .toList();
 
                     return BenefitListResponse.builder()
@@ -518,12 +526,16 @@ public class BenefitServiceImpl implements BenefitService {
         return BenefitDetailResponse.builder()
                 .benefitId(benefit.getBenefitId())
                 .benefitName(policy == null ? benefit.getBenefitName() : policy.getDisplayBenefitName())
-                .description(policy.getDescription())
+                .description(policy.getConditions() != null && policy.getConditions().offerResolution() != null
+                        ? null : policy.getDescription())
                 .benefitLimit(policy.getDisplayBenefitLimit())
                 .manual(trimNullable(policy.getManual()))
                 .url(policy.getPublicUrl())
                 .sourceUrl(trimNullable(policy.getSourceUrl()))
+                .sourceCapturedAt(policy.getSourceCapturedAt())
+                .conditions(policy.getConditions() == null ? null : policy.getConditions().publicView())
                 .carrier(policy.getCarrier())
+                .usageType(policy.getUsageType())
                 .active(!Boolean.FALSE.equals(policy.getActive()))
                 .partnerName(benefit.getPartner().getPartnerName())
                 .image(benefit.getPartner().getImage())
@@ -549,7 +561,9 @@ public class BenefitServiceImpl implements BenefitService {
         }
 
         List<BenefitCarrierPolicy> displayPolicies = findDisplayPolicies(benefits);
-        BenefitCarrierPolicy selectedPolicy = selectRepresentativePolicy(displayPolicies, carrier, userId);
+        List<BenefitCarrierPolicy> carrierPolicies = carrier == null ? displayPolicies : displayPolicies.stream()
+                .filter(policy -> policy.getCarrier() == carrier).toList();
+        BenefitCarrierPolicy selectedPolicy = selectRepresentativePolicy(carrierPolicies, carrier, userId);
         if (selectedPolicy == null) {
             throw new BenefitOfflineNotFoundException(BenefitCode.BENEFIT_OFFLINE_NOT_FOUND);
         }
@@ -561,7 +575,8 @@ public class BenefitServiceImpl implements BenefitService {
             isFavorite = favoriteRepository.existsByUser_IdAndBenefit_BenefitId(userId, selected.getBenefitId());
         }
 
-        List<TierBenefitInfo> tierDtos = toDistinctTierBenefitInfosFromPolicies(displayPolicies);
+        List<TierBenefitInfo> tierDtos = toDistinctTierBenefitInfosFromPolicies(
+                carrier == null ? displayPolicies : carrierPolicies);
 
         return MapBenefitDetailResponse.builder()
                 .benefitId(selected.getBenefitId())
@@ -569,8 +584,12 @@ public class BenefitServiceImpl implements BenefitService {
                 .image(selected.getPartner().getImage())
                 .mainCategory(selected.getMainCategory())
                 .manual(trimNullable(selectedPolicy.getManual()))
-                .url(trimNullable(selectedPolicy.getUrl()))
+                .url(selectedPolicy.getPublicUrl())
+                .sourceUrl(trimNullable(selectedPolicy.getSourceUrl()))
+                .sourceCapturedAt(selectedPolicy.getSourceCapturedAt())
+                .conditions(selectedPolicy.getConditions() == null ? null : selectedPolicy.getConditions().publicView())
                 .carrier(selectedPolicy.getCarrier())
+                .usageType(selectedPolicy.getUsageType())
                 .tierBenefits(tierDtos)
                 .isFavorite(isFavorite)
                 .build();
@@ -586,7 +605,6 @@ public class BenefitServiceImpl implements BenefitService {
 
         List<BenefitCarrierPolicy> policies = foundPolicies.stream()
                 .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
-                .filter(policy -> policy.getUsageType() == UsageType.OFFLINE || policy.getUsageType() == UsageType.BOTH)
                 .sorted(Comparator
                         .comparingInt((BenefitCarrierPolicy policy) -> carrierSortIndex(policy.getCarrier()))
                         .thenComparingInt(policy -> mainCategorySortIndex(policy.getBenefit().getMainCategory()))
@@ -604,12 +622,7 @@ public class BenefitServiceImpl implements BenefitService {
             return null;
         }
         if (requestedCarrier != null) {
-            Optional<BenefitCarrierPolicy> requestedCarrierPolicy = policies.stream()
-                    .filter(policy -> policy.getCarrier() == requestedCarrier)
-                    .findFirst();
-            if (requestedCarrierPolicy.isPresent()) {
-                return requestedCarrierPolicy.get();
-            }
+            return policies.stream().filter(policy -> policy.getCarrier() == requestedCarrier).findFirst().orElse(null);
         }
 
         Carrier userCarrier = findUserCarrier(userId);
@@ -643,6 +656,13 @@ public class BenefitServiceImpl implements BenefitService {
         }
         Map<Long, BenefitCarrierPolicy> policyById = policies.stream()
                 .collect(Collectors.toMap(BenefitCarrierPolicy::getBenefitCarrierPolicyId, policy -> policy));
+        Map<Long, List<CarrierTierBenefit>> tiersByPolicy = tiers.stream()
+                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
+        Map<Long, Set<String>> allGradeContextsByPolicy = policies.stream()
+                .collect(Collectors.toMap(BenefitCarrierPolicy::getBenefitCarrierPolicyId,
+                        policy -> TierBenefitSemantics.allGradeContexts(tiersByPolicy
+                                .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()),
+                                referenceDataService.allGradeMembers(policy.getCarrier()))));
         Map<String, TierBenefitInfo> distinct = new LinkedHashMap<>();
         tiers.forEach(tierBenefit -> {
             BenefitCarrierPolicy policy = policyById.get(tierBenefit.getBenefitCarrierPolicy().getBenefitCarrierPolicyId());
@@ -656,7 +676,8 @@ public class BenefitServiceImpl implements BenefitService {
                     tierBenefit.getContext(),
                     splitContext.onlineContext(),
                     splitContext.offlineContext(),
-                    tierBenefit.getIsAll()
+                    allGradeContextsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), Set.of())
+                            .contains(tierBenefit.getContext())
             );
             String key = String.join("|",
                     String.valueOf(info.getCarrier()),
@@ -677,13 +698,22 @@ public class BenefitServiceImpl implements BenefitService {
     }
 
     private int mainCategorySortIndex(MainCategory mainCategory) {
-        if (mainCategory == MainCategory.BASIC_BENEFIT) {
+        if (MainCategory.BASIC_BENEFIT.equals(mainCategory)) {
             return 0;
         }
-        if (mainCategory == MainCategory.VIP_COCK) {
+        if (MainCategory.VIP_COCK.equals(mainCategory)) {
             return 1;
         }
         return 2;
+    }
+
+    private void validateReferenceFilters(MainCategory mainCategory, String category) {
+        if (mainCategory != null && !referenceDataService.isActiveProgram(mainCategory.getCode())) {
+            throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
+        }
+        if (org.springframework.util.StringUtils.hasText(category) && !referenceDataService.isActiveCategory(category.trim())) {
+            throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
+        }
     }
 
     private String trimNullable(String value) {

@@ -2,6 +2,7 @@ package com.itplace.userapi.ai.rag.index;
 
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.itplace.userapi.ai.rag.service.ElasticService;
@@ -33,5 +34,18 @@ class StoreIndexerTest {
 
         verify(elasticService).createStoreIndexIfNotExists();
         verify(storeRepository, never()).findAllWithPartner();
+    }
+
+    @Test
+    void runSkipsAllElasticWorkInPostgresMode() throws Exception {
+        StoreIndexer indexer = new StoreIndexer(esClient, storeRepository, elasticService);
+        ReflectionTestUtils.setField(indexer, "searchProvider", "postgres");
+        ReflectionTestUtils.setField(indexer, "aiEnabled", true);
+        ReflectionTestUtils.setField(indexer, "seedEnabled", true);
+
+        indexer.run(null);
+
+        verify(elasticService, never()).createStoreIndexIfNotExists();
+        verifyNoInteractions(elasticService, storeRepository, esClient);
     }
 }

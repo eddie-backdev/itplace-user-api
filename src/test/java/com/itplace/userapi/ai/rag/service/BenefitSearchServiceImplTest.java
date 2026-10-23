@@ -3,6 +3,7 @@ package com.itplace.userapi.ai.rag.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -16,11 +17,16 @@ import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.ai.rag.metadata.BenefitRagMetadataClassifier;
+import com.itplace.userapi.ai.rag.postgres.PostgresBenefitSearchRepository;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
+import com.itplace.userapi.benefit.entity.enums.UsageType;
+import com.itplace.userapi.benefit.dto.BenefitConditions;
+import com.itplace.userapi.benefit.dto.BenefitOffer;
+import com.itplace.userapi.benefit.dto.OfferResolution;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
@@ -78,6 +84,35 @@ class BenefitSearchServiceImplTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> benefitSearchService.queryVector(null, null, List.of(0.1f), 5))
                 .hasMessage("DB down");
         org.mockito.Mockito.verify(benefitRepository, org.mockito.Mockito.never()).findAllWithPartnerAndTierBenefits();
+    }
+
+    @Test
+    void vectorFallsBackWhenProviderBenefitIdIsNotNumeric() throws IOException {
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
+                .thenReturn(searchResponse(mapOf("benefitId", "not-a-number", "active", true, "score", 0.9)));
+
+        assertThat(benefitSearchService.queryVector(null, null, List.of(0.1f), 5)).isEmpty();
+
+        org.mockito.Mockito.verify(benefitRepository).findAllWithPartnerAndTierBenefits();
+        org.mockito.Mockito.verify(benefitRepository, org.mockito.Mockito.never()).findAllByIdWithPartner(anyList());
+    }
+
+    @Test
+    void vectorSkipsUnmappableProviderHitAndFallsBackToDatabase() throws IOException {
+        JsonData malformedSource = org.mockito.Mockito.mock(JsonData.class);
+        when(malformedSource.to(JsonNode.class)).thenThrow(new IllegalStateException("invalid source"));
+        Hit<JsonData> hit = Hit.<JsonData>of(builder -> builder.index("benefit").id("bad")
+                .score(0.9).source(malformedSource));
+        SearchResponse<JsonData> response = SearchResponse.of(builder -> builder
+                .took(1).timedOut(false)
+                .shards(ShardStatistics.of(shards -> shards.total(1).successful(1).failed(0)))
+                .hits(hits -> hits.hits(List.of(hit))));
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(response);
+
+        assertThat(benefitSearchService.queryVector(null, null, List.of(0.1f), 5)).isEmpty();
+
+        org.mockito.Mockito.verify(benefitRepository).findAllWithPartnerAndTierBenefits();
+        org.mockito.Mockito.verify(benefitRepository, org.mockito.Mockito.never()).findAllByIdWithPartner(anyList());
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -245,7 +280,7 @@ class BenefitSearchServiceImplTest {
     }
 
     @Test
-    void queryVector_dbFallbackAllowsAllGradeTierForRequestedGrade() throws IOException {
+    void queryVector_dbFallbackDoesNotTrustLegacyAllFlagWithoutCompleteCatalogCoverage() throws IOException {
         Partner partner = Partner.builder()
                 .partnerId(10L)
                 .partnerName("파트너")
@@ -280,17 +315,11 @@ class BenefitSearchServiceImplTest {
 
         List<Candidate> candidates = benefitSearchService.queryVector(Carrier.SKT, Grade.SKT_VIP, List.of(0.1f), 5);
 
-        assertThat(candidates)
-                .singleElement()
-                .satisfies(candidate -> {
-                    assertThat(candidate.getTierBenefitId()).isEqualTo(40L);
-                    assertThat(candidate.getAllGrade()).isTrue();
-                    assertThat(candidate.getContext()).isEqualTo("전 등급 5% 할인");
-                });
+        assertThat(candidates).isEmpty();
     }
 
     @Test
-    void queryVector_conditionFiltersDbFallbackByBusinessType() throws IOException {
+    void queryVector_conditionFiltersDbFallbackByBusinessTypeWithoutInventingUseCases() throws IOException {
         Partner kidsPartner = Partner.builder()
                 .partnerId(10L)
                 .partnerName("서울형 키즈카페")
@@ -353,7 +382,9 @@ class BenefitSearchServiceImplTest {
                 .satisfies(candidate -> {
                     assertThat(candidate.getPartnerName()).isEqualTo("카페베네");
                     assertThat(candidate.getBusinessType()).isEqualTo("BEVERAGE_CAFE");
-                    assertThat(candidate.getUseCases()).contains("음료", "커피");
+                    // The condition has requested use-case filters, but source data does not label them explicitly.
+                    assertThat(candidate.getUseCases()).isEmpty();
+                    assertThat(candidate.getNegativeUseCases()).isEmpty();
                 });
     }
 
@@ -487,6 +518,261 @@ class BenefitSearchServiceImplTest {
                     assertThat(candidate.getOnlineContext()).isEqualTo("방문포장 25% 할인");
                     assertThat(candidate.getOfflineContext()).isEqualTo("매장 25% 할인");
                 });
+    }
+
+    @Test
+    void chatFallbackUsesMeaningfulTopicAndNeverReturnsArbitraryDiscountBenefits() {
+        Benefit movie = benefit(20L, "영화", "극장 할인");
+        Benefit cafe = benefit(21L, "카페", "커피 할인");
+        BenefitCarrierPolicy moviePolicy = policy(movie, 30L, Carrier.KT);
+        BenefitCarrierPolicy cafePolicy = policy(cafe, 31L, Carrier.KT);
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(movie, cafe));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(moviePolicy, cafePolicy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of());
+
+        var movieResult = benefitSearchService.queryChat(Carrier.KT, null, null, "영화 할인 혜택", 10, BenefitSearchCondition.none());
+        var genericResult = benefitSearchService.queryChat(Carrier.KT, null, null, "할인 혜택", 10, BenefitSearchCondition.none());
+
+        assertThat(movieResult.available()).isTrue();
+        assertThat(movieResult.candidates()).extracting(Candidate::getBenefitName).containsExactly("극장 할인");
+        assertThat(genericResult.available()).isTrue();
+        assertThat(genericResult.candidates()).isEmpty();
+    }
+
+    @Test
+    void postgresChatFallsBackToRelationalCandidatesWhenSearchIndexFails() {
+        PostgresBenefitSearchRepository postgres = org.mockito.Mockito.mock(PostgresBenefitSearchRepository.class);
+        when(postgres.searchHybrid(any(), any(), any(), any(), any(), anyInt()))
+                .thenThrow(new IllegalStateException("search relation missing"));
+        benefitSearchService.setPostgresSearchRepository(postgres);
+        benefitSearchService.setSearchProvider("postgres");
+        Benefit movie = benefit(20L, "영화", "극장 할인");
+        BenefitCarrierPolicy policy = policy(movie, 30L, Carrier.KT);
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(movie));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of());
+
+        var result = benefitSearchService.queryChat(Carrier.KT, null, null, "영화 할인", 10, BenefitSearchCondition.none());
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.candidates()).extracting(Candidate::getBenefitName).containsExactly("극장 할인");
+    }
+
+    @Test
+    void postgresChatReportsUnavailableWhenSearchAndRelationalFallbackBothFail() {
+        PostgresBenefitSearchRepository postgres = org.mockito.Mockito.mock(PostgresBenefitSearchRepository.class);
+        when(postgres.searchHybrid(any(), any(), any(), any(), any(), anyInt()))
+                .thenThrow(new IllegalStateException("search relation missing"));
+        benefitSearchService.setPostgresSearchRepository(postgres);
+        benefitSearchService.setSearchProvider("postgres");
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenThrow(new IllegalStateException("DB down"));
+
+        var result = benefitSearchService.queryChat(Carrier.KT, null, null, "영화 할인", 10, BenefitSearchCondition.none());
+
+        assertThat(result.available()).isFalse();
+        assertThat(result.candidates()).isEmpty();
+        org.mockito.Mockito.verify(benefitRepository, org.mockito.Mockito.times(1)).findAllWithPartnerAndTierBenefits();
+    }
+
+    @Test
+    void postgresChatDoesNotRetryRelationalFallbackAfterNoHits() {
+        PostgresBenefitSearchRepository postgres = org.mockito.Mockito.mock(PostgresBenefitSearchRepository.class);
+        when(postgres.searchHybrid(any(), any(), any(), any(), any(), anyInt())).thenReturn(List.of());
+        benefitSearchService.setPostgresSearchRepository(postgres);
+        benefitSearchService.setSearchProvider("postgres");
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenThrow(new IllegalStateException("DB down"));
+
+        var result = benefitSearchService.queryChat(Carrier.KT, null, null, "영화 할인", 10, BenefitSearchCondition.none());
+
+        assertThat(result.available()).isFalse();
+        assertThat(result.candidates()).isEmpty();
+        org.mockito.Mockito.verify(benefitRepository, org.mockito.Mockito.times(1)).findAllWithPartnerAndTierBenefits();
+    }
+
+    @Test
+    void unknownGradeIncludesOnlyKnownGradeRowsAndRejectsUnprovenAllFlagRows() {
+        Benefit benefit = benefit(20L, "영화", "극장 할인");
+        BenefitCarrierPolicy policy = policy(benefit, 30L, Carrier.KT);
+        List<CarrierTierBenefit> tiers = List.of(
+                CarrierTierBenefit.builder().carrierTierBenefitId(41L).benefitCarrierPolicy(policy).grade(Grade.KT_GOLD).build(),
+                CarrierTierBenefit.builder().carrierTierBenefitId(42L).benefitCarrierPolicy(policy).grade(null).isAll(false).build(),
+                CarrierTierBenefit.builder().carrierTierBenefitId(43L).benefitCarrierPolicy(policy).grade(null).isAll(true).build());
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(tiers);
+
+        var result = benefitSearchService.queryChat(Carrier.KT, null, null, "영화", 10, BenefitSearchCondition.none());
+
+        assertThat(result.candidates()).extracting(Candidate::getTierBenefitId).containsExactly(41L);
+        assertThat(result.candidates()).allSatisfy(candidate -> assertThat(candidate.getAllGrade()).isFalse());
+    }
+
+    @Test
+    void lexicalOnlyEsResultsMustContainMeaningfulQueryTerms() throws IOException {
+        Benefit cafe = benefit(20L, "카페", "커피 할인");
+        BenefitCarrierPolicy policy = policy(cafe, 30L, Carrier.KT);
+        when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(searchResponse(mapOf(
+                "benefitId", "20", "policyId", "30", "active", true, "score", 0.9)));
+        when(benefitRepository.findAllByIdWithPartner(List.of(20L))).thenReturn(List.of(cafe));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of());
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(cafe));
+
+        var result = benefitSearchService.queryChat(null, null, null, "없는브랜드 할인", 10, BenefitSearchCondition.none());
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.candidates()).isEmpty();
+    }
+
+    @Test
+    void requestedGradeRejectsPolicyWithNoVerifiedTierOrAllGradeRow() {
+        Benefit movie = benefit(20L, "영화", "극장 할인");
+        BenefitCarrierPolicy policy = policy(movie, 30L, Carrier.KT);
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(movie));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of());
+
+        var result = benefitSearchService.queryChat(Carrier.KT, Grade.KT_GOLD, null, "영화", 10, BenefitSearchCondition.none());
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.candidates()).isEmpty();
+    }
+
+    @Test
+    void sourceOfferForGradeWithoutCanonicalTierUsesPolicyAndOfferIdentity() {
+        Benefit benefit = benefit(20L, "편의점", "편의점 포인트 적립");
+        BenefitCarrierPolicy policy = policy(benefit, 30L, Carrier.KT);
+        policy.setUsageType(UsageType.BOTH);
+        policy.setConditions(new BenefitConditions(List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(new BenefitOffer("offer-white", "WHITE 결제 할인", "1,000원당 50원 할인", UsageType.BOTH,
+                        List.of("KT_WHITE", "KT_GENERAL"), false, List.of("결제"), List.of(), List.of(), List.of(), List.of(), List.of())),
+                OfferResolution.PARTIAL, null));
+        CarrierTierBenefit general = CarrierTierBenefit.builder().carrierTierBenefitId(41L)
+                .benefitCarrierPolicy(policy).grade(Grade.KT_GENERAL).context("일반 혜택").build();
+        var reference = org.mockito.Mockito.mock(com.itplace.userapi.reference.ReferenceDataService.class);
+        when(reference.gradesForProfile(Carrier.KT, Grade.KT_WHITE)).thenReturn(List.of(Grade.KT_WHITE));
+        when(reference.resolveGradeAlias(Carrier.KT, "KT_WHITE")).thenReturn(null);
+        when(reference.isBenefitGrade(Carrier.KT, Grade.KT_WHITE)).thenReturn(true);
+        when(reference.isBenefitGrade(Carrier.KT, Grade.KT_GENERAL)).thenReturn(true);
+        benefitSearchService.setReferenceDataService(reference);
+        benefitSearchService.setBenefitOfferMatcher(new com.itplace.userapi.benefit.service.BenefitOfferMatcher(reference));
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of(general));
+
+        var result = benefitSearchService.browseChatCandidates(Carrier.KT, Grade.KT_WHITE, "ANY", 10);
+
+        assertThat(result).singleElement().satisfies(candidate -> {
+            assertThat(candidate.getBenefitId()).isEqualTo(20L);
+            assertThat(candidate.getPolicyId()).isEqualTo(30L);
+            assertThat(candidate.getTierBenefitId()).isNull();
+            assertThat(candidate.getCandidateKey()).isEqualTo("benefit:20:policy:30:offer:offer-white");
+            assertThat(candidate.getOfferKey()).isEqualTo("offer-white");
+            assertThat(candidate.getConditions().offers()).extracting(BenefitOffer::key).containsExactly("offer-white");
+            assertThat(candidate.getContext()).doesNotContain("일반 혜택");
+        });
+
+        when(reference.gradesForProfile(Carrier.KT, Grade.KT_GENERAL)).thenReturn(List.of(Grade.KT_GENERAL));
+        var coveredGrade = benefitSearchService.browseChatCandidates(Carrier.KT, Grade.KT_GENERAL, "ANY", 10);
+        assertThat(coveredGrade).singleElement().satisfies(candidate -> {
+            assertThat(candidate.getTierBenefitId()).isEqualTo(41L);
+            assertThat(candidate.getOfferKey()).isNull();
+            assertThat(candidate.getContext()).contains("일반 혜택");
+        });
+    }
+
+    @Test
+    void resolvesTierCoveredOfferKeysWithoutChangingNormalFallbackCandidates() {
+        Benefit benefit = benefit(20L, "영화", "극장 할인");
+        BenefitCarrierPolicy policy = policy(benefit, 30L, Carrier.KT);
+        policy.setUsageType(UsageType.BOTH);
+        policy.setConditions(new BenefitConditions(List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(new BenefitOffer("offer-general", "일반 영화 할인", "일반 등급 할인", UsageType.BOTH,
+                        List.of("KT_GENERAL"), false, List.of(), List.of(), List.of(), List.of(), List.of(), List.of())),
+                OfferResolution.SCOPED, null));
+        CarrierTierBenefit general = CarrierTierBenefit.builder().carrierTierBenefitId(41L)
+                .benefitCarrierPolicy(policy).grade(Grade.KT_GENERAL).context("일반 등급 할인").build();
+        var reference = org.mockito.Mockito.mock(com.itplace.userapi.reference.ReferenceDataService.class);
+        when(reference.gradesForProfile(Carrier.KT, Grade.KT_GENERAL)).thenReturn(List.of(Grade.KT_GENERAL));
+        when(reference.gradesForProfile(Carrier.KT, Grade.KT_VIP)).thenReturn(List.of(Grade.KT_VIP));
+        when(reference.resolveGradeAlias(Carrier.KT, "KT_GENERAL")).thenReturn(Grade.KT_GENERAL);
+        when(reference.isBenefitGrade(Carrier.KT, Grade.KT_GENERAL)).thenReturn(true);
+        benefitSearchService.setReferenceDataService(reference);
+        benefitSearchService.setBenefitOfferMatcher(new com.itplace.userapi.benefit.service.BenefitOfferMatcher(reference));
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of(general));
+        String key = "benefit:20:policy:30:offer:offer-general";
+
+        var normal = benefitSearchService.browseChatCandidates(Carrier.KT, Grade.KT_GENERAL, "ANY", 10);
+        var resolved = benefitSearchService.resolveChatCandidates(List.of(key), Carrier.KT, Grade.KT_GENERAL);
+
+        assertThat(normal).singleElement().satisfies(candidate -> {
+            assertThat(candidate.getTierBenefitId()).isEqualTo(41L);
+            assertThat(candidate.getOfferKey()).isNull();
+        });
+        assertThat(resolved).singleElement().satisfies(candidate -> {
+            assertThat(candidate.getCandidateKey()).isEqualTo(key);
+            assertThat(candidate.getOfferKey()).isEqualTo("offer-general");
+            assertThat(candidate.getTierBenefitId()).isNull();
+            assertThat(candidate.getConditions().offers()).extracting(BenefitOffer::key).containsExactly("offer-general");
+        });
+        assertThat(benefitSearchService.resolveChatCandidates(List.of(key), Carrier.KT, Grade.KT_VIP)).isEmpty();
+        assertThat(benefitSearchService.resolveChatCandidates(List.of("benefit:20:policy:30:offer:expired"),
+                Carrier.KT, Grade.KT_GENERAL)).isEmpty();
+    }
+
+    @Test
+    void basicNeverMatchesLguDiamondOnlySourceBenefit() {
+        Benefit benefit = benefit(20L, "카페", "다이아몬드 전용 할인");
+        BenefitCarrierPolicy policy = policy(benefit, 30L, Carrier.LGU, UsageType.BOTH);
+        CarrierTierBenefit diamond = CarrierTierBenefit.builder().carrierTierBenefitId(40L)
+                .benefitCarrierPolicy(policy).grade(Grade.DIAMOND).context("다이아몬드 전용 할인").isAll(false).build();
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of(diamond));
+
+        List<Candidate> basic = benefitSearchService.browseChatCandidates(Carrier.LGU, Grade.BASIC, "ANY", 10);
+        List<Candidate> diamondResult = benefitSearchService.browseChatCandidates(Carrier.LGU, Grade.DIAMOND, "ANY", 10);
+
+        assertThat(basic).isEmpty();
+        assertThat(diamondResult).singleElement().satisfies(candidate ->
+                assertThat(candidate.getGrade()).isEqualTo("DIAMOND"));
+    }
+
+    @Test
+    void explicitOnlineBrowseIncludesOnlyKnownOnlineOrBothUsageTypes() {
+        Benefit online = benefit(20L, "온라인", "앱 혜택");
+        Benefit both = benefit(21L, "온라인", "웹 혜택");
+        Benefit offline = benefit(22L, "매장", "현장 혜택");
+        Benefit unknown = benefit(23L, "기타", "확인 필요 혜택");
+        List<Benefit> benefits = List.of(online, both, offline, unknown);
+        List<BenefitCarrierPolicy> policies = List.of(
+                policy(online, 30L, Carrier.KT, UsageType.ONLINE),
+                policy(both, 31L, Carrier.KT, UsageType.BOTH),
+                policy(offline, 32L, Carrier.KT, UsageType.OFFLINE),
+                policy(unknown, 33L, Carrier.KT, UsageType.UNKNOWN));
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(benefits);
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(policies);
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of());
+
+        List<Candidate> result = benefitSearchService.browseChatCandidates(Carrier.KT, null, "ONLINE", 20);
+
+        assertThat(result).extracting(Candidate::getUsageType).containsExactly("ONLINE", "BOTH");
+    }
+
+    private Benefit benefit(Long id, String category, String name) {
+        return Benefit.builder().benefitId(id).benefitName(name).partner(Partner.builder().partnerId(id + 100)
+                .partnerName(category + " 제휴처").category(category).build()).active(true).build();
+    }
+
+    private BenefitCarrierPolicy policy(Benefit benefit, Long id, Carrier carrier) {
+        return BenefitCarrierPolicy.builder().benefitCarrierPolicyId(id).benefit(benefit).carrier(carrier).active(true).build();
+    }
+
+    private BenefitCarrierPolicy policy(Benefit benefit, Long id, Carrier carrier, UsageType usageType) {
+        return BenefitCarrierPolicy.builder().benefitCarrierPolicyId(id).benefit(benefit).carrier(carrier)
+                .usageType(usageType).active(true).build();
     }
 
     @Test

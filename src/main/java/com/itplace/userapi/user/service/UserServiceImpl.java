@@ -45,6 +45,7 @@ public class UserServiceImpl implements UserService {
     private final FavoriteRepository favoriteRepository;
     private final SocialAccountRepository socialAccountRepository;
     private final AuthCredentialRepository authCredentialRepository;
+    private final MembershipProfileValidator membershipProfileValidator;
 
     private static final String RESET_PASSWORD_PREFIX = "resetPassword:";
 
@@ -61,7 +62,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserInfoResponse updateMembershipProfile(PrincipalDetails principalDetails, MembershipProfileUpdateRequest request) {
-        if (!MembershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
+        if (!membershipProfileValidator.isValid(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
         User user = userRepository.findById(requireUserId(principalDetails))

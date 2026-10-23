@@ -10,22 +10,33 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
 
     public static final String AUTHENTICATION_ATTRIBUTE = JWTFilter.class.getName() + ".authentication";
 
     private final JWTUtil jwtUtil;
+    private final RequestAttributeSecurityContextRepository securityContextRepository;
+
+    @Autowired
+    public JWTFilter(JWTUtil jwtUtil, RequestAttributeSecurityContextRepository securityContextRepository) {
+        this.jwtUtil = jwtUtil;
+        this.securityContextRepository = securityContextRepository;
+    }
+
+    public JWTFilter(JWTUtil jwtUtil) {
+        this(jwtUtil, new RequestAttributeSecurityContextRepository());
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -74,7 +85,10 @@ public class JWTFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(
                             principal, null, principal.getAuthorities()
                     );
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+            var securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(authToken);
+            SecurityContextHolder.setContext(securityContext);
+            securityContextRepository.saveContext(securityContext, request, response);
             request.setAttribute(AUTHENTICATION_ATTRIBUTE, authToken);
 
         } catch (JwtException | IllegalArgumentException e) {

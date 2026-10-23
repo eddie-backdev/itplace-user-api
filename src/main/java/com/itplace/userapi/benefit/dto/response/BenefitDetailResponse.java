@@ -1,6 +1,9 @@
 package com.itplace.userapi.benefit.dto.response;
 
+import com.itplace.userapi.benefit.dto.BenefitConditions;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.UsageType;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +21,10 @@ public class BenefitDetailResponse {
     private String manual;
     private String url;
     private String sourceUrl;
+    private Instant sourceCapturedAt;
+    private BenefitConditions conditions;
     private Carrier carrier;
+    private UsageType usageType;
     private Boolean active;
 
     // Partner Info

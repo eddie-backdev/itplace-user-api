@@ -14,6 +14,8 @@ servers:
     description: 로컬 테스트 서버
 
 tags:
+  - name: Reference Data
+    description: 동적으로 관리되는 등급, 프로그램, 카테고리 참조 정보
   - name: Auth
     description: 사용자 인증 및 가입 관련 API
   - name: Verification
@@ -32,6 +34,65 @@ tags:
     description: 사용자 질문 기반 제휴처 제공 API
 
 paths:
+  /reference-data:
+    get:
+      tags:
+        - Reference Data
+      summary: 참조 코드 목록 조회
+      description: 등급, 멤버십 프로그램, 제휴사 카테고리 및 프로필-혜택 등급 연결을 조회합니다.
+      responses:
+        '200':
+          description: 참조 코드 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: string }
+                  status: { type: string, example: OK }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      grades:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            carrier: { type: string, example: LGU }
+                            code: { type: string, example: DIAMOND }
+                            label: { type: string, example: 다이아몬드 }
+                            sortOrder: { type: integer, example: 40 }
+                            active: { type: boolean, example: true }
+                            profileSelectable: { type: boolean, example: false }
+                            benefitEnabled: { type: boolean, example: true }
+                            allGradeMember: { type: boolean, example: true }
+                      programs:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code: { type: string, example: BASIC_BENEFIT }
+                            label: { type: string, example: 기본 혜택 }
+                            sortOrder: { type: integer, example: 10 }
+                            active: { type: boolean, example: true }
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code: { type: string, example: 푸드 }
+                            label: { type: string, example: 음식·카페 }
+                            sortOrder: { type: integer, example: 50 }
+                            active: { type: boolean, example: true }
+                      gradeMatches:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            carrier: { type: string, example: LGU }
+                            profileGrade: { type: string, example: VIP }
+                            benefitGrade: { type: string, example: VIP콕 }
   # =====================================================
   # 로그인 회원가입 관련 API
   # =====================================================
@@ -2163,7 +2224,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP]
+            enum: [BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP]
             example: SKT_VIP
       responses:
         '200':
@@ -2301,7 +2362,7 @@ components:
         membershipGradeCode:
           type: string
           description: "통신사별 멤버십 등급 코드. 미선택 또는 MVNO면 생략 또는 null"
-          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "VIP"
           nullable: true
 
@@ -2439,7 +2500,7 @@ components:
         membershipGradeCode:
           type: string
           description: "통신사별 멤버십 등급 코드. 미선택 또는 MVNO면 생략 또는 null"
-          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "VIP"
           nullable: true
 
@@ -2488,7 +2549,7 @@ components:
           type: string
           nullable: true
           example: "VVIP"
-          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
         membershipVerified:
           type: boolean
           example: false
@@ -2498,7 +2559,7 @@ components:
           nullable: true
           description: "Deprecated. Use membershipGradeCode."
           example: "VVIP"
-          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
         accessToken:
           type: string
           format: string
@@ -2604,6 +2665,7 @@ components:
       properties:
         grade:
           type: string
+          enum: [ BASIC, VIP, VVIP, DIAMOND, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "VIP콕"
         isAll:
           type: boolean
@@ -2696,7 +2758,7 @@ components:
         membershipGradeCode:
           type: string
           description: 통신사별 자가 선택 멤버십 등급 코드 (없는 경우 null)
-          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "BASIC"
           nullable: true
         membershipVerified:
@@ -2707,7 +2769,7 @@ components:
           type: string
           deprecated: true
           description: Deprecated. Use membershipGradeCode.
-          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
+          enum: [ BASIC, VIP, VVIP, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
           example: "BASIC"
           nullable: true
 
@@ -2849,7 +2911,7 @@ components:
       properties:
         grade:
           type: string
-          enum: [ BASIC, VIP, VVIP, VIP콕 ]
+          enum: [ BASIC, VIP, VVIP, DIAMOND, VIP콕, SKT_LITE, SKT_SILVER, SKT_GOLD, SKT_VIP, KT_GENERAL, KT_WHITE, KT_SILVER, KT_GOLD, KT_VIP, KT_VVIP ]
         context:
           type: string
         isAll:

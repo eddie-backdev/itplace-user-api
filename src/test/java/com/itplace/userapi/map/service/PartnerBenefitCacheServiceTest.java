@@ -70,7 +70,7 @@ class PartnerBenefitCacheServiceTest {
     @Test
     void nonRedisCacheKeepsHitsAndLoadsOnlyMisses() {
         List<BenefitCacheDto> cachedBenefits = new ArrayList<>();
-        when(cacheManager.getCache("partner-benefits")).thenReturn(cache);
+        when(cacheManager.getCache("partner-benefits-v3")).thenReturn(cache);
         when(cache.get(1L)).thenReturn(new SimpleValueWrapper(cachedBenefits));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(2L))).thenReturn(List.of());
         var result = cacheService.getBenefitsBatch(List.of(1L, 2L));
@@ -149,7 +149,7 @@ class PartnerBenefitCacheServiceTest {
         RedisCacheManager manager = (RedisCacheManager) new CacheConfig()
                 .cacheManager(mock(RedisConnectionFactory.class), org.springframework.data.redis.cache.CacheStatisticsCollector.create());
         manager.afterPropertiesSet();
-        var serializer = manager.getCacheConfigurations().get("partner-benefits").getValueSerializationPair();
+        var serializer = manager.getCacheConfigurations().get("partner-benefits-v3").getValueSerializationPair();
 
         assertThat(serializer.read(serializer.write(benefits)))
                 .usingRecursiveComparison().isEqualTo(benefits);

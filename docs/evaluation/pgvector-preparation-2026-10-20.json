@@ -1,0 +1,302 @@
+{
+  "date": "2026-10-20",
+  "scope": "isolated local clone only; original database and production not migrated",
+  "source_readiness": "NOT_READY",
+  "embedding_execution": "ON_HOLD_USER_REQUEST",
+  "paid_embedding_api_calls_this_preparation": 0,
+  "source_policies": {
+    "SKT": 362,
+    "KT": 148,
+    "LGU": 219,
+    "LGU_held": 2
+  },
+  "unresolved": [
+    {
+      "count": 2,
+      "partners": [
+        "전자랜드",
+        "베베쿡"
+      ],
+      "reason": "official facts do not establish every offer-to-grade mapping"
+    }
+  ],
+  "database_verification": {
+    "postgresql": {
+      "benefits": 913,
+      "active_benefits": 758,
+      "policies": 1052,
+      "active_policies": 698,
+      "tiers": 4405,
+      "partners": 443,
+      "stores": 73715
+    },
+    "itplace-pgvector-postgres-search-1": {
+      "benefits": 977,
+      "active_benefits": 820,
+      "policies": 1116,
+      "active_policies": 727,
+      "tiers": 4358,
+      "partners": 491,
+      "stores": 73715,
+      "search": {
+        "documents": 4360,
+        "active_documents": 2665,
+        "vectors": 0,
+        "distinct_active_texts": 2033,
+        "active_diamond_documents": 28
+      },
+      "diamond_tiers": 28
+    }
+  },
+  "active_subset_audit": {
+    "snapshot_hash": "1cd3933b0068e8f3ea652b4352009d0292622ed77014d8a1bdade3ed08329b3e",
+    "documents": 4360,
+    "errors": 0,
+    "warnings": 6250,
+    "whole_corpus_ready": false
+  },
+  "embedding_preparation": {
+    "model": "text-embedding-3-small",
+    "dimensions": 1536,
+    "version": "benefit-carrier-grade-rag-v3",
+    "run_deduplication_key": [
+      "model",
+      "embeddingVersion",
+      "contentHash"
+    ],
+    "reusable_existing_vectors_require_matching_provenance": true,
+    "new_vectors_stored": 0
+  },
+  "verification": {
+    "required_suite": {
+      "tests": 761,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "required_suite_command": "./scripts/test-required.sh --no-daemon",
+    "build": "passed",
+    "build_command": "./gradlew build -x test --no-daemon",
+    "lexical_chat_ai_enabled": false,
+    "lexical_chat_queries": [
+      {
+        "query": "편의점",
+        "status": "ANSWER",
+        "partners": [
+          "GS25",
+          "이마트24"
+        ]
+      },
+      {
+        "query": "영화 할인",
+        "status": "ANSWER",
+        "partners": [
+          "메가박스",
+          "씨네Q"
+        ]
+      },
+      {
+        "query": "커피",
+        "status": "ANSWER",
+        "partners": [
+          "열린베이커리",
+          "메가MGC커피"
+        ]
+      },
+      {
+        "query": "카페",
+        "status": "ANSWER",
+        "partners": [
+          "열린베이커리",
+          "메가MGC커피"
+        ]
+      },
+      {
+        "query": "키즈카페",
+        "status": "ANSWER",
+        "partners": [
+          "타요키즈카페",
+          "서울형 키즈카페"
+        ]
+      },
+      {
+        "query": "스터디카페",
+        "status": "ANSWER",
+        "partners": [
+          "초심스터디카페",
+          "초심스터디카페"
+        ]
+      },
+      {
+        "query": "학원",
+        "status": "ANSWER",
+        "partners": [
+          "파고다어학원",
+          "파고다"
+        ]
+      },
+      {
+        "query": "CU",
+        "status": "ANSWER",
+        "partners": [
+          "CU",
+          "CU"
+        ]
+      },
+      {
+        "query": "씨유",
+        "status": "ANSWER",
+        "partners": [
+          "CU",
+          "CU"
+        ]
+      },
+      {
+        "query": "지에스25",
+        "status": "ANSWER",
+        "partners": [
+          "GS25",
+          "GS25편의점택배"
+        ]
+      },
+      {
+        "query": "FLO",
+        "status": "ANSWER",
+        "partners": [
+          "FLO",
+          "FLO"
+        ]
+      },
+      {
+        "query": "택배",
+        "status": "ANSWER",
+        "partners": [
+          "GS25편의점택배",
+          "디자인밀"
+        ]
+      },
+      {
+        "query": "온라인 영화",
+        "status": "ANSWER",
+        "partners": [
+          "롯데시네마",
+          "메가박스"
+        ]
+      },
+      {
+        "query": "커피 구독",
+        "status": "ANSWER",
+        "partners": [
+          "메가MGC커피",
+          "열린베이커리"
+        ]
+      }
+    ],
+    "user_front": {
+      "tests": 77,
+      "eslint": "passed",
+      "typecheck": "passed",
+      "build": "passed",
+      "browser_grade_label": "passed with recorded clone API responses"
+    },
+    "admin_front": {
+      "eslint": "passed",
+      "build": "passed"
+    },
+    "admin_api_suite": {
+      "tests": 167,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reports": 39,
+      "docker_migration_executed": true,
+      "offline_corpus_replay_executed": true
+    },
+    "admin_api_build": "passed"
+  },
+  "limits": [
+    "Semantic retrieval and generated-answer quality have not been evaluated with real API calls.",
+    "Returning results for all 14 lexical queries is not proof of ranking precision; ambiguous delivery/subscription queries need quality evaluation.",
+    "The 2 held LGU policies are excluded from active-subset audit errors; zero audit errors is not whole-corpus readiness.",
+    "No production or existing default backend cutover was performed.",
+    "Legacy admin question-memory endpoints and ES dependencies remain."
+  ],
+  "retained_evidence": [
+    "/Users/eddie/.local/state/itplace/pgvector-migration-20261020",
+    "/Users/eddie/.local/state/itplace/diamond-grade-20261020"
+  ],
+  "next_gate": "Resolve or explicitly represent all held source eligibility facts, repeat full corpus audit, report readiness to user before any real embedding execution.",
+  "resolved_source_grades": {
+    "grade": "DIAMOND",
+    "label": "다이아몬드",
+    "source": "LGU",
+    "policy_count": 28,
+    "profile_selectable": false,
+    "basic_equivalent": false,
+    "original_labels_preserved": true
+  },
+  "diamond_verification": {
+    "archive_policies": 219,
+    "diamond_policies": 28,
+    "source_text_sections": 1180,
+    "source_text_missing": 0,
+    "held": 2,
+    "clone_http_detail_filters": [
+      "unfiltered",
+      "VIP",
+      "VVIP",
+      "DIAMOND",
+      "BASIC"
+    ],
+    "basic_returns_no_diamond_offer": true,
+    "postgres_lexical_filters": "passed",
+    "browser": "passed with recorded clone API responses; existing layout",
+    "evidence": "/Users/eddie/.local/state/itplace/diamond-grade-20261020"
+  },
+  "reference_codes_refactor": {
+    "verified_at": "2026-10-21 KST",
+    "scope": "isolated clone only; original DB and running default API unchanged",
+    "latest_flyway_version": "20261021.0001",
+    "current_dry_run_snapshot_hash": "f21a4683d1c76be3542aef29bf33f5bcf81283d49db732c0c17871dbdb47b488",
+    "documents": 4360,
+    "active_subset_errors": 0,
+    "warnings": 6250,
+    "search_documents_restaged": false,
+    "stored_vectors": 0,
+    "source_readiness": "NOT_READY",
+    "source_holds": 2,
+    "next_gate": "Resolve source holds, repeat dry-run and stage current documents before any user-authorized embedding. The earlier snapshot hash is historical.",
+    "verification": {
+      "user_api_tests": 764,
+      "admin_api_tests": 170,
+      "user_front_tests": 78,
+      "all_builds": "passed",
+      "skipped_backend_tests": 0,
+      "restored_backup_fingerprints_match": true
+    },
+    "evidence": "/Users/eddie/.local/state/itplace/reference-codes-20261020"
+  },
+  "development_target_cutover": {
+    "date": "2026-10-21",
+    "target": "develop_server/postgresql",
+    "host_port": 5432,
+    "volume": "develop_server_postgres18_data",
+    "image": "itplace/postgres:18.4-postgis3.6.4-pgvector0.8.7-arm64",
+    "extensions": {
+      "postgis": "3.6.4",
+      "vector": "0.8.7"
+    },
+    "reference_migrations_applied_through": "20261021.0001",
+    "postgres_search_migration_applied": false,
+    "search_provider": "elasticsearch",
+    "original_data_preserved": true,
+    "api_8080_restarted": true,
+    "frontend_5173_verified": true,
+    "itplace_pgvector_project_deleted": true,
+    "clone_only_data_restored_to_development": false,
+    "clone_full_backup_restore_verified": true,
+    "embedding_executed": false,
+    "evidence": "/Users/eddie/.local/state/itplace/develop-server-cutover-20261021",
+    "note": "Earlier clone source/search-document counts are historical. The clone container, dedicated volume and network have been removed; its data is retained only in verified backups."
+  }
+}

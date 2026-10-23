@@ -8,6 +8,7 @@ import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewPageResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.StoreSeoResponse;
 import com.itplace.userapi.map.dto.response.TierBenefitDto;
 import com.itplace.userapi.map.entity.Store;
 import com.itplace.userapi.map.exception.StoreKeywordException;
@@ -27,11 +28,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +56,12 @@ public class StoreServiceImpl implements StoreService {
     private final StoreClusterQueryService storeClusterQueryService;
     private final MapClusterSnapshotCache mapClusterSnapshotCache;
     private final StorePreviewQueryService storePreviewQueryService;
+    private String searchProvider = "elasticsearch";
+
+    @Value("${app.search.provider:elasticsearch}")
+    public void setSearchProvider(String provider) {
+        this.searchProvider = provider;
+    }
 
     private static final int DISTRIBUTED_GRID_SIZE = 5;
     private static final int FINAL_LIMIT = 300;
@@ -65,6 +74,13 @@ public class StoreServiceImpl implements StoreService {
     private static final int MAX_SUPPORTED_MAP_LEVEL = 14;
     private static final double TOWN_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 0.25;
     private static final double CITY_CLUSTER_MIN_VIEWPORT_SPAN_DEGREES = 2.0;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StoreSeoResponse> findActiveStoreSeoDetail(long storeId) {
+        return storeRepository.findActiveStoreWithPartner(storeId)
+                .map(store -> StoreSeoResponse.of(store, store.getPartner()));
+    }
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MapStoreClusterResponse> findStoreClustersInView(double minLat, double minLng, double maxLat,
@@ -125,7 +141,7 @@ public class StoreServiceImpl implements StoreService {
             String category,
             int mapLevel
     ) {
-        return minLat + ":" + minLng + ":" + maxLat + ":" + maxLng + ":"
+        return "v2:" + minLat + ":" + minLng + ":" + maxLat + ":" + maxLng + ":"
                 + (category == null ? "ALL" : category) + ":" + mapLevel;
     }
 
@@ -682,6 +698,11 @@ public class StoreServiceImpl implements StoreService {
             category = null;
         } else if (category != null) {
             category = category.trim();
+        }
+
+        if ("postgres".equalsIgnoreCase(searchProvider)) {
+            List<Long> ids = searchKeywordStoreIds(lng, lat, category, normalizedKeyword, eligibleOnly);
+            return findStoresWithPartnerInRequestedOrder(ids, eligibleOnly);
         }
 
         StoreSearchResult searchResult;

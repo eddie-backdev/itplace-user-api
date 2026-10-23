@@ -7,6 +7,7 @@ import lombok.Getter;
 
 @Getter
 public enum UsageType {
+    UNKNOWN("unknown"),
     OFFLINE("offline"),
     ONLINE("online"),
     BOTH("both");

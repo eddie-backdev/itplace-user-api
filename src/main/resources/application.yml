@@ -121,6 +121,12 @@ app:
         network-timeout-ms: ${MAP_CLUSTER_SUMMARY_REFRESH_NETWORK_TIMEOUT_MS:50000}
   ai:
     enabled: ${AI_ENABLED:false}
+    embedding:
+      provider: ${EMBEDDING_PROVIDER:openai}
+      model: ${EMBEDDING_MODEL:${spring.ai.openai.embedding.model:text-embedding-3-small}}
+      dimensions: ${EMBEDDING_DIMENSIONS:1536}
+      base-url: ${EMBEDDING_BASE_URL:http://127.0.0.1:11434}
+      trusted-hosts: ${EMBEDDING_TRUSTED_HOSTS:}
     indexing:
       enabled: ${AI_INDEXING_ENABLED:false}
     benefits:

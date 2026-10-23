@@ -17,6 +17,8 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
+import com.itplace.userapi.ai.rag.postgres.BenefitSearchHit;
+import com.itplace.userapi.ai.rag.postgres.PostgresBenefitSearchRepository;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
@@ -41,6 +43,9 @@ class BenefitHybridSearchServiceImplTest {
 
     @Mock
     private EmbeddingService embeddingService;
+
+    @Mock
+    private PostgresBenefitSearchRepository postgresSearchRepository;
 
     @InjectMocks
     private BenefitHybridSearchServiceImpl service;
@@ -74,7 +79,7 @@ class BenefitHybridSearchServiceImplTest {
                         hit(2L, 0.92),
                         hit(3L, 0.88)
                 ));
-        when(embeddingService.embed("커피")).thenReturn(List.of(0.1f, 0.2f));
+        when(embeddingService.embedQuery("커피")).thenReturn(List.of(0.1f, 0.2f));
 
         BenefitHybridSearchResult result = service.search(
                 "  커피  ",
@@ -89,14 +94,14 @@ class BenefitHybridSearchServiceImplTest {
         assertThat(result.totalElements()).isEqualTo(3);
         assertThat(result.totalPages()).isEqualTo(2);
         assertThat(result.hasNext()).isTrue();
-        verify(embeddingService).embed("커피");
+        verify(embeddingService).embedQuery("커피");
     }
 
     @Test
     void search_degradesToLexicalResultsWhenEmbeddingFails() throws IOException {
         when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
                 .thenReturn(searchResponse(hit(1L, 2.0)));
-        when(embeddingService.embed("커피")).thenThrow(new IllegalStateException("embedding unavailable"));
+        when(embeddingService.embedQuery("커피")).thenThrow(new IllegalStateException("embedding unavailable"));
 
         BenefitHybridSearchResult result = service.search(
                 "커피",
@@ -116,7 +121,7 @@ class BenefitHybridSearchServiceImplTest {
         when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
                 .thenThrow(new IOException("lexical unavailable"))
                 .thenReturn(searchResponse(hit(8L, 1.0)));
-        when(embeddingService.embed("커피")).thenReturn(List.of(0.1f));
+        when(embeddingService.embedQuery("커피")).thenReturn(List.of(0.1f));
 
         BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 5));
 
@@ -129,7 +134,7 @@ class BenefitHybridSearchServiceImplTest {
         when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
                 .thenThrow(new IllegalStateException("lexical unavailable"))
                 .thenReturn(searchResponse(hit(8L, 1.0)));
-        when(embeddingService.embed("커피")).thenReturn(List.of(0.1f));
+        when(embeddingService.embedQuery("커피")).thenReturn(List.of(0.1f));
 
         BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 5));
 
@@ -157,14 +162,14 @@ class BenefitHybridSearchServiceImplTest {
         assertThat(result.totalElements()).isEqualTo(2);
         assertThat(result.totalPages()).isEqualTo(2);
         assertThat(result.hasNext()).isTrue();
-        verify(embeddingService, never()).embed(any());
+        verify(embeddingService, never()).embedQuery(any());
     }
 
     @Test
     void search_throwsWhenBothLexicalAndVectorSearchAreUnavailable() throws IOException {
         when(esClient.search(any(SearchRequest.class), eq(JsonData.class)))
                 .thenThrow(new IOException("es unavailable"));
-        when(embeddingService.embed("커피")).thenThrow(new IllegalStateException("embedding unavailable"));
+        when(embeddingService.embedQuery("커피")).thenThrow(new IllegalStateException("embedding unavailable"));
 
         assertThatThrownBy(() -> service.search(
                 "커피",
@@ -175,6 +180,79 @@ class BenefitHybridSearchServiceImplTest {
                 PageRequest.of(0, 12)
         )).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("혜택 하이브리드 검색을 사용할 수 없습니다");
+    }
+
+    @Test
+    void postgresModeUsesRepositoryAndNeverCallsElasticsearch() {
+        usePostgres();
+        when(embeddingService.embedQuery("커피")).thenReturn(List.of(0.1f));
+        when(postgresSearchRepository.searchList("커피", List.of(0.1f), MainCategory.BASIC_BENEFIT,
+                "카페", UsageType.OFFLINE, List.of(Carrier.LGU), 80))
+                .thenReturn(List.of(postgresHit(2L), postgresHit(1L)));
+
+        BenefitHybridSearchResult result = service.search(" 커피 ", MainCategory.BASIC_BENEFIT, "카페",
+                UsageType.OFFLINE, List.of(Carrier.LGU), PageRequest.of(0, 12));
+
+        assertThat(result.benefitIds()).containsExactly(2L, 1L);
+        verify(postgresSearchRepository).searchList("커피", List.of(0.1f), MainCategory.BASIC_BENEFIT,
+                "카페", UsageType.OFFLINE, List.of(Carrier.LGU), 80);
+        verifyNoInteractions(esClient);
+    }
+
+    @Test
+    void postgresModeWithAiDisabledUsesLexicalSearchWithoutEmbedding() {
+        usePostgres();
+        ReflectionTestUtils.setField(service, "aiEnabled", false);
+        when(postgresSearchRepository.searchList("커피", null, null, null, null, List.of(), 80))
+                .thenReturn(List.of(postgresHit(9L)));
+
+        BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 12));
+
+        assertThat(result.benefitIds()).containsExactly(9L);
+        verifyNoInteractions(embeddingService, esClient);
+        verify(postgresSearchRepository).searchList("커피", null, null, null, null, List.of(), 80);
+    }
+
+    @Test
+    void postgresModeFallsBackToLexicalWhenEmbeddingFailsAndForwardsFilters() {
+        usePostgres();
+        when(embeddingService.embedQuery("커피")).thenThrow(new IllegalStateException("embedding unavailable"));
+        when(postgresSearchRepository.searchList("커피", null, MainCategory.VIP_COCK, "카페",
+                UsageType.ONLINE, List.of(Carrier.KT), 80)).thenReturn(List.of(postgresHit(4L)));
+
+        BenefitHybridSearchResult result = service.search("커피", MainCategory.VIP_COCK, "카페",
+                UsageType.ONLINE, List.of(Carrier.KT), PageRequest.of(0, 12));
+
+        assertThat(result.benefitIds()).containsExactly(4L);
+        verify(postgresSearchRepository).searchList("커피", null, MainCategory.VIP_COCK, "카페",
+                UsageType.ONLINE, List.of(Carrier.KT), 80);
+        verifyNoInteractions(esClient);
+    }
+
+    @Test
+    void postgresModeFallsBackToLexicalWhenVectorSearchFails() {
+        usePostgres();
+        List<Float> vector = List.of(0.2f);
+        when(embeddingService.embedQuery("커피")).thenReturn(vector);
+        when(postgresSearchRepository.searchList("커피", vector, null, null, null, List.of(), 80))
+                .thenThrow(new IllegalArgumentException("invalid vector"));
+        when(postgresSearchRepository.searchList("커피", null, null, null, null, List.of(), 80))
+                .thenReturn(List.of(postgresHit(7L)));
+
+        BenefitHybridSearchResult result = service.search("커피", null, null, null, List.of(), PageRequest.of(0, 12));
+
+        assertThat(result.benefitIds()).containsExactly(7L);
+        verify(postgresSearchRepository).searchList("커피", null, null, null, null, List.of(), 80);
+        verifyNoInteractions(esClient);
+    }
+
+    private void usePostgres() {
+        service.setPostgresSearchRepository(postgresSearchRepository);
+        service.setSearchProvider("postgres");
+    }
+
+    private BenefitSearchHit postgresHit(long benefitId) {
+        return new BenefitSearchHit(benefitId, benefitId + 100, null, 1.0, null);
     }
 
     private SearchResponse<JsonData> searchResponse(Map<String, Object>... sources) {

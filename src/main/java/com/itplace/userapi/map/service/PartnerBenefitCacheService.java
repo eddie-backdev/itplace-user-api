@@ -44,7 +44,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class PartnerBenefitCacheService {
 
-    private static final String CACHE_NAME = "partner-benefits";
+    private static final String CACHE_NAME = "partner-benefits-v3";
     private static final int MAX_IN_FLIGHT = 1024;
     private static final byte[] CACHED_NULL = org.springframework.data.redis.serializer.RedisSerializer.java().serialize(NullValue.INSTANCE);
     private static final byte[] FILL_SCRIPT = bytes("""

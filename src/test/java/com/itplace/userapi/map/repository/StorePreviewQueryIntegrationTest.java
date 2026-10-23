@@ -105,8 +105,8 @@ class StorePreviewQueryIntegrationTest {
 
     @Test
     void keepsEligibilityBoundsCategoryOrderingAndLimitWithoutDuplicateStores() {
-        assertThat(ids(null,300)).containsExactly(1L,2L,9L,11L,3L,16L);
-        assertThat(ids("생활",300)).containsExactly(1L,2L,9L,11L,16L);
+        assertThat(ids(null,300)).containsExactly(1L,2L,5L,9L,10L,11L,3L,16L);
+        assertThat(ids("생활",300)).containsExactly(1L,2L,5L,9L,10L,11L,16L);
         assertThat(ids("보관",300)).containsExactly(3L);
         assertThat(ids("없는 분류",300)).isEmpty();
         assertThat(ids(null,2)).containsExactly(1L,2L);
@@ -154,7 +154,7 @@ class StorePreviewQueryIntegrationTest {
                 .addValue("minLng",126.99).addValue("maxLng",127.01)
                 .addValue("cellLatDegrees",0.01).addValue("cellLngDegrees",0.01)
                 .addValue("storesPerCell",2);
-        assertThat(candidateIds("findStoreIdsInRadius",parameters)).containsExactlyInAnyOrder(1L,2L,3L,4L,9L,11L);
+        assertThat(candidateIds("findStoreIdsInRadius",parameters)).containsExactlyInAnyOrder(1L,2L,3L,4L,5L,9L,10L,11L);
         assertThat(candidateIds("findStoreIdsByCategoryWithinRadius",parameters)).containsExactlyInAnyOrder(3L,4L);
         assertThat(candidateIds("findDistributedStoreIdsWithinRadius",parameters)).containsExactly(4L,3L);
         parameters.addValue("category",null,Types.VARCHAR);
@@ -214,9 +214,9 @@ class StorePreviewQueryIntegrationTest {
             cursor = page.get(page.size() - 1);
         } while (hasMore);
 
-        assertThat(combined).hasSize(656).doesNotHaveDuplicates().isSorted();
+        assertThat(combined).hasSize(658).doesNotHaveDuplicates().isSorted();
         assertThat(combined).contains(1L, 2L, 3L, 9L, 11L, 16L)
-                .doesNotContain(4L, 5L, 6L, 7L, 8L, 10L, 12L, 13L, 14L, 15L);
+                .doesNotContain(4L, 6L, 7L, 8L, 12L, 13L, 14L, 15L);
         assertThat(pageIds(0, 300, "생활")).hasSize(300);
         assertThat(pageIds(0, 300, "없는 분류")).isEmpty();
         assertThat(pageIds(9999, 300, null)).isEmpty();
@@ -229,7 +229,7 @@ class StorePreviewQueryIntegrationTest {
             hasMore = page.size() == 300;
             if (hasMore) cursor = page.get(page.size() - 1);
         } while (hasMore);
-        assertThat(nearby).hasSize(655).doesNotHaveDuplicates().isSorted();
+        assertThat(nearby).hasSize(657).doesNotHaveDuplicates().isSorted();
         assertThat(nearbyPageIds(0, 300, "생활")).hasSize(300);
     }
 
@@ -239,7 +239,7 @@ class StorePreviewQueryIntegrationTest {
                 .addValue("radiusMeters",1000.0).addValue("category",null,Types.VARCHAR)
                 .addValue("afterStoreId",2L).addValue("limit",2);
         assertThat(named.query(nearbyPageSql, parameters, (row,index) -> row.getLong("storeId")))
-                .containsExactly(3L,9L);
+                .containsExactly(3L,5L);
         parameters.addValue("category","보관").addValue("afterStoreId",0L);
         assertThat(named.query(nearbyPageSql, parameters, (row,index) -> row.getLong("storeId")))
                 .containsExactly(3L);

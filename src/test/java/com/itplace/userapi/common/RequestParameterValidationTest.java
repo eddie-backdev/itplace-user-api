@@ -1,6 +1,8 @@
 package com.itplace.userapi.common;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,6 +21,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 class RequestParameterValidationTest {
 
@@ -38,6 +43,25 @@ class RequestParameterValidationTest {
                         .param("lng", "181"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST_PARAMETER"));
+    }
+
+    @Test
+    void legacyQuestionMemoryRejectsQwenDimensionsBeforeCallingElasticsearch() {
+        EmbeddingService embeddings = mock(EmbeddingService.class);
+        QuestionSearchController controller = new QuestionSearchController(
+                embeddings,
+                mock(ElasticsearchClient.class),
+                mock(QuestionRecommendationService.class),
+                mock(UserRepository.class)
+        );
+        ReflectionTestUtils.setField(controller, "embeddingProvider", "ollama");
+        ReflectionTestUtils.setField(controller, "embeddingDimensions", 2560);
+
+        assertThatThrownBy(() -> controller.searchSimilarQuestion("영화 할인"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> org.assertj.core.api.Assertions.assertThat(exception.getStatusCode())
+                                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        verifyNoInteractions(embeddings);
     }
 
     @Test

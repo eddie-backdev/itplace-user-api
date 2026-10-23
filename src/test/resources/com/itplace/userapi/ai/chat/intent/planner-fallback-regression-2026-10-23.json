@@ -1,0 +1,957 @@
+[
+  {
+    "id": "Q001",
+    "question": "어니스트플라워 (KT)에서 받을 수 있는 멤버십 혜택을 요약해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q002",
+    "question": "파고다토쿨 이용할 때 KT 제휴로 어떤 혜택이 적용돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q003",
+    "question": "풀무원의 풀무원 KT 멤버십 혜택 내용이 궁금해.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q004",
+    "question": "KT 멤버십으로 매드포갈릭에서 뭘 받을 수 있는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q005",
+    "question": "서울형 키즈카페 가기 전에 KT 회원 할인 혜택이 있는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q006",
+    "question": "서울랜드 제휴 혜택에서 회원이 받을 수 있는 대표 혜택은 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q007",
+    "question": "KT 이용자에게 카페베네에서 제공되는 혜택을 찾아줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q008",
+    "question": "원더파크/원더빌리지과 제휴된 멤버십 혜택이 어떤 내용인지 설명해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q009",
+    "question": "클럽디 오아시스 혜택 중 SK텔레콤 회원이 쓸 수 있는 걸 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q010",
+    "question": "뽀로로파크 할인형 말고도 뽀로로파크에서 적용되는 멤버십 혜택이 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q011",
+    "question": "GS25에서 멤버십으로 아낄 수 있는 혜택이 무엇인지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q012",
+    "question": "SK텔레콤 멤버십을 해커스에서 사용할 때 혜택을 설명해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q013",
+    "question": "도미노피자 제휴 혜택을 처음 보는 사람도 알기 쉽게 요약해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q014",
+    "question": "Touch1카드(하나)에서 멤버십을 제시하면 어떤 혜택을 받는지 궁금해.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q015",
+    "question": "LG유플러스 기준 우파루 오딧세이의 혜택 정보를 찾아서 정리해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q016",
+    "question": "네이버플러스 멤버십에서 쓸 수 있는 LG유플러스 멤버십 혜택만 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q017",
+    "question": "스타벅스 VIP콕의 핵심 혜택을 한 문장으로 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q018",
+    "question": "밀파네 제휴처에서 멤버십으로 이용할 수 있는 서비스가 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q019",
+    "question": "LG유플러스 고객에게 인천공항 고메브릿지 푸드코트이 제공하는 할인이나 적립 혜택이 있나?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q020",
+    "question": "허그맘허그인에서 LG유플러스 제휴를 이용하면 어떤 이점이 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q021",
+    "question": "필수팩 혜택에서 실제 할인율이나 적립량이 얼마인지 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q022",
+    "question": "플레이타임(키즈카페) 이용 시 멤버십으로 계산되는 할인 조건을 설명해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q023",
+    "question": "이월드 제휴 혜택이 정액 할인인지 비율 할인인지와 수치를 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q024",
+    "question": "매드포갈릭 KT 멤버십 혜택에서 금액 조건과 한도를 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q025",
+    "question": "카페베네 할인 금액은 결제 금액의 몇 퍼센트야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q026",
+    "question": "보리보리에서 얼마를 결제할 때 얼마가 할인되는 구조야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q027",
+    "question": "롯데시네마 혜택의 1회 할인 금액이나 기준 금액을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q028",
+    "question": "컬쳐랜드 할인형은 포인트 적립인지 금액 할인인지, 숫자 조건은 어때?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q029",
+    "question": "뚜레쥬르의 제휴 혜택에 최대 할인 한도가 있는지 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q030",
+    "question": "아쿠아플라넷 혜택이 무료 제공인지 할인인지 구분해서 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q031",
+    "question": "키디키디 멤버십 혜택은 1,000원당 얼마를 깎아 주는 조건이야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q032",
+    "question": "뽀로로파크 혜택에 적힌 할인율과 할인 한도를 같이 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q033",
+    "question": "CU 할인형에서 할인 계산에 쓰는 기준 금액이 있으면 설명해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q034",
+    "question": "엘리하이/엠베스트 제휴 할인에서 매장 가격에 어떤 수치가 적용돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q035",
+    "question": "멜로우모먼트에서 받을 수 있는 적립량이나 할인액을 원문 조건에 맞춰 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q036",
+    "question": "인천공항 고메브릿지 푸드코트 혜택이 몇 퍼센트 할인인지, 추가 제한도 있는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q037",
+    "question": "정성베이커리 우리동네 멤버십의 구체적인 할인·적립 숫자를 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q038",
+    "question": "씨네Q 멤버십 혜택은 일정 금액을 넘으면 할인액이 달라져?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q039",
+    "question": "한강유람선 이크루즈의 할인 조건에서 금액 단위와 최대치를 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q040",
+    "question": "YBM NET 혜택 문구에 적힌 할인 또는 무료 제공 수치를 풀이해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q041",
+    "question": "KT 일반 등급 회원이면 KT알파 쇼핑(구. K쇼핑) 혜택을 받을 수 있어? 내용도 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q042",
+    "question": "보리보리에서 KT 일반 등급에 해당하는 혜택이 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q043",
+    "question": "KT 멤버십 실버 회원 기준으로 미스터피자 혜택 대상인지 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q044",
+    "question": "원더파크 혜택은 KT 일반에게 어떻게 적용돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q045",
+    "question": "내 등급이 KT 실버인데 초심스터디카페에서 쓸 수 있는 혜택을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q046",
+    "question": "카페베네 할인 대상 등급에 KT 일반가 포함되는지 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q047",
+    "question": "KT VVIP 회원이 롯데시네마에서 받을 할인·적립 혜택을 찾아줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q048",
+    "question": "그리팅 혜택의 통신사와 등급 조건을 SK텔레콤 VIP 기준으로 설명해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q049",
+    "question": "SK텔레콤 VIP가 톤28 제휴를 이용하면 어떤 조건으로 적용돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q050",
+    "question": "키디키디에서 SK텔레콤 VIP 대상 혜택이 있는지와 내용을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q051",
+    "question": "SK텔레콤 VIP 등급에 세븐일레븐의 모든 혜택이 적용되는 거야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q052",
+    "question": "부산엑스더스카이 멤버십 혜택 중 SK텔레콤 VIP가 받을 수 있는 항목은 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q053",
+    "question": "SK텔레콤 VIP 기준으로 자란다 혜택 자격을 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q054",
+    "question": "Touch1카드(하나) 할인은 SK텔레콤 VIP도 대상인지, 할인 내용은 무엇인지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q055",
+    "question": "LG유플러스 VVIP 회원이 오피스디포에서 혜택을 받으려면 무엇을 확인해야 해?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q056",
+    "question": "호밀호두에서 LG유플러스 VVIP 등급에 맞는 제휴 혜택만 정리해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q057",
+    "question": "LG유플러스의 다이아몬드 등급으로 정성베이커리 할인받을 수 있는지 궁금해.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q058",
+    "question": "CGV 혜택 대상에 LG유플러스 VVIP가 들어가는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q059",
+    "question": "LG유플러스 VVIP 이용자의 월스트리트 잉글리시 멤버십 혜택을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q060",
+    "question": "대관령 하늘목장 제휴 조건상 LG유플러스 VVIP 등급이 받을 수 있는 혜택은?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q061",
+    "question": "반올림피자 혜택은 몇 번까지 쓸 수 있고 어떤 품목이 제외돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q062",
+    "question": "노트미 제휴 혜택의 이용 방법과 적용되지 않는 조건을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q063",
+    "question": "보리보리 혜택에 횟수나 금액 한도가 있는지, 제외 품목은 뭔지 정리해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q064",
+    "question": "비트커피에서 멤버십 할인받을 때 이용 조건과 예외가 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q065",
+    "question": "서울형 키즈카페 멤버십 혜택은 어디서 어떻게 사용해야 해? 제한도 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q066",
+    "question": "밀크T 혜택 이용 횟수와 적용 제외 대상을 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q067",
+    "question": "원더빌리지 할인받을 때 직원에게 보여줘야 하는 것과 주의사항이 있나?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q068",
+    "question": "위미트 제휴 혜택은 온라인과 오프라인 중 어디서 적용되고 예외는 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q069",
+    "question": "키디키디 혜택에 하루나 한 달 사용 한도가 있는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q070",
+    "question": "세븐일레븐 이용 시 할인에서 빠지는 상품이나 매장이 있는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q071",
+    "question": "Touch1카드(하나) 멤버십 혜택은 주문이나 결제 과정에서 어떻게 적용돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q072",
+    "question": "그리팅 혜택 사용 횟수, 금액 한도, 제외 조건을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q073",
+    "question": "엔제리너스 할인은 다른 쿠폰과 중복되나? 이용 제한도 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q074",
+    "question": "부산엑스더스카이 제휴 혜택을 받지 못하는 경우가 어떤 건지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q075",
+    "question": "위피에서 할인받으려면 앱 바코드나 카드를 제시해야 해?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q076",
+    "question": "굽네치킨 혜택의 이용 기간이나 횟수 제한과 제외 항목이 궁금해.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q077",
+    "question": "DBR동아비즈니스리뷰 멤버십 혜택을 쓸 때 결제 금액 제한이 따로 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q078",
+    "question": "모던하우스 제휴 적용 시 이용방법과 제외 품목을 원문 기준으로 정리해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q079",
+    "question": "파티세리소나 혜택을 매장마다 쓸 수 있는지, 안 되는 조건이 있는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q080",
+    "question": "롯데면세점에서 멤버십 혜택을 이용할 때 유의해야 할 제한은 뭐야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q081",
+    "question": "LTE 데이터충전 혜택은 결제 금액을 100% 전부 할인해 주는 게 맞아?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q082",
+    "question": "서울형 키즈카페 멤버십 할인이 전액 무료 수준인 100% 할인인지 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q083",
+    "question": "서울랜드 제휴 혜택은 어떤 구매든 100% 할인 적용된다고 들었는데 사실이야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q084",
+    "question": "매드포갈릭에서 멤버십으로 100% 할인받을 수 있지? 근거와 조건을 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q085",
+    "question": "파라다이스시티 원더박스는 결제할 때 금액 전체를 멤버십으로 차감해 주는 혜택이야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q086",
+    "question": "피자헛 제휴 할인율이 100%라고 들었어. 맞는 정보인지 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q087",
+    "question": "열린베이커리에서 물건이나 서비스를 무료로 이용할 만큼 전액 할인이 되는지 알려줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q088",
+    "question": "스카이라인 루지 혜택을 쓰면 결제액을 다 돌려받을 수 있는 거야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q089",
+    "question": "네이버플러스 멤버십 제휴는 멤버십 회원에게 100퍼센트 할인해 주는 조건인지 궁금해.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q090",
+    "question": "YBM NET에서 받는 혜택이 전체 결제금액 면제인지, 할인율 근거를 확인해줘.",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "Q091",
+    "question": "코덱스달빛편의점에서 KT 멤버십 혜택 받을 수 있어? 등록된 할인과 등급을 찾아줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q092",
+    "question": "달빛김밥연구소 제휴 정보가 있어? SK텔레콤 기준으로 혜택을 알려줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q093",
+    "question": "은하수문구마켓 할인 혜택의 대상과 사용 조건을 알려줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q094",
+    "question": "KT 고객이 파란숲키즈파크에서 쓸 수 있는 제휴 할인이나 적립이 있는지 확인해줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q095",
+    "question": "모래시계세탁소 멤버십 혜택이 등록돼 있는지 찾아보고 내용도 요약해줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q096",
+    "question": "구름정원베이커리에서 받을 수 있는 통신사 멤버십 혜택과 등급 조건은 뭐야?",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q097",
+    "question": "별빛자전거샵 제휴처에서 할인받을 수 있다고 들었는데 어떤 혜택인지 알려줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q098",
+    "question": "SK텔레콤 멤버십으로 오후네시꽃집을 이용할 때 할인율과 한도가 어떻게 돼?",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q099",
+    "question": "청록고래서점 제휴 혜택의 이용 횟수 제한과 적용 조건을 확인해줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "Q100",
+    "question": "작은행성약국에 멤버십 할인 정보가 있으면 원문 기준으로 알려줘.",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "CAT01",
+    "question": "편의점 할인 뭐 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT02",
+    "question": "편의점 제휴 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT03",
+    "question": "카페 멤버십 할인 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT04",
+    "question": "커피 제휴처 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT05",
+    "question": "디저트 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT06",
+    "question": "영화 예매 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT07",
+    "question": "영화관 멤버십 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT08",
+    "question": "식당 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT09",
+    "question": "음식점 제휴 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT10",
+    "question": "푸드 제휴처 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT11",
+    "question": "쇼핑 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT12",
+    "question": "교육 학원 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT13",
+    "question": "어학원 혜택 뭐 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT14",
+    "question": "스터디카페 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT15",
+    "question": "키즈카페 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT16",
+    "question": "놀이공원 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT17",
+    "question": "문화 공연 제휴 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT18",
+    "question": "카페나 디저트 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT19",
+    "question": "편의점 말고 카페 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CAT20",
+    "question": "영화 말고 식당 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD01",
+    "question": "GS25 멤버십 할인 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD02",
+    "question": "지에스25 혜택 뭐 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD03",
+    "question": "GS 25 편의점 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD04",
+    "question": "CU 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD05",
+    "question": "씨유 제휴 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD06",
+    "question": "세븐일레븐 멤버십 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD07",
+    "question": "CGV 영화 할인 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD08",
+    "question": "씨지브이 영화 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD09",
+    "question": "메가박스 멤버십 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD10",
+    "question": "롯데 시네마 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD11",
+    "question": "스타벅스 혜택 뭐 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD12",
+    "question": "스타 벅스 할인 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD13",
+    "question": "메가MGC 커피 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD14",
+    "question": "파리바게트 멤버십 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD15",
+    "question": "도미노 피자 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD16",
+    "question": "풀무원 쿠폰 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD17",
+    "question": "서울형 키즈카페 제휴 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "BRD18",
+    "question": "파고다 학원 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "UNK01",
+    "question": "가상GS25초록멤버십 혜택",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK02",
+    "question": "알파스타벅스테스트제휴 할인",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK03",
+    "question": "메가박스가 아닌 메가박스플러스테스트 혜택",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK04",
+    "question": "미등록CGV패밀리센터 제휴 할인",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK05",
+    "question": "상상CU클럽 할인 혜택",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK06",
+    "question": "테스트롯데시네마플러스 혜택",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK07",
+    "question": "가상파리바게뜨온리 혜택",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "UNK08",
+    "question": "없는도미노피자플러스 멤버십 할인",
+    "unknownPartnerCase": true
+  },
+  {
+    "id": "EXC01",
+    "question": "영화 혜택에서 CGV는 빼고 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC02",
+    "question": "CGV 제외하고 롯데시네마나 메가박스 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC03",
+    "question": "카페 말고 영화 할인 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC04",
+    "question": "GS25 말고 다른 편의점 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC05",
+    "question": "스타벅스와 할리스 제외하고 카페 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC06",
+    "question": "롯데시네마 말고 영화 제휴처",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC07",
+    "question": "CU 제외하고 편의점 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC08",
+    "question": "영화 혜택이 아니라 식당 할인 찾아줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC09",
+    "question": "키즈카페 말고 스터디카페 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "EXC10",
+    "question": "메가박스는 제외, CGV나 롯데시네마 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX01",
+    "question": "KT VIP 등급으로 CGV 영화 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX02",
+    "question": "SKT VIP 기준 메가박스 혜택은?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX03",
+    "question": "LG유플러스 VIP 스타벅스 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX04",
+    "question": "KT 일반 등급 이마트24 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX05",
+    "question": "SKT 골드 세븐일레븐 할인",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX06",
+    "question": "KT 멤버십 영화 혜택 통신사별 비교",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX07",
+    "question": "통신사 상관없이 카페 혜택 비교해줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX08",
+    "question": "등급에 관계없이 CGV 혜택을 보여줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX09",
+    "question": "KT VVIP 메가박스 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX10",
+    "question": "LG유플러스 VIP 파리바게뜨 혜택",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX11",
+    "question": "알뜰폰 멤버십도 CGV 할인돼?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CTX12",
+    "question": "KT 초심스터디카페 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN01",
+    "question": "어니스트플라워 KT 쿠폰 발급 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN02",
+    "question": "어니스트플라워에서 발급받은 쿠폰은 어디에 등록해?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN03",
+    "question": "어니스트플라워 쿠폰을 웹사이트 결제 때 쓸 수 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN04",
+    "question": "KT 멤버십 온라인 쿠폰 다운로드 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN05",
+    "question": "이마트24 오프라인 매장 결제 할인 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN06",
+    "question": "CGV 온라인 예매 혜택이 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN07",
+    "question": "어니스트플라워 100% 무료 맞지?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN08",
+    "question": "영화관 혜택 몇 곳 있어?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN09",
+    "question": "KT 영화 혜택을 핵심만 짧게 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CHN10",
+    "question": "GS25 쿠폰은 발급과 실제 사용이 같은 절차야?",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_A01",
+    "question": "스타벅스 카페 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_A02",
+    "question": "그중 첫 번째 혜택의 이용 조건을 자세히 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_B01",
+    "question": "KT 영화관 혜택 통신사별로 비교해줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_B02",
+    "question": "두 번째 제휴처 혜택의 이용 조건을 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_C01",
+    "question": "GS25 편의점 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_C02",
+    "question": "아니, GS25 말고 CGV 영화 혜택을 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_D01",
+    "question": "KT VIP 등급 CGV 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_D02",
+    "question": "정정할게. KT 일반 등급 기준으로 다시 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "CNT01",
+    "question": "KT 영화 혜택 제휴처 여러 곳을 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "DEDUP01",
+    "question": "GS25 편의점의 KT 등급별 혜택을 간단히 보여줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_E01",
+    "question": "KT 일반 등급 스타벅스 혜택 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "FOLLOW_E02",
+    "question": "정정할게. LG유플러스 VIP 기준으로 스타벅스 혜택을 다시 알려줘",
+    "unknownPartnerCase": false
+  },
+  {
+    "id": "AMB01",
+    "question": "롯데시네마나 메가박스 중 KT 영화 혜택이 있는 곳 알려줘",
+    "unknownPartnerCase": false
+  }
+]

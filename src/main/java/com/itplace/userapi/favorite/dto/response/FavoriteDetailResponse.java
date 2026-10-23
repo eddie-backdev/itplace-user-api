@@ -1,6 +1,8 @@
 package com.itplace.userapi.favorite.dto.response;
 
 import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.dto.BenefitConditions;
+import java.time.Instant;
 import com.itplace.userapi.favorite.dto.TierBenefitDetail;
 import java.util.List;
 import lombok.Builder;
@@ -19,6 +21,14 @@ public class FavoriteDetailResponse {
     private List<TierBenefitDetail> tiers;
     private List<CarrierPolicyDetail> carrierPolicies;
 
-    public record CarrierPolicyDetail(Carrier carrier, String description, String benefitLimit) {
+    public record CarrierPolicyDetail(
+            Carrier carrier,
+            String description,
+            String benefitLimit,
+            String sourceUrl,
+            Instant sourceCapturedAt,
+            String manual,
+            BenefitConditions conditions
+    ) {
     }
 }

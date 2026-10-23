@@ -29,7 +29,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @EnableCaching
 public class CacheConfig {
 
-    private static final String PARTNER_BENEFITS_CACHE = "partner-benefits";
+    private static final String PARTNER_BENEFITS_CACHE = "partner-benefits-v3";
     private static final String MAP_STORE_CLUSTERS_CACHE = "map-store-clusters";
 
     /**

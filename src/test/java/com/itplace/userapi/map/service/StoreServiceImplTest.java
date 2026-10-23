@@ -763,6 +763,28 @@ class StoreServiceImplTest {
     }
 
     @Test
+    void postgresKeywordPreviewSearchSkipsElasticAndPreservesEligibleStoreOrder() {
+        storeService.setSearchProvider("postgres");
+        Partner partner = Partner.builder().partnerId(10L).partnerName("GS25").category("생활/편의").build();
+        Store first = store(1L, "GS25 첫 매장", partner, point(127.01, 37.50));
+        Store second = store(2L, "GS25 둘째 매장", partner, point(127.02, 37.50));
+        when(storePreviewQueryService.searchEligibleNearbyStoreIds(127.00, 37.50, null, "GS25"))
+                .thenReturn(List.of(2L, 1L));
+        when(storeRepository.findEligibleByStoreIdInWithPartner(List.of(2L, 1L)))
+                .thenReturn(List.of(first, second));
+        when(partnerBenefitCacheService.getBenefitsBatch(List.of(10L))).thenReturn(Map.of());
+
+        MapStorePreviewBatchResponse result = storeService.findNearbyByKeywordPreviewBatch(
+                37.50, 127.00, null, "GS25", 37.50, 127.00);
+
+        assertThat(result.getStores()).extracting(MapStorePreviewBatchResponse.StorePreview::getStoreId)
+                .containsExactly(2L, 1L);
+        verify(storePreviewQueryService).searchEligibleNearbyStoreIds(127.00, 37.50, null, "GS25");
+        verify(storeRepository).findEligibleByStoreIdInWithPartner(List.of(2L, 1L));
+        org.mockito.Mockito.verifyNoInteractions(storeSearchService);
+    }
+
+    @Test
     void findNearbyByKeyword_fallsBackToDatabaseSearchWhenElasticSearchReturnsEmptyResult() {
         Partner partner = Partner.builder()
                 .partnerId(10L)

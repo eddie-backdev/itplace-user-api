@@ -8,12 +8,15 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
+import com.itplace.userapi.benefit.entity.enums.PublicationStatus;
+import com.itplace.userapi.benefit.dto.BenefitConditions;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
@@ -63,7 +66,7 @@ public class BenefitSnapshotImportRequest {
 
         private String description;
         private String manual;
-        private BenefitPolicyCode benefitPolicyCode = BenefitPolicyCode.UNLIMITED;
+        private BenefitPolicyCode benefitPolicyCode = BenefitPolicyCode.UNKNOWN;
 
         @NotNull(message = "사용 타입은 필수 항목입니다.")
         private UsageType usageType;
@@ -74,6 +77,13 @@ public class BenefitSnapshotImportRequest {
         /** 사용자에게 열어줄 혜택 URL. 값이 없으면 sourceUrl을 폴백으로 사용한다. */
         private String url;
         private Boolean active;
+        private PublicationStatus publicationStatus;
+        private String holdReason;
+        private Instant publicationReviewedAt;
+        private Long sourceEvidenceId;
+        private Instant sourceCapturedAt;
+        private String sourceLimitText;
+        private BenefitConditions conditions;
 
         @Valid
         @JsonAlias("tiers")
@@ -91,5 +101,6 @@ public class BenefitSnapshotImportRequest {
 
         private Boolean isAll;
         private Integer discountValue;
+        private String offerKey;
     }
 }

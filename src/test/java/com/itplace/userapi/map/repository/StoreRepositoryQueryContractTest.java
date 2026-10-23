@@ -177,6 +177,21 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
+    void forwardSummaryMigrationIncludesAllRedemptionChannelsAndPreservesState() throws IOException {
+        String sql;
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V20261021_0004__include_physical_stores_for_all_benefit_channels.sql")) {
+            assertThat(input).isNotNull();
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        assertThat(sql).contains("DROP MATERIALIZED VIEW map_region_store_summary",
+                "UPDATE map_region_store_summary_state", "uq_map_region_store_summary_lookup",
+                "idx_map_region_store_summary_cluster_lookup");
+        assertThat(sql).doesNotContain("usageType IN", "CREATE TABLE map_region_store_summary_state",
+                "INSERT INTO map_region_store_summary_state");
+    }
+
+    @Test
     void previewQuery_appliesStoredNameAndBusinessEligibilityBeforeLimit() {
         assertThat(queryValue("findStorePreviewsInView"))
                 .containsSubsequence(
@@ -213,7 +228,7 @@ class StoreRepositoryQueryContractTest {
     }
 
     @Test
-    void mapCandidateQueries_requireActiveStoreAndActiveOfflineBenefit() {
+    void mapCandidateQueries_requireActiveStoreAndBenefitPolicy() {
         List<String> mapQueryMethods = List.of(
                 "findStoreIdsInRadius",
                 "findStoreIdsByCategoryWithinRadius",
@@ -231,8 +246,7 @@ class StoreRepositoryQueryContractTest {
                 .contains(
                         "s.active = true",
                         "b.active = true",
-                        "bcp.active = true",
-                        "bcp.usageType IN ('offline', 'both')"
+                        "bcp.active = true"
                 ));
     }
 
@@ -260,9 +274,7 @@ class StoreRepositoryQueryContractTest {
         assertThat(queryValue("findAllByStoreIdInWithPartner")).contains(
                 "s.active = true",
                 "b.active = true",
-                "policy.active = true",
-                "UsageType.OFFLINE",
-                "UsageType.BOTH"
+                "policy.active = true"
         );
     }
 

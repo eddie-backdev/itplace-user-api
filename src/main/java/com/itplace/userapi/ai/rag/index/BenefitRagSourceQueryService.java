@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,27 @@ public class BenefitRagSourceQueryService {
      */
     @Transactional(readOnly = true)
     public SourceSnapshot loadSourceSnapshot() {
+        return loadSnapshot();
+    }
+
+    /** Write transaction deliberately selects the primary through DataSourceRouter. */
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public SourceSnapshot loadSourceSnapshotFromPrimary() {
+        return loadSnapshot();
+    }
+
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public List<BenefitRagDocumentBuilder.PendingBenefitDocument> loadPolicySnapshotFromPrimary(long policyId) {
+        return policyRepository.findById(policyId).map(policy -> {
+            Benefit benefit = benefitRepository.findAllByIdWithPartner(List.of(policy.getBenefit().getBenefitId()))
+                    .stream().findFirst().orElse(null);
+            if (benefit == null) return List.<BenefitRagDocumentBuilder.PendingBenefitDocument>of();
+            List<CarrierTierBenefit> tiers = tierRepository.findAllByBenefitCarrierPolicyIn(List.of(policy));
+            return documentBuilder.buildPendingDocuments(benefit, List.of(policy), tiers);
+        }).orElse(List.of());
+    }
+
+    private SourceSnapshot loadSnapshot() {
         List<BenefitRagDocumentBuilder.PendingBenefitDocument> pendingDocuments = new ArrayList<>();
         List<Benefit> benefits = benefitRepository.findAllWithPartnerAndTierBenefits();
         for (int offset = 0; offset < benefits.size(); offset += SOURCE_BATCH_SIZE) {

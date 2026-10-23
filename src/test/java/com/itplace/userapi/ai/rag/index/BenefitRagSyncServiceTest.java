@@ -77,6 +77,17 @@ class BenefitRagSyncServiceTest {
     }
 
     @Test
+    void postgresModeSkipsScheduledAndDirectLegacyEsSync() throws Exception {
+        ReflectionTestUtils.setField(syncService, "syncEnabled", true);
+        ReflectionTestUtils.setField(syncService, "searchProvider", "postgres");
+
+        syncService.scheduledSync();
+        assertThat(syncService.syncAll().candidateDocuments()).isZero();
+
+        verifyNoInteractions(esClient, elasticService, embeddingService, sourceQueryService);
+    }
+
+    @Test
     void syncLookupFailureDoesNotSpendOnEmbedding() throws Exception {
         var document = activeDocument("benefit:1:policy:2:tier:3", "same-hash");
         when(sourceQueryService.loadSourceSnapshot()).thenReturn(sourceSnapshot(1,

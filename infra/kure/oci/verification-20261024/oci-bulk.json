@@ -1,0 +1,25 @@
+{
+  "base_url": "http://127.0.0.1:18081",
+  "model": "nlpai-lab/KURE-v1@8b418a58414668e75532ed045c22d9ca018ae2b2",
+  "dimensions": 1024,
+  "query_count": 5,
+  "queries": [
+    "편의점에서 받을 수 있는 할인 혜택 알려줘",
+    "영화관 할인과 예매 혜택이 궁금해",
+    "통신사 멤버십으로 카페에서 할인받는 방법",
+    "주말에 가족과 외식할 때 쓸 수 있는 제휴 혜택",
+    "대중교통이나 택시 이용 시 받을 수 있는 포인트 혜택"
+  ],
+  "batch_size": 4,
+  "warmup": 1,
+  "repeats": 3,
+  "status": "ok",
+  "request_attempted": 8,
+  "request_failed": 0,
+  "request_succeeded": 8,
+  "request_ms": {
+    "p50": 276.45,
+    "p95": 702.43
+  },
+  "measurement": "per-HTTP-request latency for fixed queries; excludes retrieval/ranking"
+}

@@ -31,7 +31,8 @@ public class WebConfig implements WebMvcConfigurer {
                     throw new AiDisabledException();
                 }
             }).addPathPatterns("/api/v1/questions/**", "/api/v1/recommendations", "/api/v1/recommendations/**",
-                    "/api/v1/maps/nearby/itplace-ai");
+                    "/api/v1/maps/nearby/itplace-ai")
+                    .excludePathPatterns("/api/v1/questions/chat", "/api/v1/questions/chat/stream");
         }
         registry.addInterceptor(loggingInterceptor)
                 .addPathPatterns("/api/v1/benefits/{benefitId}", "/api/v1/benefit/{benefitId}");

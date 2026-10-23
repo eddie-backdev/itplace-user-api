@@ -3,8 +3,6 @@ package com.itplace.userapi.benefit.entity;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
@@ -25,9 +23,8 @@ import lombok.NoArgsConstructor;
 @IdClass(TierBenefitId.class)
 public class TierBenefit {
     @Id
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Grade grade;
+    private String grade;
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,4 +37,16 @@ public class TierBenefit {
     private Boolean isAll;
 
     private Integer discountValue;
+
+    @jakarta.persistence.Transient
+    public Grade getGrade() { return Grade.of(grade); }
+
+    public void setGrade(Grade grade) { this.grade = grade == null ? null : grade.getCode(); }
+
+    public static class TierBenefitBuilder {
+        public TierBenefitBuilder grade(Grade grade) {
+            this.grade = grade == null ? null : grade.getCode();
+            return this;
+        }
+    }
 }

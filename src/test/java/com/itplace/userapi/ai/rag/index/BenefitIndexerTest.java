@@ -2,6 +2,7 @@ package com.itplace.userapi.ai.rag.index;
 
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,5 +35,17 @@ class BenefitIndexerTest {
         indexer.run(null);
 
         verify(benefitRagSyncService, never()).syncAll();
+    }
+
+    @Test
+    void postgresModeDoesNotStartBenefitEsSync() throws Exception {
+        BenefitIndexer indexer = new BenefitIndexer(benefitRagSyncService);
+        ReflectionTestUtils.setField(indexer, "aiEnabled", true);
+        ReflectionTestUtils.setField(indexer, "seedEnabled", true);
+        ReflectionTestUtils.setField(indexer, "searchProvider", "postgres");
+
+        indexer.run(null);
+
+        verifyNoInteractions(benefitRagSyncService);
     }
 }

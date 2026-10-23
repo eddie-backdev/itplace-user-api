@@ -4,11 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
+import com.itplace.userapi.reference.TestReferenceDataService;
 import org.junit.jupiter.api.Test;
 
 class QueryIntentExtractorTest {
 
-    private final QueryIntentExtractor extractor = new QueryIntentExtractor();
+    private final QueryIntentExtractor extractor = new QueryIntentExtractor(new TestReferenceDataService());
 
     @Test
     void extract_preservesHotCoolPlaceSignalWithoutForcingCounseling() {
@@ -32,6 +33,14 @@ class QueryIntentExtractorTest {
         assertThat(intent.categoryHints()).contains("카페", "커피");
         assertThat(intent.purposeKeywords()).contains("혜택");
         assertThat(intent.locationContext()).isEqualTo("UNKNOWN");
+    }
+
+    @Test
+    void extract_infersSktLiteGrade() {
+        QueryIntent intent = extractor.extract("SKT LITE 등급 혜택", null, null, 0.0, 0.0);
+
+        assertThat(intent.carrier()).isEqualTo(Carrier.SKT);
+        assertThat(intent.grade()).isEqualTo(Grade.SKT_LITE);
     }
 
 

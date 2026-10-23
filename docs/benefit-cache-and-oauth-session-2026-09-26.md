@@ -20,7 +20,7 @@ Redis 세대 marker는 삭제와 원자적으로 교체한다. 변경 전 시작
 - `X-Internal-Api-Key`: user의 `app.internal.api-key`와 일치해야 한다. 빈 설정/헤더/불일치는 401이다.
 - body 없음. 성공은 JSON `{"refreshedPartners": 1}`과 200이다. 숫자는 해당 호출에서 완료한 제휴처 건수이며, 다른 실행이 처리 중인 행까지 모두 완료했다는 확인 값은 아니다.
 - 양쪽 API 환경에 같은 `INTERNAL_API_KEY`를 제공한다. 기존 secret 설정이 속성을 덮어쓰는 경우 최종 설정의 일치 여부를 확인한다.
-- admin의 `BENEFIT_CACHE_REFRESH_URL`은 **admin 프로세스에서 접근 가능한 user API** 주소로 지정한다. 기본 localhost는 로컬 개발용이며 컨테이너 간 주소로 사용하지 않는다.
+- admin의 `BENEFIT_CACHE_REFRESH_URL`은 **admin 프로세스에서 접근 가능한 user API** 주소로 지정한다. 기본 localhost는 로컬 개발용이며 컨테이너 간 주소로 사용하지 않는다. OCI blue-green user API 컨테이너는 `itplace-user-api-internal` Docker network alias를 가져 두 컨테이너가 잠시 겹치는 전환 중에도 admin이 같은 내부 URL을 사용할 수 있다: `http://itplace-user-api-internal:8080/internal/benefits/cache/refresh`.
 - user의 `BENEFIT_CACHE_RETRY_DELAY_MS` 기본값은 5000이다.
 
 배포 전 공유 DB의 Flyway 이력 관리 주체를 확인하고 user API의 `V20260926_0001__track_benefit_cache_changes.sql`을 적용한다. 도입 시 기존 제휴처 전체를 대기열에 넣어 기존 캐시도 현재 DB 값과 7일 TTL로 교체한다. 그다음 새 user API, 설정을 준비한 admin API 순서로 적용하고 내부 API·대기열 소진·Redis TTL을 확인한다. 이 작업에서는 운영 DB 변경·배포를 수행하지 않았다.

@@ -1,6 +1,5 @@
 package com.itplace.userapi.benefit.entity;
 
-import com.itplace.userapi.benefit.entity.enums.Grade;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -14,6 +13,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class TierBenefitId implements Serializable {
-    private Grade grade;
+    private String grade;
     private Long benefit;
 }

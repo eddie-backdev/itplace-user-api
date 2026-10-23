@@ -165,6 +165,37 @@ class RecommendationServiceImplTest {
     }
 
     @Test
+    void recommendLockFailureDoesNotLoadFeaturesOrPersistPartialBatch() {
+        when(persistenceService.findLatestActiveBatch(eq(7L), any(LocalDateTime.class)))
+                .thenReturn(Optional.empty());
+        when(generationLock.acquire(7L)).thenThrow(new IllegalStateException("lock unavailable"));
+
+        assertThatThrownBy(() -> recommendationService.recommend(7L, 3))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("lock unavailable");
+
+        verifyNoInteractions(userFeatureService, aiService);
+        verify(persistenceService, never()).replaceActiveBatch(anyLong(), anyList(), any());
+        verifyNoInteractions(traceRecorder);
+    }
+
+    @Test
+    void recommendPersistsAnEmptyResultWhenUpstreamReturnsNoCandidates() {
+        UserFeature userFeature = userFeature();
+        when(persistenceService.findLatestActiveBatch(eq(7L), any(LocalDateTime.class)))
+                .thenReturn(Optional.empty());
+        when(generationLock.acquire(7L)).thenReturn(() -> { });
+        when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
+        when(aiService.vectorSearch(userFeature, 10)).thenReturn(List.of());
+        when(aiService.rerankAndExplain(userFeature, List.of(), 3)).thenReturn(List.of());
+
+        assertThat(recommendationService.recommend(7L, 3)).isEmpty();
+
+        verify(persistenceService).replaceActiveBatch(7L, List.of(), "personalized-es-quality-v1");
+        verify(traceRecorder).recordGenerated(eq(7L), any(), any(), eq(List.of()), eq(List.of()), any(), eq("miss"), eq("expired_or_absent"));
+    }
+
+    @Test
     void recommend_allowsOnlyOneGenerationForConcurrentRequests() throws Exception {
         AtomicReference<CachedBatch> storedBatch = new AtomicReference<>();
         AtomicInteger cacheLookupCount = new AtomicInteger();

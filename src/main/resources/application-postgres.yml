@@ -1,0 +1,26 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/migration-postgresql
+    # A deployment may enable PostgreSQL search after newer shared migrations.
+    out-of-order: true
+
+management:
+  health:
+    elasticsearch:
+      enabled: false
+
+app:
+  search:
+    provider: postgres
+  ai:
+    benefits:
+      seed:
+        enabled: false
+      sync:
+        enabled: ${BENEFIT_RAG_SYNC_ENABLED:${AI_INDEXING_ENABLED:false}}
+    questions:
+      seed:
+        enabled: false
+    stores:
+      seed:
+        enabled: false
