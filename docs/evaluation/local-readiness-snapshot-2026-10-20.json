@@ -1,0 +1,268 @@
+{
+  "captured_at": "2026-10-20T08:03:05.899238+00:00",
+  "environment": "local-only",
+  "read_only": true,
+  "production_verified": false,
+  "postgres": {
+    "version": "18.4 (Debian 18.4-1.pgdg13+1)",
+    "installed_extensions": [
+      {
+        "name": "fuzzystrmatch",
+        "version": "1.2"
+      },
+      {
+        "name": "pg_trgm",
+        "version": "1.6"
+      },
+      {
+        "name": "plpgsql",
+        "version": "1.0"
+      },
+      {
+        "name": "postgis",
+        "version": "3.6.4"
+      },
+      {
+        "name": "postgis_tiger_geocoder",
+        "version": "3.6.4"
+      },
+      {
+        "name": "postgis_topology",
+        "version": "3.6.4"
+      }
+    ],
+    "vector_available": false,
+    "counts": {
+      "benefits": 913,
+      "active_benefits": 758,
+      "policies": 1052,
+      "active_policies": 698,
+      "tier_benefits": 4405,
+      "active_tier_benefits": 2894,
+      "partners": 443,
+      "stores": 73715,
+      "active_geocoded_stores": 73715
+    },
+    "active_policy_evidence": {
+      "total": 698,
+      "has_conditions": 0,
+      "has_source_captured_at": 0,
+      "has_source_url": 698,
+      "channel_both": 698
+    },
+    "partner_category_missing": 224,
+    "active_policies_by_carrier": [
+      {
+        "carrier": "KT",
+        "policies": 180
+      },
+      {
+        "carrier": "LGU",
+        "policies": 158
+      },
+      {
+        "carrier": "SKT",
+        "policies": 360
+      }
+    ],
+    "store_indexes": [
+      {
+        "name": "idx_store_business_search",
+        "definition": "CREATE INDEX idx_store_business_search ON public.store USING gin (lower((COALESCE(business, ''::character varying))::text) gin_trgm_ops) WHERE ((active = true) AND (location IS NOT NULL))"
+      },
+      {
+        "name": "idx_store_last_seen_run",
+        "definition": "CREATE INDEX idx_store_last_seen_run ON public.store USING btree (partnerid, lastseenrunid) WHERE (active = true)"
+      },
+      {
+        "name": "idx_store_lat_lng",
+        "definition": "CREATE INDEX idx_store_lat_lng ON public.store USING btree (latitude, longitude)"
+      },
+      {
+        "name": "idx_store_location",
+        "definition": "CREATE INDEX idx_store_location ON public.store USING gist (location)"
+      },
+      {
+        "name": "idx_store_location_geo",
+        "definition": "CREATE INDEX idx_store_location_geo ON public.store USING gist (((location)::geography))"
+      },
+      {
+        "name": "idx_store_name_search",
+        "definition": "CREATE INDEX idx_store_name_search ON public.store USING gin (lower((COALESCE(storename, ''::character varying))::text) gin_trgm_ops) WHERE ((active = true) AND (location IS NOT NULL))"
+      },
+      {
+        "name": "idx_store_partner_active",
+        "definition": "CREATE INDEX idx_store_partner_active ON public.store USING btree (partnerid, active)"
+      },
+      {
+        "name": "store_pkey",
+        "definition": "CREATE UNIQUE INDEX store_pkey ON public.store USING btree (storeid)"
+      },
+      {
+        "name": "uq_store_kakao_partner_place",
+        "definition": "CREATE UNIQUE INDEX uq_store_kakao_partner_place ON public.store USING btree (partnerid, sourceplaceid) WHERE (((sourceprovider)::text = 'KAKAO'::text) AND (sourceplaceid IS NOT NULL))"
+      }
+    ]
+  },
+  "elasticsearch": {
+    "version": "8.14.1",
+    "indices": {
+      "benefit": {
+        "count": 4405,
+        "_shards": {
+          "total": 1,
+          "successful": 1,
+          "skipped": 0,
+          "failed": 0
+        }
+      },
+      "store": {
+        "count": 0,
+        "_shards": {
+          "total": 1,
+          "successful": 1,
+          "skipped": 0,
+          "failed": 0
+        }
+      },
+      "questions": {
+        "http_status": 404
+      },
+      "question_embeddings": {
+        "http_status": 404
+      }
+    },
+    "aggregations": {
+      "active": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": 1,
+            "key_as_string": "true",
+            "doc_count": 2894
+          },
+          {
+            "key": 0,
+            "key_as_string": "false",
+            "doc_count": 1511
+          }
+        ]
+      },
+      "business_types": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "OTHER",
+            "doc_count": 1997
+          },
+          {
+            "key": "SHOPPING",
+            "doc_count": 662
+          },
+          {
+            "key": "FOOD_RESTAURANT",
+            "doc_count": 430
+          },
+          {
+            "key": "BEVERAGE_CAFE",
+            "doc_count": 310
+          },
+          {
+            "key": "KIDS_PLAY",
+            "doc_count": 178
+          },
+          {
+            "key": "CULTURE",
+            "doc_count": 126
+          },
+          {
+            "key": "COUNSELING",
+            "doc_count": 102
+          },
+          {
+            "key": "DESSERT",
+            "doc_count": 100
+          },
+          {
+            "key": "MOVIE_THEATER",
+            "doc_count": 100
+          },
+          {
+            "key": "HOTEL",
+            "doc_count": 94
+          },
+          {
+            "key": "ATTRACTION",
+            "doc_count": 81
+          },
+          {
+            "key": "CONVENIENCE_STORE",
+            "doc_count": 76
+          },
+          {
+            "key": "WATER_PARK",
+            "doc_count": 54
+          },
+          {
+            "key": "STUDY_SPACE",
+            "doc_count": 50
+          },
+          {
+            "key": "AUTO_SERVICE",
+            "doc_count": 45
+          }
+        ]
+      },
+      "versions": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "benefit-carrier-grade-rag-v2",
+            "doc_count": 4405
+          }
+        ]
+      }
+    },
+    "embedding_mapping": {
+      "type": "dense_vector",
+      "dims": 1536,
+      "index": true,
+      "similarity": "cosine",
+      "index_options": {
+        "type": "int8_hnsw",
+        "m": 16,
+        "ef_construction": 100
+      }
+    },
+    "per_document_embedding_model_field_present": false,
+    "sample_vector": {
+      "document_id": "benefit:525:policy:26:tier:188037",
+      "dimensions": 1536,
+      "finite": true,
+      "content_hash_present": true
+    }
+  },
+  "source": {
+    "head": "24b982cd6ca3e0d4a3e2dbb777e538ac41ba9cba",
+    "worktree_dirty": true,
+    "file_sha256": {
+      "src/main/java/com/itplace/userapi/ai/chat/BenefitChatService.java": "7ab124bd9d0e78346ab2460d0c969b31163dd9135123c9d617a88c0524999d44",
+      "src/main/java/com/itplace/userapi/ai/chat/intent/BenefitChatPlanner.java": "476e7e8384f7789c6bee90f9bea5215e05700f2f0785313864303f798fb5603a",
+      "src/main/java/com/itplace/userapi/ai/chat/llm/BenefitChatAnswerer.java": "51e9d6efc62a45b1d3d9172e27dcd37098bac3945dd64b4ccf724b3f7ec95715",
+      "src/main/java/com/itplace/userapi/ai/rag/metadata/BenefitRagMetadataClassifier.java": "387a9edf93a776820334e3d033871669a5e5d805b57e27b3a7f9181c7278c7ad",
+      "src/main/java/com/itplace/userapi/ai/rag/index/BenefitRagDocumentBuilder.java": "01427a99e481e1e5ae92fa1061fb3f5369456d5ea45dd01486915a28943c3ca2",
+      "src/main/java/com/itplace/userapi/ai/rag/service/BenefitSearchServiceImpl.java": "e3dfb8867edeb549fdc6646a826665a543391309cbfb99e93bbef37f6c5c68a8",
+      "src/main/java/com/itplace/userapi/map/repository/StoreRepository.java": "d61879ec1557da338dc72503c9c3fd978a95cc902158619748de387ca972e901"
+    }
+  },
+  "limitations": [
+    "Read-only local snapshot, not production inventory or load test.",
+    "Store ES index is empty; current map path does not establish a healthy ES search baseline.",
+    "Counts are not an active endpoint eligibility guarantee.",
+    "Vector reuse requires per-model provenance and content/version validation; mapping/sample alone is insufficient.",
+    "No user table, credentials, real chat history or personal location was captured."
+  ]
+}

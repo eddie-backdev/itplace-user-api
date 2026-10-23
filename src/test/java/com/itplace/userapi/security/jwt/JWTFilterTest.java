@@ -3,6 +3,7 @@ package com.itplace.userapi.security.jwt;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import io.jsonwebtoken.JwtException;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
@@ -12,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 
 class JWTFilterTest {
     private static final String SECRET = "test-secret-012345678901234567890123456789";
@@ -35,6 +37,21 @@ class JWTFilterTest {
                 .extracting(org.springframework.security.core.GrantedAuthority::getAuthority).containsExactly("ROLE_USER");
     }
 
+    @Test
+    void savedJwtContextIsRestoredForAsyncRedispatch() throws Exception {
+        JWTUtil util = new JWTUtil(SECRET, 60, 120);
+        RequestAttributeSecurityContextRepository repository = new RequestAttributeSecurityContextRepository();
+        var request = request(util.createJwt(7L, "ROLE_USER", "access"));
+        new JWTFilter(util, repository).doFilter(request, new MockHttpServletResponse(), (req, res) -> {});
+        SecurityContextHolder.clearContext();
+
+        request.setDispatcherType(DispatcherType.ASYNC);
+        var restored = repository.loadDeferredContext(request).get();
+        assertThat(restored.getAuthentication()).isNotNull();
+        assertThat(restored.getAuthentication().getAuthorities())
+                .extracting(org.springframework.security.core.GrantedAuthority::getAuthority).containsExactly("ROLE_USER");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"expired", "malformed", "missing_id", "wrong_role", "refresh"})
     void invalidTokensCannotAuthenticate(String scenario) throws Exception {
@@ -46,8 +63,10 @@ class JWTFilterTest {
         var request = request(token);
         var response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
-        new JWTFilter(util).doFilter(request, response, chain);
+        RequestAttributeSecurityContextRepository repository = new RequestAttributeSecurityContextRepository();
+        new JWTFilter(util, repository).doFilter(request, response, chain);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(repository.loadDeferredContext(request).get().getAuthentication()).isNull();
         if (scenario.equals("refresh")) {
             assertThat(response.getStatus()).isEqualTo(401);
             verifyNoInteractions(chain);

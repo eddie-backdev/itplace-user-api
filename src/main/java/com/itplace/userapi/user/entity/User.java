@@ -6,6 +6,7 @@ import com.itplace.userapi.common.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Convert;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -69,7 +70,7 @@ public class User extends BaseTimeEntity {
 
     @Setter
     @Column(name = "membershipGradeCode", length = 30)
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.itplace.userapi.benefit.entity.enums.GradeConverter.class)
     private Grade membershipGradeCode;
 
     @Setter

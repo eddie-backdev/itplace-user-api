@@ -12,6 +12,16 @@ import org.springframework.transaction.annotation.Transactional;
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Transactional(readOnly = true, timeout = 5)
+    @Query("SELECT DISTINCT s.business FROM Store s WHERE s.partner.partnerId = :partnerId AND s.active = true")
+    List<String> findActiveBusinessesByPartnerId(
+            @org.springframework.data.repository.query.Param("partnerId") Long partnerId);
+
+    @Transactional(readOnly = true, timeout = 5)
+    @Query("SELECT s FROM Store s JOIN FETCH s.partner WHERE s.storeId = :storeId AND s.active = true")
+    Optional<Store> findActiveStoreWithPartner(
+            @org.springframework.data.repository.query.Param("storeId") Long storeId);
+
+    @Transactional(readOnly = true, timeout = 5)
     @Query(
             value = """
                     SELECT s.storeId FROM store s
@@ -22,7 +32,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                         WHERE b.active = true
                           AND bcp.active = true
-                          AND bcp.usageType IN ('offline', 'both')
                     ))
                     AND ST_DWithin(
                         location::geography,
@@ -54,7 +63,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         WHERE p.category = :category
                           AND b.active = true
                           AND bcp.active = true
-                          AND bcp.usageType IN ('offline', 'both')
                     ))
                     AND ST_DWithin(
                         s.location::geography,
@@ -96,8 +104,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                               WHERE (:category IS NULL OR p.category = :category)
                                 AND b.active = true
                                 AND bcp.active = true
-                                AND bcp.usageType IN ('offline', 'both')
-                          ))
+                                ))
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
                           AND s.longitude BETWEEN :minLng AND :maxLng
                           AND s.latitude BETWEEN :minLat AND :maxLat
@@ -175,8 +182,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                               JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                               WHERE b.active = true
                                 AND bcp.active = true
-                                AND bcp.usageType IN ('offline', 'both')
-                          ))
+                                ))
                           AND (:category IS NULL OR p.category = :category)
                           AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
                           AND s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
@@ -220,7 +226,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   AND s.partnerId = ANY (ARRAY(
                       SELECT DISTINCT b.partnerId FROM benefit b
                       JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
-                      WHERE b.active = true AND bcp.active = true AND bcp.usageType IN ('offline', 'both')
+                      WHERE b.active = true AND bcp.active = true
                   ))
                   AND (:category IS NULL OR p.category = :category)
                   AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
@@ -256,7 +262,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   SELECT 1 FROM benefit b
                   JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                   WHERE b.partnerId = p.partnerId AND b.active = true AND bcp.active = true
-                    AND bcp.usageType IN ('offline', 'both')
               )
               AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
               AND ST_DWithin(s.location::geography,
@@ -342,10 +347,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   WHERE b.partner = p
                     AND b.active = true
                     AND policy.active = true
-                    AND policy.usageType IN (
-                        com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
-                        com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
-                    )
               )
             """)
     List<Store> findAllByStoreIdInWithPartner(@Param("storeIds") List<Long> storeIds);
@@ -383,8 +384,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                           JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                           WHERE b.active = true
                             AND bcp.active = true
-                            AND bcp.usageType IN ('offline', 'both')
-                      ))
+                        ))
                     AND (:category IS NULL OR p.category = :category)
                     ORDER BY
                            CASE
@@ -416,10 +416,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   WHERE b.partner = p
                     AND b.active = true
                     AND policy.active = true
-                    AND policy.usageType IN (
-                        com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
-                        com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
-                    )
               )
             """)
     List<Store> findAllWithPartner();
@@ -438,8 +434,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                           JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                           WHERE b.active = true
                             AND bcp.active = true
-                            AND bcp.usageType IN ('offline', 'both')
-                      ))
+                        ))
                     ORDER BY ST_DistanceSphere(location::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) ASC
                     LIMIT 30
                     """,
@@ -479,8 +474,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                               JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                               WHERE b.active = true
                                 AND bcp.active = true
-                                AND bcp.usageType IN ('offline', 'both')
-                          ))
+                                ))
                           AND s.partnerId IN :partnerIds
                     ) ranked
                     WHERE ranked.row_num <= 30
@@ -508,10 +502,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                       WHERE b.partner = p
                         AND b.active = true
                         AND policy.active = true
-                        AND policy.usageType IN (
-                            com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
-                            com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
-                        )
                   )
             """)
     Optional<Store> findByIdAndPartnerId(
@@ -534,7 +524,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                         WHERE (:category IS NULL OR p.category = :category)
                           AND b.active = true
                           AND bcp.active = true
-                          AND bcp.usageType IN ('offline', 'both')
                     ))
                     AND ST_DWithin(
                         s.location::geography,
@@ -592,8 +581,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                           JOIN benefitCarrierPolicy bcp ON bcp.benefitId = b.benefitId
                           WHERE b.active = true
                             AND bcp.active = true
-                            AND bcp.usageType IN ('offline', 'both')
-                      ))
+                        ))
                     AND (:category IS NULL OR p.category = :category)
                     AND map_store_partner_matches(s.mapNormalizedName, s.mapNormalizedBusiness, p.mapNormalizedName)
                     ORDER BY
@@ -629,10 +617,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
                   WHERE b.partner = p
                     AND b.active = true
                     AND policy.active = true
-                    AND policy.usageType IN (
-                        com.itplace.userapi.benefit.entity.enums.UsageType.OFFLINE,
-                        com.itplace.userapi.benefit.entity.enums.UsageType.BOTH
-                    )
               )
             """)
     List<Store> findEligibleByStoreIdInWithPartner(@Param("storeIds") List<Long> storeIds);

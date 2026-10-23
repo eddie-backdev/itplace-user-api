@@ -1,0 +1,20 @@
+services:
+  postgres-search:
+    build: .
+    image: itplace-postgres-search:18.4
+    ports:
+      - "127.0.0.1:${PGVECTOR_LOCAL_PORT:-15432}:5432"
+    environment:
+      POSTGRES_USER: ${PGVECTOR_LOCAL_USER:?Set the local PostgreSQL user}
+      POSTGRES_PASSWORD: ${PGVECTOR_LOCAL_PASSWORD:?Set the local PostgreSQL password}
+      POSTGRES_DB: ${PGVECTOR_LOCAL_DB:?Set the local PostgreSQL database}
+    volumes:
+      - postgres-search-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres-search-data:

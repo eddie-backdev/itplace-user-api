@@ -25,6 +25,7 @@ import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.AuthCredentialRepository;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,6 +62,9 @@ class UserServiceImplTest {
 
     @Mock
     private PrincipalDetails principalDetails;
+
+    @Mock
+    private MembershipProfileValidator membershipProfileValidator;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -284,6 +288,7 @@ class UserServiceImplTest {
 
         when(principalDetails.getUserId()).thenReturn(7L);
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(membershipProfileValidator.isValid(Carrier.KT, Grade.KT_GOLD)).thenReturn(true);
 
         UserInfoResponse response = userService.updateMembershipProfile(principalDetails, request);
 
@@ -311,6 +316,8 @@ class UserServiceImplTest {
         MembershipProfileUpdateRequest request = new MembershipProfileUpdateRequest();
         request.setCarrier(Carrier.SKT);
         request.setMembershipGradeCode(Grade.VIP);
+
+        when(membershipProfileValidator.isValid(Carrier.SKT, Grade.VIP)).thenReturn(false);
 
         assertThatThrownBy(() -> userService.updateMembershipProfile(principalDetails, request))
                 .isInstanceOf(com.itplace.userapi.user.exception.InvalidMembershipProfileException.class);

@@ -13,12 +13,15 @@ import com.itplace.userapi.benefit.entity.enums.BenefitPolicyCode;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
+import com.itplace.userapi.benefit.entity.enums.PublicationStatus;
+import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.exception.BenefitImportUnauthorizedException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitPolicyRepository;
 import com.itplace.userapi.benefit.repository.BenefitRepository;
 import com.itplace.userapi.benefit.repository.BenefitSnapshotImportStateRepository;
 import com.itplace.userapi.benefit.repository.CarrierTierBenefitRepository;
+import com.itplace.userapi.reference.ReferenceDataService;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.map.service.PartnerBenefitCacheService;
 import com.itplace.userapi.partner.repository.PartnerRepository;
@@ -41,6 +44,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -55,6 +59,8 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private final BenefitSnapshotImportStateRepository benefitSnapshotImportStateRepository;
     private final PartnerBenefitCacheService partnerBenefitCacheService;
     private final BenefitCacheRefreshService benefitCacheRefreshService;
+    private final ReferenceDataService referenceDataService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.internal.api-key:}")
     private String expectedApiKey;
@@ -63,6 +69,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     @Transactional
     public BenefitSnapshotImportResponse importSnapshot(BenefitSnapshotImportRequest request, String apiKey) {
         validateInternalKey(apiKey);
+        validateReferenceCodes(request);
 
         LocalDateTime crawledAt = Objects.requireNonNull(
                 request.getCrawledAt(),
@@ -90,6 +97,27 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         List<BenefitSnapshotImportRequest.BenefitSnapshotItem> items = request.getBenefits();
         Map<String, Partner> partnerByName = upsertPartners(items);
         Map<String, BenefitCarrierPolicy> policyBySourceKey = findPoliciesBySourceKey(request.getCarrier(), items);
+        Set<String> preserveHeldSourceKeys = new LinkedHashSet<>();
+        Set<String> preserveArchivedSourceKeys = new LinkedHashSet<>();
+        for (BenefitSnapshotImportRequest.BenefitSnapshotItem item : items) {
+            BenefitCarrierPolicy existingPolicy = policyBySourceKey.get(item.getSourceKey());
+            boolean archived = item.getPublicationStatus() == PublicationStatus.ARCHIVED
+                    || (existingPolicy != null
+                    && existingPolicy.getPublicationStatus() == PublicationStatus.ARCHIVED);
+            boolean freezeArchivedHistory = existingPolicy != null && archived;
+            if (freezeArchivedHistory) preserveArchivedSourceKeys.add(item.getSourceKey());
+            if (policyBySourceKey.containsKey(item.getSourceKey())
+                    && !hasValidSourceEvidence(item, request.getCarrier())) {
+                if (archived) {
+                    preserveArchivedSourceKeys.add(item.getSourceKey());
+                } else if (item.getPublicationStatus() == PublicationStatus.HELD) {
+                    preserveHeldSourceKeys.add(item.getSourceKey());
+                } else {
+                    throw new IllegalArgumentException("Existing benefit row rejected because incoming source evidence is missing or mismatched: "
+                            + item.getSourceKey());
+                }
+            }
+        }
         Map<BenefitKey, Benefit> benefitByKey = findBenefitsByKey(items, partnerByName);
 
         List<ImportRow> rows = new ArrayList<>(items.size());
@@ -110,15 +138,21 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
             if (benefit.getPartner() != null) changedPartnerIds.add(benefit.getPartner().getPartnerId());
             changedPartnerIds.add(partner.getPartnerId());
-            benefit.setPartner(partner);
-            benefit.setMainCategory(item.getMainCategory());
-            benefit.setBenefitName(item.getBenefitName());
-            benefit.setCanonicalKey(canonicalKey);
-            benefit.setActive(item.getActive() == null || item.getActive());
+            boolean preserveArchived = preserveArchivedSourceKeys.contains(item.getSourceKey());
+            boolean preserveHeld = !preserveArchived && preserveHeldSourceKeys.contains(item.getSourceKey());
+            if (!preserveHeld && !preserveArchived) {
+                benefit.setPartner(partner);
+                benefit.setMainCategory(item.getMainCategory());
+                benefit.setBenefitName(item.getBenefitName());
+                benefit.setCanonicalKey(canonicalKey);
+                benefit.setActive(item.getActive() == null || item.getActive());
+            }
 
-            rows.add(new ImportRow(item, benefit, policy));
+            rows.add(new ImportRow(item, benefit, policy, preserveHeld, preserveArchived));
             benefitsToSave.add(benefit);
-            tierBenefitCount += item.getTierBenefits() == null ? 0 : item.getTierBenefits().size();
+            if (!preserveHeld && !preserveArchived) {
+                tierBenefitCount += item.getTierBenefits() == null ? 0 : item.getTierBenefits().size();
+            }
         }
 
         List<Benefit> savedBenefits = benefitRepository.saveAll(benefitsToSave);
@@ -135,15 +169,25 @@ public class BenefitImportServiceImpl implements BenefitImportService {
                     request.getCarrier(),
                     row.item(),
                     crawledAt,
+                    row.preserveHeld(),
+                    row.preserveArchived(),
                     benefitPolicies
             );
             policiesToSave.add(policy);
-            latestRowBySourceKey.put(row.item().getSourceKey(), new ImportRow(row.item(), savedBenefit, policy));
+            if (!row.preserveHeld() && !row.preserveArchived()) {
+                latestRowBySourceKey.put(row.item().getSourceKey(),
+                        new ImportRow(row.item(), savedBenefit, policy, false, false));
+            }
         }
 
         List<BenefitCarrierPolicy> savedPolicies = benefitCarrierPolicyRepository.saveAll(policiesToSave);
         replaceCarrierTierBenefits(savedPolicies, latestRowBySourceKey);
-        changedPartnerIds.addAll(inactivateMissingPolicies(request.getCarrier(), latestRowBySourceKey.keySet(), crawledAt));
+        Set<MainCategory> incomingCategories = items.stream()
+                .map(BenefitSnapshotImportRequest.BenefitSnapshotItem::getMainCategory)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        changedPartnerIds.addAll(inactivateMissingPolicies(
+                request.getCarrier(), latestRowBySourceKey.keySet(), incomingCategories, crawledAt));
         importState.markApplied(crawledAt);
         partnerBenefitCacheService.invalidateAfterCommit(changedPartnerIds.stream().filter(Objects::nonNull).toList());
         benefitCacheRefreshService.refreshAfterCommit();
@@ -209,6 +253,23 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private void validateInternalKey(String apiKey) {
         if (!StringUtils.hasText(expectedApiKey) || !StringUtils.hasText(apiKey) || !constantTimeEquals(expectedApiKey, apiKey)) {
             throw new BenefitImportUnauthorizedException(BenefitCode.BENEFIT_IMPORT_UNAUTHORIZED);
+        }
+    }
+
+    private void validateReferenceCodes(BenefitSnapshotImportRequest request) {
+        if (request == null || request.getBenefits() == null) return;
+        for (var item : request.getBenefits()) {
+            if (item.getMainCategory() == null || !referenceDataService.isActiveProgram(item.getMainCategory().getCode())) {
+                throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
+            }
+            if (StringUtils.hasText(item.getPartnerCategory()) && !referenceDataService.isActiveCategory(item.getPartnerCategory().trim())) {
+                throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
+            }
+            for (var tier : item.getTierBenefits()) {
+                if (tier.getGrade() == null || !referenceDataService.isBenefitGrade(request.getCarrier(), tier.getGrade())) {
+                    throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.INVALID_GRADE_FOR_BENEFIT);
+                }
+            }
         }
     }
 
@@ -310,6 +371,8 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             Carrier carrier,
             BenefitSnapshotImportRequest.BenefitSnapshotItem item,
             LocalDateTime crawledAt,
+            boolean preserveHeld,
+            boolean preserveArchived,
             Map<BenefitPolicyCode, BenefitPolicy> benefitPolicies
     ) {
         BenefitCarrierPolicy target = policy == null
@@ -322,11 +385,53 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
         target.setBenefit(benefit);
         target.setCarrier(carrier);
-        target.setActive(item.getActive() == null || item.getActive());
+        if (preserveHeld) {
+            target.setPublicationStatus(PublicationStatus.HELD);
+            target.setHoldReason(StringUtils.hasText(item.getHoldReason()) ? item.getHoldReason()
+                    : StringUtils.hasText(target.getHoldReason()) ? target.getHoldReason()
+                    : "Source evidence is missing or mismatched");
+            target.setActive(false);
+            return target;
+        }
+        boolean previouslyArchived = target.getPublicationStatus() == PublicationStatus.ARCHIVED;
+        boolean archived = preserveArchived || previouslyArchived
+                || item.getPublicationStatus() == PublicationStatus.ARCHIVED;
+        if (archived) {
+            target.setPublicationStatus(PublicationStatus.ARCHIVED);
+            target.setHoldReason(previouslyArchived && StringUtils.hasText(target.getHoldReason())
+                    ? target.getHoldReason()
+                    : StringUtils.hasText(item.getHoldReason()) ? item.getHoldReason()
+                    : "Archived publication");
+            target.setPublicationReviewedAt(previouslyArchived && target.getPublicationReviewedAt() != null
+                    ? target.getPublicationReviewedAt()
+                    : item.getPublicationReviewedAt());
+            target.setActive(false);
+        }
+        if (preserveArchived || previouslyArchived) return target;
+        boolean held = !archived && (item.getPublicationStatus() == PublicationStatus.HELD
+                || target.getPublicationStatus() == PublicationStatus.HELD
+                || (policy == null && !hasValidSourceEvidence(item, carrier)));
+        if (!archived) {
+            target.setPublicationStatus(held ? PublicationStatus.HELD : PublicationStatus.APPROVED);
+            target.setHoldReason(held
+                    ? (StringUtils.hasText(item.getHoldReason()) ? item.getHoldReason()
+                        : StringUtils.hasText(target.getHoldReason()) ? target.getHoldReason()
+                        : "Source evidence is missing or publication is held")
+                    : null);
+            target.setPublicationReviewedAt(item.getPublicationReviewedAt() != null
+                    ? item.getPublicationReviewedAt() : target.getPublicationReviewedAt());
+            target.setActive(!held && (item.getActive() == null || item.getActive()));
+        }
         target.setSourceKey(item.getSourceKey());
         target.setSourceUrl(item.getSourceUrl());
         target.setSourceCategory(item.getSourceCategory());
         target.setLastCrawledAt(crawledAt);
+        if (hasValidSourceEvidence(item, carrier)) {
+            target.setSourceEvidenceId(item.getSourceEvidenceId());
+            target.setSourceCapturedAt(item.getSourceCapturedAt());
+        }
+        target.setSourceLimitText(item.getSourceLimitText());
+        target.setConditions(item.getConditions());
         target.setCarrierBenefitName(item.getBenefitName());
         MembershipOptionType incomingOption = item.getMembershipOptionType();
         String incomingOptionLabel = item.getSourceOptionLabel();
@@ -347,12 +452,29 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         target.setType(item.getType());
         target.setDescription(item.getDescription());
         target.setManual(item.getManual());
-        BenefitPolicyCode code = item.getBenefitPolicyCode() == null ? BenefitPolicyCode.UNLIMITED : item.getBenefitPolicyCode();
+        BenefitPolicyCode code = item.getBenefitPolicyCode() == null ? BenefitPolicyCode.UNKNOWN : item.getBenefitPolicyCode();
         target.setBenefitPolicy(benefitPolicies.computeIfAbsent(code, this::resolveBenefitPolicy));
         target.setUsageType(item.getUsageType());
         target.setUrl(resolveBenefitUrl(item));
 
         return target;
+    }
+
+    private boolean hasValidSourceEvidence(BenefitSnapshotImportRequest.BenefitSnapshotItem item, Carrier carrier) {
+        if (item.getSourceEvidenceId() == null || item.getSourceEvidenceId() <= 0 || item.getSourceCapturedAt() == null
+                || !StringUtils.hasText(item.getSourceUrl())) return false;
+        try {
+            java.net.URI uri = java.net.URI.create(item.getSourceUrl().trim());
+            if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                    || !StringUtils.hasText(uri.getHost())) return false;
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*) FROM rawBenefitSource
+                    WHERE id = ? AND carrier = ? AND sourceUrl = ?
+                      AND capturedAt <= ? AND lastSeenAt >= ?
+                    """, Integer.class, item.getSourceEvidenceId(), carrier.name(), item.getSourceUrl().trim(),
+                    java.sql.Timestamp.from(item.getSourceCapturedAt()), java.sql.Timestamp.from(item.getSourceCapturedAt()));
+            return count != null && count > 0;
+        } catch (IllegalArgumentException ignored) { return false; }
     }
 
     private MembershipOptionType legacySktOption(Carrier carrier, String benefitName) {
@@ -363,7 +485,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     }
 
     private BenefitPolicy resolveBenefitPolicy(BenefitPolicyCode requestedCode) {
-        BenefitPolicyCode code = requestedCode == null ? BenefitPolicyCode.UNLIMITED : requestedCode;
+        BenefitPolicyCode code = requestedCode == null ? BenefitPolicyCode.UNKNOWN : requestedCode;
         return benefitPolicyRepository.findByCode(code)
                 .orElseThrow(() -> new IllegalStateException("혜택 이용 정책을 찾을 수 없습니다: " + code));
     }
@@ -371,10 +493,14 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private List<Long> inactivateMissingPolicies(
             Carrier carrier,
             Set<String> incomingSourceKeys,
+            Set<com.itplace.userapi.benefit.entity.enums.MainCategory> incomingCategories,
             LocalDateTime crawledAt
     ) {
+        if (incomingCategories.isEmpty()) return List.of();
         List<BenefitCarrierPolicy> missingPolicies = benefitCarrierPolicyRepository.findAllByCarrier(carrier).stream()
                 .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
+                .filter(policy -> policy.getBenefit() != null
+                        && incomingCategories.contains(policy.getBenefit().getMainCategory()))
                 .filter(policy -> !incomingSourceKeys.contains(policy.getSourceKey()))
                 .peek(policy -> {
                     policy.setActive(false);
@@ -412,11 +538,40 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             BenefitCarrierPolicy savedPolicy = savedPolicyBySourceKey.get(sourceKey);
             if (savedPolicy != null) {
                 List<CarrierTierBenefit> current = tiersByPolicy.getOrDefault(savedPolicy.getBenefitCarrierPolicyId(), List.of());
-                List<CarrierTierBenefit> incoming = createCarrierTierBenefits(savedPolicy, row.item().getTierBenefits());
-                if (!tierCounts(current).equals(tierCounts(incoming))) {
-                    removals.addAll(current);
-                    replacements.addAll(incoming);
+                List<CarrierTierBenefit> incoming = new ArrayList<>(createCarrierTierBenefits(savedPolicy, row.item().getTierBenefits()));
+                List<CarrierTierBenefit> unused = new ArrayList<>(current);
+                for (int index = 0; index < incoming.size(); index++) {
+                    CarrierTierBenefit next = incoming.get(index);
+                    CarrierTierBenefit exact = unused.stream().filter(old -> sameTier(old, next)).findFirst().orElse(null);
+                    if (exact != null) { unused.remove(exact); incoming.set(index, exact); continue; }
+                    List<CarrierTierBenefit> candidates = unused.stream()
+                            .filter(old -> Objects.equals(old.getGrade(), next.getGrade()))
+                            .filter(old -> Objects.equals(old.getOfferKey(), next.getOfferKey()))
+                            .toList();
+                    if (candidates.size() == 1) {
+                        CarrierTierBenefit rowToUpdate = candidates.get(0);
+                        rowToUpdate.setContext(next.getContext()); rowToUpdate.setIsAll(next.getIsAll());
+                        rowToUpdate.setDiscountValue(next.getDiscountValue());
+                        replacements.add(rowToUpdate);
+                        unused.remove(rowToUpdate);
+                    } else if (candidates.isEmpty() && StringUtils.hasText(next.getOfferKey())) {
+                        List<CarrierTierBenefit> legacyMatches = unused.stream()
+                                .filter(old -> old.getOfferKey() == null || isLegacyPositionOfferKey(old.getOfferKey()))
+                                .filter(old -> sameTierContent(old, next))
+                                .toList();
+                        if (legacyMatches.size() == 1) {
+                            CarrierTierBenefit rowToUpdate = legacyMatches.get(0);
+                            rowToUpdate.setOfferKey(next.getOfferKey());
+                            replacements.add(rowToUpdate);
+                            unused.remove(rowToUpdate);
+                        } else {
+                            replacements.add(next);
+                        }
+                    } else {
+                        replacements.add(next);
+                    }
                 }
+                removals.addAll(unused);
             }
         });
         if (!removals.isEmpty()) {
@@ -427,14 +582,12 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         }
     }
 
-    private Map<TierContent, Long> tierCounts(List<CarrierTierBenefit> tiers) {
-        return tiers.stream().map(tier -> new TierContent(tier.getGrade(), tier.getContext(),
-                        Boolean.TRUE.equals(tier.getIsAll()), tier.getDiscountValue()))
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    private boolean sameTier(CarrierTierBenefit first, CarrierTierBenefit second) {
+        return Objects.equals(first.getGrade(), second.getGrade()) && Objects.equals(first.getContext(), second.getContext())
+                && Objects.equals(first.getIsAll(), second.getIsAll())
+                && Objects.equals(first.getDiscountValue(), second.getDiscountValue())
+                && Objects.equals(first.getOfferKey(), second.getOfferKey());
     }
-
-    private record TierContent(Grade grade, String context,
-                               boolean all, Integer discountValue) {}
 
     private List<CarrierTierBenefit> createCarrierTierBenefits(
             BenefitCarrierPolicy policy,
@@ -444,15 +597,146 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             return List.of();
         }
 
+        Map<String, Set<Grade>> gradesByOfferContext = tierBenefits.stream()
+                .filter(tier -> tier.getContext() != null && !tier.getContext().isBlank())
+                .collect(Collectors.groupingBy(tier -> tierGroupKey(resolveOfferKey(policy, tier), tier.getContext()),
+                        Collectors.mapping(BenefitSnapshotImportRequest.TierBenefitSnapshot::getGrade,
+                                Collectors.toSet())));
+        Set<String> allGradeOfferContexts = TierBenefitSemantics.allGradeContexts(gradesByOfferContext,
+                referenceDataService.allGradeMembers(policy.getCarrier()));
+
         return tierBenefits.stream()
-                .map(tier -> CarrierTierBenefit.builder()
-                        .benefitCarrierPolicy(policy)
-                        .grade(tier.getGrade())
-                        .context(tier.getContext())
-                        .isAll(tier.getIsAll() != null && tier.getIsAll())
-                        .discountValue(tier.getDiscountValue())
-                        .build())
+                .map(tier -> {
+                    String offerKey = resolveOfferKey(policy, tier);
+                    return CarrierTierBenefit.builder()
+                            .benefitCarrierPolicy(policy)
+                            .grade(tier.getGrade())
+                            .context(tier.getContext())
+                            .isAll(allGradeOfferContexts.contains(tierGroupKey(offerKey, tier.getContext())))
+                            .discountValue(tier.getDiscountValue())
+                            .offerKey(offerKey)
+                            .build();
+                })
                 .toList();
+    }
+
+    private String tierGroupKey(String offerKey, String context) {
+        return Objects.toString(offerKey, "") + "\u0000" + Objects.toString(context, "");
+    }
+
+    private boolean isLegacyPositionOfferKey(String key) {
+        return key != null && key.matches("offer-\\d+");
+    }
+
+    private boolean sameTierContent(CarrierTierBenefit first, CarrierTierBenefit second) {
+        return Objects.equals(first.getGrade(), second.getGrade())
+                && Objects.equals(first.getContext(), second.getContext())
+                && Objects.equals(first.getIsAll(), second.getIsAll())
+                && Objects.equals(first.getDiscountValue(), second.getDiscountValue());
+    }
+
+    private String resolveOfferKey(BenefitCarrierPolicy policy,
+            BenefitSnapshotImportRequest.TierBenefitSnapshot tier) {
+        var conditions = policy.getConditions();
+        if (conditions == null || tier.getGrade() == null || !StringUtils.hasText(tier.getContext())) return null;
+        List<com.itplace.userapi.benefit.dto.BenefitOffer> wholeMatches = conditions.offers().stream()
+                .filter(offer -> Boolean.TRUE.equals(offer.allGrades())
+                        || offer.gradeCodes().contains(tier.getGrade().getCode()))
+                .filter(offer -> tierContextMatches(offer, tier.getContext(), tier.getGrade()))
+                .toList();
+        if (StringUtils.hasText(tier.getOfferKey())) {
+            long keyedMatches = wholeMatches.stream()
+                    .filter(offer -> Objects.equals(offer.key(), tier.getOfferKey())).count();
+            if (keyedMatches == 1) return tier.getOfferKey();
+        } else if (wholeMatches.size() == 1) {
+            return wholeMatches.get(0).key();
+        }
+        List<String> clauses = tierClauses(tier.getContext());
+        if (clauses.size() > 1) {
+            List<com.itplace.userapi.benefit.dto.BenefitOffer> mapped = mapTierClauses(conditions.offers(), tier.getGrade(), clauses);
+            if (mapped.size() != clauses.size() || mapped.stream().map(com.itplace.userapi.benefit.dto.BenefitOffer::key).distinct().count() != 1)
+                return null;
+            String key = mapped.get(0).key();
+            return !StringUtils.hasText(tier.getOfferKey()) || Objects.equals(key, tier.getOfferKey()) ? key : null;
+        }
+        return null;
+    }
+
+    private boolean tierContextMatches(com.itplace.userapi.benefit.dto.BenefitOffer offer, String context, Grade grade) {
+        String normalizedContext = normalizeTierEvidence(context);
+        if (normalizedContext.isEmpty()) return false;
+        return (offer.title() != null && normalizeTierEvidence(offer.title()).equals(normalizedContext))
+                || (offer.sourceText() != null
+                        && normalizeTierEvidence(offer.sourceText()).contains(normalizedContext))
+                || labeledTierContextMatches(offer, context, grade);
+    }
+
+    private boolean labeledTierContextMatches(com.itplace.userapi.benefit.dto.BenefitOffer offer, String context, Grade grade) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^\\s*\\[([^]]+)]\\s*(.+)$", java.util.regex.Pattern.DOTALL)
+                .matcher(context);
+        if (!matcher.matches() || offer.title() == null) return false;
+        String label = normalizeTierEvidence(matcher.group(1));
+        String title = offer.title();
+        boolean titleMatches = normalizeTierEvidence(title).equals(label);
+        int suffixStart = title.lastIndexOf(" — ");
+        if (!titleMatches && suffixStart >= 0) {
+            String gradeSuffix = gradeSuffix(grade);
+            titleMatches = !gradeSuffix.isEmpty()
+                    && normalizeTierEvidence(title.substring(0, suffixStart)).equals(label)
+                    && normalizeTierEvidence(title.substring(suffixStart + 3)).equals(normalizeTierEvidence(gradeSuffix));
+        }
+        return titleMatches && offer.sourceText() != null
+                && normalizeTierEvidence(offer.sourceText()).contains(normalizeTierEvidence(matcher.group(2)));
+    }
+
+    private String gradeSuffix(Grade grade) {
+        String code = grade == null ? "" : grade.getCode();
+        return code.substring(code.lastIndexOf('_') + 1);
+    }
+
+    private List<com.itplace.userapi.benefit.dto.BenefitOffer> mapTierClauses(
+            List<com.itplace.userapi.benefit.dto.BenefitOffer> offers, Grade grade, List<String> clauses) {
+        List<com.itplace.userapi.benefit.dto.BenefitOffer> mapped = new ArrayList<>();
+        for (String clause : clauses) {
+            String normalized = normalizeTierEvidence(clause);
+            if (normalized.isEmpty() || (normalized.matches(".*(?:불가|불가능|제외|미적용|사용할 수 없|이용할 수 없).*")
+                    && !normalized.matches(".*(?:할인|적립|가능|무료|제공|증정|예매|티켓|쿠폰|이용권).*"))) return List.of();
+            List<com.itplace.userapi.benefit.dto.BenefitOffer> matches = offers.stream()
+                    .filter(offer -> Boolean.TRUE.equals(offer.allGrades()) || offer.gradeCodes().contains(grade.getCode()))
+                    .filter(offer -> offer.sourceText() != null
+                            && normalizeTierEvidence(offer.sourceText()).contains(normalized))
+                    .toList();
+            if (matches.size() != 1) return List.of();
+            mapped.add(matches.get(0));
+        }
+        return mapped;
+    }
+
+    private List<String> tierClauses(String context) {
+        if (!StringUtils.hasText(context)) return List.of();
+        String htmlNormalized = context.replaceAll("(?i)</?br\\s*/?>", "\n");
+        List<String> clauses = java.util.Arrays.stream(htmlNormalized.split("\\R|(?=\\s*\\[[^]]+])"))
+                .map(String::trim).filter(StringUtils::hasText).toList();
+        if (clauses.size() > 1 && clauses.stream().allMatch(this::hasTierAction)) return clauses;
+        clauses = java.util.Arrays.stream(context.split("\\s*(?:\\+|＋|및|그리고)\\s*"))
+                .map(String::trim).filter(StringUtils::hasText).toList();
+        if (clauses.size() > 1 && clauses.stream().allMatch(this::hasTierAction)) return clauses;
+        clauses = java.util.Arrays.stream(context.split("(?<![0-9]),(?![0-9])|，"))
+                .map(String::trim).filter(StringUtils::hasText).toList();
+        return clauses.size() > 1 && clauses.stream().allMatch(this::hasTierAction) ? clauses : List.of();
+    }
+
+    private boolean hasTierAction(String clause) {
+        String value = normalizeTierEvidence(clause);
+        return value.contains("할인") || value.contains("적립") || value.contains("캐시백")
+                || value.contains("부여") || value.contains("포인트사용")
+                || value.contains("예매") || value.contains("무료") || value.contains("제공")
+                || value.contains("증정") || value.contains("이용권") || value.contains("쿠폰");
+    }
+
+    private String normalizeTierEvidence(String value) {
+        return value == null ? "" : value.replaceAll("(?i)</?br\\s*/?>", " ")
+                .toLowerCase(Locale.ROOT).replaceAll("[\\s\\p{Z}]+", " ").trim();
     }
 
     private String resolveCanonicalKey(Partner partner, BenefitSnapshotImportRequest.BenefitSnapshotItem item) {
@@ -471,7 +755,9 @@ public class BenefitImportServiceImpl implements BenefitImportService {
     private record ImportRow(
             BenefitSnapshotImportRequest.BenefitSnapshotItem item,
             Benefit benefit,
-            BenefitCarrierPolicy policy
+            BenefitCarrierPolicy policy,
+            boolean preserveHeld,
+            boolean preserveArchived
     ) {
     }
 

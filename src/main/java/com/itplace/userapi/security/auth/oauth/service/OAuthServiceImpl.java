@@ -41,6 +41,7 @@ public class OAuthServiceImpl implements OAuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final AuthCredentialRepository authCredentialRepository;
+    private final MembershipProfileValidator membershipProfileValidator;
     private final JWTUtil jwtUtil;
     private final KakaoOAuthProviderClient kakaoOAuthProviderClient;
 
@@ -166,7 +167,7 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private User createNewSocialUser(OAuthSignUpRequest request, String provider, String providerId, String email) {
-        if (!MembershipProfileValidator.isValidForSignUp(request.getCarrier(), request.getMembershipGradeCode())) {
+        if (!membershipProfileValidator.isValidForSignUp(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
 

@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
@@ -31,6 +32,7 @@ import com.itplace.userapi.map.repository.StoreRepository;
 import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.reference.ReferenceDataService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -65,8 +67,19 @@ class BenefitServiceImplTest {
     @Mock
     private BenefitHybridSearchService benefitHybridSearchService;
 
+    @Mock private ReferenceDataService referenceDataService;
+
     @InjectMocks
     private BenefitServiceImpl benefitService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubReferenceCatalog() {
+        lenient().when(referenceDataService.isActiveProgram(any())).thenReturn(true);
+        lenient().when(referenceDataService.isActiveCategory(any())).thenReturn(true);
+        lenient().when(referenceDataService.allGradeMembers(Carrier.SKT)).thenReturn(List.of(Grade.SKT_LITE, Grade.SKT_SILVER, Grade.SKT_GOLD, Grade.SKT_VIP));
+        lenient().when(referenceDataService.allGradeMembers(Carrier.KT)).thenReturn(List.of(Grade.KT_GENERAL, Grade.KT_WHITE, Grade.KT_SILVER, Grade.KT_GOLD, Grade.KT_VIP, Grade.KT_VVIP));
+        lenient().when(referenceDataService.allGradeMembers(Carrier.LGU)).thenReturn(List.of(Grade.BASIC, Grade.VIP, Grade.VVIP, Grade.DIAMOND));
+    }
 
     @Test
     void staleEsPoliciesAreExcludedBeforeCountingAndPagination() {
@@ -247,7 +260,7 @@ class BenefitServiceImplTest {
         when(benefitHybridSearchService.search(eq("커피"), eq(MainCategory.BASIC_BENEFIT), eq("카페"),
                 eq(UsageType.OFFLINE), eq(List.of(Carrier.LGU)), any(PageRequest.class)))
                 .thenThrow(new IllegalStateException("es unavailable"));
-        when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
+        when(benefitRepository.findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getCode()), eq("카페"),
                 eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("RELEVANCE"), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(benefit), PageRequest.of(0, 12), 1));
         when(benefitRepository.findActiveBenefitsByPartnerIdsWithPartner(
@@ -272,7 +285,7 @@ class BenefitServiceImplTest {
                 .singleElement()
                 .satisfies(item -> assertThat(item.getBenefitId()).isEqualTo(20L));
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getLabel()), eq("카페"),
+        verify(benefitRepository).findFilteredBenefits(eq(MainCategory.BASIC_BENEFIT.getCode()), eq("카페"),
                 eq(UsageType.OFFLINE.name()), eq("커피"), eq(true), eq(List.of("LGU")), eq("RELEVANCE"), any(PageRequest.class));
     }
 
@@ -497,8 +510,8 @@ class BenefitServiceImplTest {
     }
 
     @Test
-    void mapBenefitDetailWithoutActiveOfflinePolicyReturnsOfflineNotFoundBeforeFavoriteLookup() {
-        Benefit benefit = Benefit.builder().benefitId(20L).build();
+    void mapBenefitDetailReturnsOnlineOfferForPhysicalStoreWithoutSubstitutingCarrier() {
+        Benefit benefit = Benefit.builder().benefitId(20L).partner(Partner.builder().partnerId(40L).build()).build();
         BenefitCarrierPolicy onlineOnly = BenefitCarrierPolicy.builder()
                 .benefitCarrierPolicyId(120L).benefit(benefit).carrier(Carrier.SKT)
                 .usageType(UsageType.ONLINE).active(true).build();
@@ -508,12 +521,12 @@ class BenefitServiceImplTest {
                 .thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(onlineOnly));
 
-        assertThatThrownBy(() -> benefitService.getMapBenefitDetail(
-                30L, 40L, MainCategory.BASIC_BENEFIT, Carrier.SKT, 7L))
-                .isInstanceOf(com.itplace.userapi.benefit.exception.BenefitOfflineNotFoundException.class);
-
-        verify(favoriteRepository, never()).existsByUser_IdAndBenefit_BenefitId(7L, 20L);
-        verify(carrierTierBenefitRepository, never()).findAllByBenefitCarrierPolicyIn(anyList());
+        MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(
+                30L, 40L, MainCategory.BASIC_BENEFIT, Carrier.SKT, 7L);
+        assertThat(response.getCarrier()).isEqualTo(Carrier.SKT);
+        assertThat(response.getUsageType()).isEqualTo(UsageType.ONLINE);
+        verify(favoriteRepository).existsByUser_IdAndBenefit_BenefitId(7L, 20L);
+        verify(carrierTierBenefitRepository).findAllByBenefitCarrierPolicyIn(List.of(onlineOnly));
     }
 
     @Test
@@ -582,7 +595,21 @@ class BenefitServiceImplTest {
         assertThat(response.getCarrier()).isEqualTo(Carrier.SKT);
         assertThat(response.getTierBenefits())
                 .extracting(tier -> tier.getCarrier())
-                .containsExactly(Carrier.SKT, Carrier.KT);
+                .containsExactly(Carrier.SKT);
+    }
+
+    @Test
+    void getMapBenefitDetail_doesNotSubstituteAnotherCarrierWhenRequestedCarrierIsMissing() {
+        Partner partner = Partner.builder().partnerId(10L).partnerName("파스쿠찌").build();
+        Store store = Store.builder().storeId(20L).partner(partner).build();
+        Benefit kt = benefit(2L, partner, Carrier.KT, "KT 오프라인 혜택", Grade.KT_VIP, "KT VIP 할인");
+        when(storeRepository.findByIdAndPartnerId(20L, 10L)).thenReturn(Optional.of(store));
+        when(benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(10L, MainCategory.BASIC_BENEFIT))
+                .thenReturn(List.of(kt));
+
+        assertThatThrownBy(() -> benefitService.getMapBenefitDetail(
+                20L, 10L, MainCategory.BASIC_BENEFIT, Carrier.SKT, null))
+                .isInstanceOf(com.itplace.userapi.benefit.exception.BenefitOfflineNotFoundException.class);
     }
 
     @Test
@@ -610,11 +637,8 @@ class BenefitServiceImplTest {
                 .thenReturn(List.of(master));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(master)))
                 .thenReturn(List.of(sktPolicy, ktPolicy));
-        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(sktPolicy, ktPolicy)))
-                .thenReturn(List.of(
-                        carrierTier(sktPolicy, Grade.SKT_GOLD, "SKT 골드 할인"),
-                        carrierTier(ktPolicy, Grade.KT_VIP, "KT VIP 할인")
-                ));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy)))
+                .thenReturn(List.of(carrierTier(ktPolicy, Grade.KT_VIP, "KT VIP 할인")));
 
         MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(
                 20L, 10L, MainCategory.BASIC_BENEFIT, Carrier.KT, null);
@@ -625,10 +649,10 @@ class BenefitServiceImplTest {
         assertThat(response.getUrl()).isEqualTo("https://kt.example");
         assertThat(response.getTierBenefits())
                 .extracting(tier -> tier.getCarrier())
-                .containsExactly(Carrier.SKT, Carrier.KT);
+                .containsExactly(Carrier.KT);
         assertThat(response.getTierBenefits())
                 .extracting(tier -> tier.getContext())
-                .containsExactly("SKT 골드 할인", "KT VIP 할인");
+                .containsExactly("KT VIP 할인");
     }
 
     @Test
@@ -698,10 +722,10 @@ class BenefitServiceImplTest {
         assertThat(response.getCarrier()).isEqualTo(Carrier.SKT);
         assertThat(response.getTierBenefits())
                 .extracting(tier -> tier.getCarrier())
-                .containsExactly(Carrier.SKT, Carrier.SKT, Carrier.LGU);
+                .containsExactly(Carrier.SKT, Carrier.SKT);
         assertThat(response.getTierBenefits())
                 .extracting(tier -> tier.getContext())
-                .containsExactly("SKT 골드 할인", "SKT VIP 추가 혜택", "LGU VIP 할인");
+                .containsExactly("SKT 골드 할인", "SKT VIP 추가 혜택");
     }
 
     @Test

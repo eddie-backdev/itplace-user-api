@@ -2,12 +2,14 @@ package com.itplace.userapi.ai.question.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.itplace.userapi.ai.question.service.ElasticQuestionService;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.io.ResourceLoader;
 
 class QuestionIndexerTest {
 
@@ -41,6 +43,19 @@ class QuestionIndexerTest {
         List<String> columns = QuestionIndexer.parseCsvLine("\"온천, 스파 가고 싶은데 추천 좀\",\"온천, 스파\"");
 
         assertThat(columns).containsExactly("온천, 스파 가고 싶은데 추천 좀", "온천, 스파");
+    }
+
+    @Test
+    void runSkipsAllElasticAndEmbeddingWorkInPostgresMode() {
+        EmbeddingService embeddings = mock(EmbeddingService.class);
+        ElasticQuestionService elastic = mock(ElasticQuestionService.class);
+        ResourceLoader resources = mock(ResourceLoader.class);
+        QuestionIndexer indexer = new QuestionIndexer(embeddings, elastic, resources);
+        org.springframework.test.util.ReflectionTestUtils.setField(indexer, "searchProvider", "postgres");
+
+        indexer.run(null);
+
+        verifyNoInteractions(embeddings, elastic, resources);
     }
 
     @Test

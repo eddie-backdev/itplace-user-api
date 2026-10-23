@@ -24,7 +24,7 @@ class CacheConfigTest {
     void typedBenefitSerializerReadsExistingValuesAndKeepsRollbackCompatibleBytes() {
         var manager = (RedisCacheManager) new CacheConfig().cacheManager(mock(RedisConnectionFactory.class), org.springframework.data.redis.cache.CacheStatisticsCollector.create());
         manager.afterPropertiesSet();
-        var typed = manager.getCacheConfigurations().get("partner-benefits").getValueSerializationPair();
+        var typed = manager.getCacheConfigurations().get("partner-benefits-v3").getValueSerializationPair();
         // 다른 캐시에 유지된 generic serializer가 기존 혜택 캐시 형식이다.
         var legacy = manager.getCacheConfigurations().get("map-store-clusters").getValueSerializationPair();
         var tiers = new java.util.ArrayList<>(java.util.List.of(
@@ -50,13 +50,13 @@ class CacheConfigTest {
         CacheManager cacheManager = new CacheConfig().cacheManager(connectionFactory, org.springframework.data.redis.cache.CacheStatisticsCollector.create());
         ((RedisCacheManager) cacheManager).afterPropertiesSet();
 
-        assertThat(cacheManager.getCacheNames()).contains("partner-benefits", "map-store-clusters");
+        assertThat(cacheManager.getCacheNames()).contains("partner-benefits-v3", "map-store-clusters");
         RedisCacheManager redisCacheManager = (RedisCacheManager) cacheManager;
-        assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits").getTtlFunction()
+        assertThat(redisCacheManager.getCacheConfigurations().get("partner-benefits-v3").getTtlFunction()
                 .getTimeToLive(1L, java.util.List.of())).isEqualTo(Duration.ofDays(7));
         assertThat(redisCacheManager.getCacheConfigurations().get("map-store-clusters").getTtl())
                 .isEqualTo(Duration.ofMinutes(1));
-        RedisCache cache = (RedisCache) cacheManager.getCache("partner-benefits");
+        RedisCache cache = (RedisCache) cacheManager.getCache("partner-benefits-v3");
         assertThat(cache).isNotNull();
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         meterRegistry.config().meterFilter(new CacheConfig().redisCachePendingCounterFilter());
@@ -67,11 +67,11 @@ class CacheConfigTest {
         assertThat(cache.getStatistics().getGets()).isEqualTo(1);
         assertThat(cache.getStatistics().getMisses()).isEqualTo(1);
         assertThat(meterRegistry.get("cache.gets")
-                .tags("cache", "partner-benefits", "result", "miss")
+                .tags("cache", "partner-benefits-v3", "result", "miss")
                 .functionCounter()
                 .count()).isEqualTo(1);
         assertThat(meterRegistry.find("cache.gets")
-                .tags("cache", "partner-benefits", "result", "pending")
+                .tags("cache", "partner-benefits-v3", "result", "pending")
                 .meter()).isNull();
     }
 }

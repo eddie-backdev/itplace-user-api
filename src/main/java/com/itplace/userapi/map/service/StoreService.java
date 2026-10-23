@@ -5,9 +5,12 @@ import com.itplace.userapi.map.dto.response.MapStorePreviewBatchResponse;
 import com.itplace.userapi.map.dto.response.MapStorePreviewPageResponse;
 import com.itplace.userapi.map.dto.response.MapStoreClusterResponse;
 import com.itplace.userapi.map.dto.response.StoreDetailResponse;
+import com.itplace.userapi.map.dto.response.StoreSeoResponse;
 import java.util.List;
+import java.util.Optional;
 
 public interface StoreService {
+    Optional<StoreSeoResponse> findActiveStoreSeoDetail(long storeId);
     List<StoreDetailResponse> findNearbyForMobile(double lat, double lng, double userLat, double userLng,
                                                   double radiusMeters, String carrier, String category,
                                                   String keyword, String partnerName);

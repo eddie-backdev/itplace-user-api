@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import com.itplace.userapi.ai.forbiddenword.service.ForbiddenWordService;
+import com.itplace.userapi.ai.forbiddenword.exception.ForbiddenWordException;
 import com.itplace.userapi.ai.llm.dto.response.RecommendationResponse;
 import com.itplace.userapi.ai.llm.service.OpenAIService;
 import com.itplace.userapi.ai.question.exception.QuestionException;
+import com.itplace.userapi.ai.question.QuestionCode;
 import com.itplace.userapi.ai.question.guard.BenefitCandidateGuard;
 import com.itplace.userapi.ai.question.intent.QueryIntentExtractor;
 import com.itplace.userapi.ai.rag.service.BenefitSearchService;
@@ -27,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @ExtendWith(MockitoExtension.class)
 class QuestionRecommendationServiceImplTest {
@@ -45,6 +49,35 @@ class QuestionRecommendationServiceImplTest {
 
     @Mock
     private BenefitSearchService benefitSearchService;
+
+    @Test
+    void forbiddenQuestionIsRejectedBeforeIntentEmbeddingOrRecommendationCalls() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "금칙어 질문";
+        when(forbiddenWordService.censor(question)).thenReturn("입력할 수 없는 단어가 포함되어 있습니다.");
+
+        assertThatThrownBy(() -> service.recommendByQuestion(question, 37.5, 127.0))
+                .isInstanceOf(ForbiddenWordException.class);
+
+        org.mockito.Mockito.verifyNoInteractions(embeddingService, storeService, openAIService, benefitSearchService);
+    }
+
+    @Test
+    void embeddingUnauthorizedBecomesServiceUnavailableWithoutRunningSearchOrGeneration() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "근처 카페 추천해줘";
+        WebClientResponseException unauthorized = WebClientResponseException.create(
+                401, "Unauthorized", org.springframework.http.HttpHeaders.EMPTY, new byte[0], null);
+        assertThat(unauthorized).isInstanceOf(WebClientResponseException.Unauthorized.class);
+        when(forbiddenWordService.censor(question)).thenReturn(question);
+        when(embeddingService.embedQuery(anyString())).thenThrow(unauthorized);
+
+        assertThatThrownBy(() -> service.recommendByQuestion(question, 37.5, 127.0))
+                .isInstanceOf(QuestionException.class)
+                .extracting("code").isEqualTo(QuestionCode.AI_SERVICE_UNAVAILABLE);
+
+        org.mockito.Mockito.verifyNoInteractions(benefitSearchService, openAIService, storeService);
+    }
 
 
     @Test
@@ -71,7 +104,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("카페"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("카페"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.KT),
                         org.mockito.ArgumentMatchers.eq(Grade.KT_VVIP),
@@ -119,7 +152,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("SKT VIP"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("SKT VIP"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -166,7 +199,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("영화"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("영화"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -235,7 +268,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -295,7 +328,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("카페"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("카페"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -334,6 +367,37 @@ class QuestionRecommendationServiceImplTest {
     }
 
     @Test
+    void recommendByQuestionNormalizesLegacySktMembershipDisplayOnly() {
+        QuestionRecommendationServiceImpl service = service();
+        String question = "GS25 할인 혜택 알려줘";
+        List<Float> embedding = List.of(0.1f, 0.2f);
+        Candidate candidate = Candidate.builder().partnerId(10L).benefitId(20L)
+                .partnerName("GS25").category("생활/편의").benefitName("GS25 할인형")
+                .carrier("SKT").grade("SKT_VIP").candidateSource("es_hybrid").build();
+        StoreDetailResponse store = StoreDetailResponse.builder()
+                .partner(PartnerDto.builder().partnerId(10L).partnerName("GS25").category("생활/편의").build())
+                .tierBenefit(List.of(TierBenefitDto.builder().benefitId(20L).context("GS25 할인형").build()))
+                .build();
+        when(forbiddenWordService.censor(question)).thenReturn(question);
+        when(embeddingService.embedQuery(anyString())).thenReturn(embedding);
+        when(benefitSearchService.queryHybrid(org.mockito.ArgumentMatchers.eq(Carrier.SKT),
+                org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP), org.mockito.ArgumentMatchers.eq(embedding),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(30),
+                org.mockito.ArgumentMatchers.any(com.itplace.userapi.ai.rag.service.BenefitSearchCondition.class)))
+                .thenReturn(List.of(candidate));
+        when(openAIService.selectBenefitIds(org.mockito.ArgumentMatchers.eq(question), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(1))).thenReturn(List.of(20L));
+        when(storeService.findNearbyByBenefitCandidate(37.5, 127.0, 10L, "GS25", "생활/편의", 20L, 37.5, 127.0))
+                .thenReturn(List.of(store));
+
+        RecommendationResponse response = service.recommendByQuestion(question, 37.5, 127.0, Carrier.SKT, Grade.SKT_VIP);
+
+        assertThat(response.getPartners()).singleElement()
+                .satisfies(partner -> assertThat(partner.getBenefitName()).isEqualTo("GS25 멤버십 혜택 · 할인형"));
+        assertThat(candidate.getBenefitName()).isEqualTo("GS25 할인형");
+    }
+
+    @Test
     void recommendByQuestion_rejectsHotWeatherFalseRouteAndDoesNotFallbackToCounselingCategory() {
         QuestionRecommendationServiceImpl service = service();
         String question = "날씨가 더운데 시원하게 갈만한 곳 추천해줘";
@@ -366,7 +430,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -443,7 +507,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -483,7 +547,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("시원한 장소"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -567,7 +631,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("음료 중심"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("음료 중심"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -621,7 +685,7 @@ class QuestionRecommendationServiceImplTest {
                 .build();
 
         when(forbiddenWordService.censor(question)).thenReturn(question);
-        when(embeddingService.embed(org.mockito.ArgumentMatchers.contains("데이트"))).thenReturn(embedding);
+        when(embeddingService.embedQuery(org.mockito.ArgumentMatchers.contains("데이트"))).thenReturn(embedding);
         when(benefitSearchService.queryHybrid(
                         org.mockito.ArgumentMatchers.eq(Carrier.SKT),
                         org.mockito.ArgumentMatchers.eq(Grade.SKT_VIP),
@@ -651,7 +715,7 @@ class QuestionRecommendationServiceImplTest {
                 openAIService,
                 forbiddenWordService,
                 benefitSearchService,
-                new QueryIntentExtractor(),
+                new QueryIntentExtractor(new com.itplace.userapi.reference.TestReferenceDataService()),
                 new BenefitCandidateGuard()
         );
     }

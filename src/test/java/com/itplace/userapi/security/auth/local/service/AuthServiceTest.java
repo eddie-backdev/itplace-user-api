@@ -22,6 +22,7 @@ import com.itplace.userapi.security.verification.email.service.EmailService;
 import com.itplace.userapi.user.entity.Gender;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -58,6 +59,8 @@ class AuthServiceTest {
 
     @Mock
     private EmailService emailService;
+    @Mock
+    private MembershipProfileValidator membershipProfileValidator;
 
     @Test
     void reissueConvertsRefreshTokenSignatureMismatchToInvalidTokenAndExpiresCookies() {
@@ -430,13 +433,16 @@ class AuthServiceTest {
     }
 
     private AuthService authService() {
+        org.mockito.Mockito.lenient().when(membershipProfileValidator.isValidForSignUp(
+                org.mockito.ArgumentMatchers.nullable(Carrier.class), org.mockito.ArgumentMatchers.nullable(Grade.class))).thenReturn(true);
         return new AuthService(
                 redisTemplate,
                 passwordEncoder,
                 userRepository,
                 jwtUtil,
                 cookieUtil,
-                emailService
+                emailService,
+                membershipProfileValidator
         );
     }
 

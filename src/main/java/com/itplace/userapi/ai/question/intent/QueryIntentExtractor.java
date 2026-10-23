@@ -8,9 +8,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.itplace.userapi.reference.ReferenceDataService;
 
 @Component
 public class QueryIntentExtractor {
+    public QueryIntentExtractor() {}
+    public QueryIntentExtractor(ReferenceDataService referenceDataService) { this.referenceDataService = referenceDataService; }
+    @Autowired private ReferenceDataService referenceDataService;
 
     public QueryIntent extract(String question, Carrier requestCarrier, Grade requestGrade, double lat, double lng) {
         return extract(question, requestCarrier, requestGrade, null, null, lat, lng);
@@ -110,50 +115,8 @@ public class QueryIntentExtractor {
         return null;
     }
 
-    private static Grade inferGrade(String question, Carrier carrier) {
-        if (carrier == Carrier.SKT) {
-            if (containsAny(question, "vip")) {
-                return Grade.SKT_VIP;
-            }
-            if (containsAny(question, "gold", "골드")) {
-                return Grade.SKT_GOLD;
-            }
-            if (containsAny(question, "silver", "실버")) {
-                return Grade.SKT_SILVER;
-            }
-        }
-        if (carrier == Carrier.KT) {
-            if (containsAny(question, "vvip")) {
-                return Grade.KT_VVIP;
-            }
-            if (containsAny(question, "vip")) {
-                return Grade.KT_VIP;
-            }
-            if (containsAny(question, "gold", "골드")) {
-                return Grade.KT_GOLD;
-            }
-            if (containsAny(question, "silver", "실버")) {
-                return Grade.KT_SILVER;
-            }
-            if (containsAny(question, "white", "화이트")) {
-                return Grade.KT_WHITE;
-            }
-            if (containsAny(question, "general", "일반")) {
-                return Grade.KT_GENERAL;
-            }
-        }
-        if (carrier == Carrier.LGU || carrier == null) {
-            if (containsAny(question, "vvip")) {
-                return Grade.VVIP;
-            }
-            if (containsAny(question, "vip")) {
-                return Grade.VIP;
-            }
-            if (containsAny(question, "basic", "베이직", "일반")) {
-                return Grade.BASIC;
-            }
-        }
-        return null;
+    private Grade inferGrade(String question, Carrier carrier) {
+        return referenceDataService == null ? null : referenceDataService.findGradeMention(carrier, question);
     }
 
 
@@ -161,26 +124,15 @@ public class QueryIntentExtractor {
         return first != null ? first : second;
     }
 
-    private static Grade firstCompatibleGrade(Grade inferredGrade, Grade fallbackGrade, Carrier carrier) {
+    private Grade firstCompatibleGrade(Grade inferredGrade, Grade fallbackGrade, Carrier carrier) {
         if (inferredGrade != null) {
             return inferredGrade;
         }
         return isCompatibleGrade(fallbackGrade, carrier) ? fallbackGrade : null;
     }
 
-    private static boolean isCompatibleGrade(Grade grade, Carrier carrier) {
-        if (grade == null) {
-            return false;
-        }
-        if (carrier == null) {
-            return true;
-        }
-        return switch (carrier) {
-            case SKT -> grade.name().startsWith("SKT_");
-            case KT -> grade.name().startsWith("KT_");
-            case LGU -> !grade.name().startsWith("SKT_") && !grade.name().startsWith("KT_");
-            case MVNO -> false;
-        };
+    private boolean isCompatibleGrade(Grade grade, Carrier carrier) {
+        return referenceDataService != null && referenceDataService.belongsToCarrier(carrier, grade);
     }
 
     private static boolean containsAny(String value, String... needles) {

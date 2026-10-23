@@ -87,6 +87,7 @@ dependencyManagement {
 }
 
 bootJar {
+    archiveFileName = 'application.jar'
     layered {
         enabled = true
     }
@@ -94,6 +95,25 @@ bootJar {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+def prepareSearchClasses = layout.buildDirectory.dir('prepare-postgres-search/classes')
+
+tasks.register('compilePostgresSearchPreparation', JavaCompile) {
+    source file('scripts/PostgresSearchPreparation.java')
+    classpath = sourceSets.main.runtimeClasspath
+    destinationDirectory = prepareSearchClasses
+    options.release = 17
+}
+
+tasks.register('preparePostgresSearch', JavaExec) {
+    dependsOn tasks.named('classes'), tasks.named('compilePostgresSearchPreparation')
+    classpath = sourceSets.main.runtimeClasspath + files(prepareSearchClasses)
+    mainClass = 'com.itplace.preparation.PostgresSearchPreparation'
+    def encodedArgs = providers.environmentVariable('ITPLACE_PREPARE_ARGS').orElse('[]')
+    doFirst {
+        args = new groovy.json.JsonSlurper().parseText(encodedArgs.get())
+    }
 }
 
 jacoco {

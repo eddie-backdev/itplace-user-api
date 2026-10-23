@@ -26,6 +26,7 @@ import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.AuthCredentialRepository;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.user.support.MembershipProfileValidator;
 import io.jsonwebtoken.Claims;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -59,6 +60,9 @@ class OAuthServiceImplTest {
 
     @Mock
     private JWTUtil jwtUtil;
+
+    @Mock
+    private MembershipProfileValidator membershipProfileValidator;
 
     @Mock
     private KakaoOAuthProviderClient kakaoOAuthProviderClient;
@@ -159,6 +163,7 @@ class OAuthServiceImplTest {
         OAuthSignUpRequest request = validOAuthSignUpRequest();
         request.setCarrier(Carrier.MVNO);
         request.setMembershipGradeCode(null);
+        when(membershipProfileValidator.isValidForSignUp(Carrier.MVNO, null)).thenReturn(true);
         User savedUser = User.builder()
                 .id(7L)
                 .nickname("신규회원")

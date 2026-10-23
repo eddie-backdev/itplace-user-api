@@ -31,6 +31,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
@@ -70,7 +71,8 @@ public class SecurityConfig {
     private String cookieSameSite;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authenticationManager,
+            RequestAttributeSecurityContextRepository requestAttributeSecurityContextRepository) throws Exception {
         CookieCsrfTokenRepository csrfTokenRepository = csrfTokenRepository();
         CsrfTokenRequestAttributeHandler csrfTokenRequestHandler = new CsrfTokenRequestAttributeHandler();
         SessionAuthenticationStrategy csrfAuthenticationStrategy = jwtAwareCsrfAuthenticationStrategy(
@@ -119,6 +121,9 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable());
 
+        http.securityContext(context -> context
+                .securityContextRepository(requestAttributeSecurityContextRepository));
+
         // 경로별 인가 작업: 공개 API를 명시하고 나머지는 인증 필요로 닫는다.
         http
                 .authorizeHttpRequests((auth) -> auth
@@ -166,6 +171,11 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @Bean
+    static RequestAttributeSecurityContextRepository requestAttributeSecurityContextRepository() {
+        return new RequestAttributeSecurityContextRepository();
+    }
+
     static String[] publicEndpoints() {
         return new String[]{
                 "/hc",
@@ -186,6 +196,7 @@ public class SecurityConfig {
     static String[] publicReadEndpoints() {
         return new String[]{
                 "/api/v1/auth/csrf",
+                "/api/v1/reference-data",
                 "/api/v1/benefits",
                 "/api/v1/benefits/**",
                 "/api/v1/benefit",
@@ -228,6 +239,8 @@ public class SecurityConfig {
                 "/api/v1/benefit-usages/**",
                 "/api/v1/auth/logout",
                 "/api/v1/auth/oauth/result",
+                "/api/v1/questions/chat",
+                "/api/v1/questions/chat/stream",
                 "/api/v1/questions/recommend",
                 "/api/v1/recommendations"
         };

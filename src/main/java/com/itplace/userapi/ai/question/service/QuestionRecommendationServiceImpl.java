@@ -11,6 +11,7 @@ import com.itplace.userapi.ai.question.guard.BenefitCandidateGuard.GuardResult;
 import com.itplace.userapi.ai.question.intent.QueryIntent;
 import com.itplace.userapi.ai.question.intent.QueryIntentExtractor;
 import com.itplace.userapi.ai.rag.service.BenefitSearchService;
+import com.itplace.userapi.benefit.service.MembershipDisplayName;
 import com.itplace.userapi.ai.rag.service.BenefitSearchCondition;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
@@ -73,7 +74,7 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
         // 1. 사용자 질문 + 의도 키워드 임베딩
         List<Float> embedding;
         try {
-            embedding = embeddingService.embed(intent.retrievalText());
+            embedding = embeddingService.embedQuery(intent.retrievalText());
         } catch (WebClientResponseException.Unauthorized e) {
             log.warn("OpenAI 임베딩 인증 실패: status={}", e.getStatusCode());
             throw new QuestionException(QuestionCode.AI_SERVICE_UNAVAILABLE);
@@ -229,7 +230,9 @@ public class QuestionRecommendationServiceImpl implements QuestionRecommendation
                 .partnerId(candidate.getPartnerId() == null && partner != null ? partner.getPartnerId() : candidate.getPartnerId())
                 .benefitId(candidate.getBenefitId())
                 .partnerName(partnerName(recommendation))
-                .benefitName(firstText(candidate.getBenefitName(), candidate.getDescription(), benefitTextForRecommendation(recommendation)))
+                .benefitName(MembershipDisplayName.recommendationName(
+                        firstText(candidate.getBenefitName(), candidate.getDescription(), benefitTextForRecommendation(recommendation)),
+                        partnerName(recommendation), candidate.getCarrier()))
                 .category(firstText(candidate.getCategory(), partner == null ? null : partner.getCategory()))
                 .representativeStoreId(store == null ? null : store.getStoreId())
                 .representativeStoreName(store == null ? null : store.getStoreName())

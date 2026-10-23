@@ -42,6 +42,7 @@ public class AuthService {
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
     private final EmailService emailService;
+    private final MembershipProfileValidator membershipProfileValidator;
 
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
         log.info("Access 토큰 재발급 시작");
@@ -152,7 +153,7 @@ public class AuthService {
     }
 
     private void validateMembershipProfile(SignUpRequest request) {
-        if (!MembershipProfileValidator.isValidForSignUp(request.getCarrier(), request.getMembershipGradeCode())) {
+        if (!membershipProfileValidator.isValidForSignUp(request.getCarrier(), request.getMembershipGradeCode())) {
             throw new InvalidMembershipProfileException(UserCode.INVALID_MEMBERSHIP_PROFILE);
         }
     }

@@ -9,6 +9,8 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.itplace.userapi.ai.rag.service.EmbeddingService;
+import com.itplace.userapi.ai.rag.postgres.BenefitSearchHit;
+import com.itplace.userapi.ai.rag.postgres.PostgresBenefitSearchRepository;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
@@ -21,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -53,9 +56,21 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
 
     private final ElasticsearchClient esClient;
     private final EmbeddingService embeddingService;
+    private PostgresBenefitSearchRepository postgresSearchRepository;
+    private String searchProvider = "elasticsearch";
 
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
+
+    @Autowired(required = false)
+    public void setPostgresSearchRepository(PostgresBenefitSearchRepository repository) {
+        this.postgresSearchRepository = repository;
+    }
+
+    @Value("${app.search.provider:elasticsearch}")
+    public void setSearchProvider(String provider) {
+        this.searchProvider = provider;
+    }
 
     @Override
     public BenefitHybridSearchResult search(String keyword,
@@ -69,6 +84,9 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
         }
         String normalizedKeyword = normalize(keyword)
                 .orElseThrow(() -> new IllegalArgumentException("검색어가 비어 있습니다."));
+        if (usePostgres()) {
+            return searchPostgres(normalizedKeyword, mainCategory, category, filter, carriers, pageable, true);
+        }
         int candidateWindow = candidateWindow(pageable);
         List<Query> filters = metadataFilters(mainCategory, category, filter, carriers);
         Map<Long, RankAccumulator> ranks = new LinkedHashMap<>();
@@ -84,7 +102,7 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
         }
 
         try {
-            List<Float> queryVector = embeddingService.embed(normalizedKeyword);
+            List<Float> queryVector = embeddingService.embedQuery(normalizedKeyword);
             mergeHits(ranks, vectorSearch(queryVector, filters, candidateWindow), VECTOR_WEIGHT);
             searchSucceeded = true;
         } catch (IOException | RuntimeException exception) {
@@ -107,6 +125,52 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
         return toResult(rankedIds, pageable);
     }
 
+    private BenefitHybridSearchResult searchPostgres(String keyword,
+                                                     MainCategory mainCategory,
+                                                     String category,
+                                                     UsageType filter,
+                                                     List<Carrier> carriers,
+                                                     Pageable pageable,
+                                                     boolean includeVector) {
+        if (postgresSearchRepository == null) {
+            throw new IllegalStateException("PostgreSQL benefit search is configured but unavailable");
+        }
+        int candidateWindow = candidateWindow(pageable);
+        List<Float> vector = null;
+        if (includeVector) {
+            try {
+                vector = embeddingService.embedQuery(keyword);
+            } catch (RuntimeException exception) {
+                log.warn("혜택 embedding 실패, PostgreSQL lexical 검색으로 대체합니다: errorType={}",
+                        exception.getClass().getSimpleName());
+            }
+        }
+
+        List<BenefitSearchHit> hits;
+        try {
+            hits = postgresSearchRepository.searchList(keyword, vector, mainCategory, category, filter, carriers,
+                    candidateWindow);
+        } catch (RuntimeException exception) {
+            if (vector == null) {
+                throw new IllegalStateException("PostgreSQL lexical 혜택 검색을 사용할 수 없습니다.", exception);
+            }
+            log.warn("혜택 PostgreSQL vector 검색 실패, lexical 검색으로 대체합니다: errorType={}",
+                    exception.getClass().getSimpleName());
+            try {
+                hits = postgresSearchRepository.searchList(keyword, null, mainCategory, category, filter, carriers,
+                        candidateWindow);
+            } catch (RuntimeException lexicalException) {
+                throw new IllegalStateException("PostgreSQL lexical 혜택 검색을 사용할 수 없습니다.", lexicalException);
+            }
+        }
+        List<Long> benefitIds = hits.stream().map(BenefitSearchHit::benefitId).distinct().toList();
+        return toResult(benefitIds, pageable);
+    }
+
+    private boolean usePostgres() {
+        return "postgres".equalsIgnoreCase(searchProvider);
+    }
+
     @Override
     public BenefitHybridSearchResult searchLexical(String keyword,
                                                    MainCategory mainCategory,
@@ -116,6 +180,9 @@ public class BenefitHybridSearchServiceImpl implements BenefitHybridSearchServic
                                                    Pageable pageable) {
         String normalizedKeyword = normalize(keyword)
                 .orElseThrow(() -> new IllegalArgumentException("검색어가 비어 있습니다."));
+        if (usePostgres()) {
+            return searchPostgres(normalizedKeyword, mainCategory, category, filter, carriers, pageable, false);
+        }
         int candidateWindow = candidateWindow(pageable);
         List<Query> filters = metadataFilters(mainCategory, category, filter, carriers);
         try {

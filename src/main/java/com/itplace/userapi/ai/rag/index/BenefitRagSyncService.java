@@ -49,11 +49,18 @@ public class BenefitRagSyncService {
     @Value("${app.ai.benefits.sync.delay-ms:0}")
     private long delayMs;
 
+    @Value("${app.search.provider:elasticsearch}")
+    private String searchProvider;
+
     @Scheduled(
             fixedDelayString = "${app.ai.benefits.sync.fixed-delay-ms:3600000}",
             initialDelayString = "${app.ai.benefits.sync.initial-delay-ms:300000}"
     )
     public void scheduledSync() {
+        if (usePostgres()) {
+            log.debug("PostgreSQL 검색 모드에서는 혜택 ES 주기 동기화를 건너뜁니다.");
+            return;
+        }
         if (!aiEnabled || !syncEnabled) {
             log.debug("혜택 RAG 주기 동기화가 비활성화되어 있습니다.");
             return;
@@ -67,7 +74,7 @@ public class BenefitRagSyncService {
     }
 
     public SyncResult syncAll() throws Exception {
-        if (!aiEnabled) {
+        if (usePostgres() || !aiEnabled) {
             return new SyncResult(0, 0, 0, 0, 0, 0, 0);
         }
         elasticService.createIndexIfNotExists(INDEX_NAME);
@@ -126,6 +133,10 @@ public class BenefitRagSyncService {
                 deletedDocuments,
                 failedDocuments
         );
+    }
+
+    private boolean usePostgres() {
+        return "postgres".equalsIgnoreCase(searchProvider);
     }
 
     private ReconciliationResult reconcileMissingSourceDocuments(Set<String> currentDocumentIds) {

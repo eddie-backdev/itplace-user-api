@@ -109,6 +109,7 @@ docker run -d \
   --name "${NEW_CONTAINER}" \
   --restart unless-stopped \
   --network "${APP_NETWORK}" \
+  --network-alias itplace-user-api-internal \
   --label "itplace.monitoring.enabled=true" \
   --label "itplace.service=user-api" \
   --label "itplace.metrics.port=${MANAGEMENT_PORT}" \

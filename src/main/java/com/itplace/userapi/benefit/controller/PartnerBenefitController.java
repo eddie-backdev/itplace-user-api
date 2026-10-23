@@ -71,9 +71,7 @@ public class PartnerBenefitController {
     ) {
         Long userId = principalDetails == null ? null : principalDetails.getUserId();
         PartnerBenefitDetailResponse result = partnerBenefitBrowseService.getPartnerDetail(
-                partnerId, mainCategory == null && carrier == null && grade == null
-                        ? MainCategory.BASIC_BENEFIT : mainCategory,
-                userId, carrier, grade
+                partnerId, mainCategory, userId, carrier, grade
         );
         return ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, result).toResponseEntity();
     }

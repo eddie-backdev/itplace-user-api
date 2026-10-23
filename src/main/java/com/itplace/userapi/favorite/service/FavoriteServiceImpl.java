@@ -5,6 +5,10 @@ import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.Benef
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.PreviewTierBenefit;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
+import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
+import com.itplace.userapi.benefit.service.TierBenefitSemantics;
+import com.itplace.userapi.benefit.service.BenefitPreviewSummaryBuilder;
+import com.itplace.userapi.reference.ReferenceDataService;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.exception.BenefitNotFoundException;
 import com.itplace.userapi.benefit.repository.BenefitCarrierPolicyRepository;
@@ -28,6 +32,7 @@ import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,12 +48,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 @Transactional
 public class FavoriteServiceImpl implements FavoriteService {
+    private final ReferenceDataService referenceDataService;
 
     private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
     private final BenefitRepository benefitRepository;
     private final BenefitCarrierPolicyRepository benefitCarrierPolicyRepository;
     private final CarrierTierBenefitRepository carrierTierBenefitRepository;
+    private final BenefitPreviewSummaryBuilder previewSummaryBuilder;
     private final LogService logService;
 
     @Override
@@ -217,14 +224,9 @@ public class FavoriteServiceImpl implements FavoriteService {
             return Map.of();
         }
 
-        Map<Long, List<PreviewTierBenefit>> tiersByPolicy = carrierTierBenefitRepository
+        Map<Long, List<CarrierTierBenefit>> tierRowsByPolicy = carrierTierBenefitRepository
                 .findAllByBenefitCarrierPolicyIn(policies).stream()
-                .collect(Collectors.groupingBy(
-                        tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId(),
-                        Collectors.mapping(tier -> new PreviewTierBenefit(
-                                tier.getGrade(), tier.getContext(), tier.getIsAll()),
-                                Collectors.toList())
-                ));
+                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
 
         return policies.stream()
                 .collect(Collectors.groupingBy(
@@ -235,7 +237,12 @@ public class FavoriteServiceImpl implements FavoriteService {
                                 policy.getDisplayBenefitName(),
                                 policy.getDisplayBenefitLimit(),
                                 policy.getUsageType(),
-                                tiersByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of())
+                                tierRowsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
+                                        .map(tier -> new PreviewTierBenefit(tier.getGrade(), tier.getContext(), tier.getIsAll())).toList(),
+                                previewSummaryBuilder.build(policy.getConditions(),
+                                        tierRowsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()),
+                                        policy.getCarrier(), List.of()),
+                                List.of(), null, null, List.of(), List.of(), null, null
                         ),
                                 Collectors.collectingAndThen(Collectors.toList(), List::copyOf))
                 ));
@@ -261,11 +268,26 @@ public class FavoriteServiceImpl implements FavoriteService {
         BenefitCarrierPolicy primaryPolicy = policies.get(0);
         Partner partner = benefit.getPartner();
 
-        List<TierBenefitDetail> tierDtos = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies).stream()
+        List<CarrierTierBenefit> carrierTiers = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
+        Map<Long, Set<String>> allGradeContextsByPolicy = new java.util.HashMap<>();
+        for (BenefitCarrierPolicy policy : policies) {
+            List<CarrierTierBenefit> policyTiers = carrierTiers.stream()
+                    .filter(tier -> tier.getBenefitCarrierPolicy() == policy
+                            || (policy.getBenefitCarrierPolicyId() != null
+                            && policy.getBenefitCarrierPolicyId().equals(
+                            tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId())))
+                    .toList();
+            allGradeContextsByPolicy.put(policy.getBenefitCarrierPolicyId(),
+                    TierBenefitSemantics.allGradeContexts(policyTiers,
+                            referenceDataService.allGradeMembers(policy.getCarrier())));
+        }
+        List<TierBenefitDetail> tierDtos = carrierTiers.stream()
                 .map(tb -> TierBenefitDetail.builder()
                         .carrier(tb.getBenefitCarrierPolicy().getCarrier())
                         .grade(tb.getGrade())
-                        .isAll(tb.getIsAll())
+                        .isAll(allGradeContextsByPolicy.getOrDefault(
+                                tb.getBenefitCarrierPolicy().getBenefitCarrierPolicyId(), Set.of())
+                                .contains(tb.getContext()))
                         .context(tb.getContext())
                         .discountValue(tb.getDiscountValue())
                         .build())
@@ -275,14 +297,20 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .map(policy -> new CarrierPolicyDetail(
                         policy.getCarrier(),
                         policy.getDescription(),
-                        policy.getBenefitPolicy() == null ? null : policy.getBenefitPolicy().getName()))
+                        policy.getDisplayBenefitLimit(),
+                        policy.getSourceUrl(),
+                        policy.getSourceCapturedAt(),
+                        policy.getManual(),
+                        policy.getConditions() == null ? null : policy.getConditions().publicView()))
                 .toList();
 
         return FavoriteDetailResponse.builder()
                 .benefitId(benefit.getBenefitId())
                 .benefitName(primaryPolicy.getDisplayBenefitName())
-                .benefitDescription(primaryPolicy.getDescription())
-                .benefitLimit(primaryPolicy.getBenefitPolicy() == null ? null : primaryPolicy.getBenefitPolicy().getName())
+                .benefitDescription(primaryPolicy.getConditions() != null
+                        && primaryPolicy.getConditions().offerResolution() != null
+                        ? null : primaryPolicy.getDescription())
+                .benefitLimit(primaryPolicy.getDisplayBenefitLimit())
                 .partnerName(partner != null ? partner.getPartnerName() : null)
                 .partnerImage(partner != null ? partner.getImage() : null)
                 .partnerId(partner != null ? partner.getPartnerId() : null)

@@ -1,0 +1,75 @@
+{
+  "validated_at": "2026-10-20T08:18:14.846838+00:00",
+  "scope": "Preparation artifacts and current local API working tree; no PostgreSQL migration, proposed DDL execution, PG retrieval benchmark, or production verification performed.",
+  "git_head": "24b982cd6ca3e0d4a3e2dbb777e538ac41ba9cba",
+  "working_tree_contains_preexisting_uncommitted_runtime_changes": true,
+  "java_working_tree": {
+    "file_count": 452,
+    "manifest_sha256": "9a864f74a25dbb497cf7c9dab21c165381c1d49309ea4f5c6938f38f319bfef9",
+    "algorithm": "SHA256 of newline-joined sorted relative_path:SHA256(file_bytes) for src/**/*.java, including untracked files"
+  },
+  "checks": {
+    "python_self_tests": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/evaluate_search_readiness_test.py",
+      "count": 15,
+      "exit_code": 0
+    },
+    "corpus_validation": {
+      "command": "python3 scripts/evaluate-search-readiness.py",
+      "cases": 60,
+      "exit_code": 0,
+      "labels": "provisional"
+    },
+    "saved_service_baseline": {
+      "evaluated": 9,
+      "missing": 51,
+      "needs_review": 9,
+      "hard_checks": 15,
+      "failures": 0,
+      "normal_exit_code": 0,
+      "strict_exit_code": 1,
+      "strict_exit_expected": true,
+      "ready": false
+    },
+    "required_api_tests": {
+      "command": "./scripts/test-required.sh --no-daemon",
+      "exit_code": 0,
+      "tests": 713,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reports": 116
+    },
+    "required_build": {
+      "command": "./gradlew build -x test --no-daemon",
+      "exit_code": 0
+    },
+    "markdown_local_links": {
+      "files": 4,
+      "missing": []
+    },
+    "git_diff_check": {
+      "exit_code": 0
+    }
+  },
+  "artifact_sha256": {
+    "docs/search-chat-readiness.md": "2013fc8e10b12e3de0f3d151dd73a2297930233ae65c47f2044610a93d6395e0",
+    "docs/postgres-search-transition.md": "f7c0da60a5562c7f22a657fd74d401fcad974e175d862978bf54abd3192aac74",
+    "docs/chatbot-readiness.md": "4f1561e5dc28a71e33cc643f671f40da14de3b319c521c13be5838edf81fae87",
+    "docs/search-evaluation.md": "54f63641e8e3be6824d807048be45e367ec64f86a62bd4cc4ea8388908a45a78",
+    "docs/evaluation/search-chat-cases.json": "c5401ffa6866d5d7b368b78e4dfc957cb48c53d92440d0432b82ed1d675831e4",
+    "docs/evaluation/local-readiness-snapshot-2026-10-20.json": "d8a9ab78fd6257bccadd1389b3202d10bd3e3d972808e10e9df72e79ba9676be",
+    "docs/evaluation/chat-service-baseline-2026-10-20.json": "3daf0662ea42de77240749f7bdd20c926333694f95cc15ed450cf9944c87ed90",
+    "docs/evaluation/chat-baseline-evaluation-2026-10-20.json": "cb740f501da27e1062c7d13acb9c9640ffb7208726ffabb8b383a7b8cfb662d2",
+    "scripts/evaluate-search-readiness.py": "e45270ba4b06013d601ecf628c6e8bc8f3ed7e8d2cd0251aa0c8d16f8450941b",
+    "scripts/evaluate_search_readiness_test.py": "6a66a837ceab67932bfd88c87880577b8492b094f86d164cb442a41f2b5bb212"
+  },
+  "release_ready": false,
+  "remaining_validation": [
+    "Reviewed relevance and evidence labels",
+    "HTTP/fixture execution beyond saved 9 service results",
+    "PG schema and retrieval implementation",
+    "Same-input ES/PG quality and load comparison",
+    "Production data, extension, capacity, freshness and rollback checks"
+  ]
+}

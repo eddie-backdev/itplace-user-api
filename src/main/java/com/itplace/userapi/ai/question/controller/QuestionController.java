@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,10 +31,17 @@ public class QuestionController {
 
     private final EmbeddingService embeddingService;
     private final ElasticQuestionService elasticQuestionService; // saveQuestion() 정의된 서비스
+    @Value("${app.ai.embedding.provider:${EMBEDDING_PROVIDER:openai}}")
+    private String embeddingProvider = "openai";
+    @Value("${app.ai.embedding.dimensions:${EMBEDDING_DIMENSIONS:1536}}")
+    private int embeddingDimensions = 1536;
+    @Value("${app.search.provider:elasticsearch}")
+    private String searchProvider = "elasticsearch";
 
     @PostMapping("/save")
     @Deprecated(forRemoval = false)
     public ResponseEntity<String> saveQuestion(@Valid @RequestBody QuestionSaveRequest request) {
+        requireLegacyEsEmbeddingContract();
         try {
             List<Float> embedding = embeddingService.embed(request.getQuestion());
             String id = UUID.randomUUID().toString();
@@ -51,6 +60,17 @@ public class QuestionController {
             log.error("질문 문서 저장 실패: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    private void requireLegacyEsEmbeddingContract() {
+        if ("postgres".equalsIgnoreCase(searchProvider)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Legacy Elasticsearch question memory is unavailable with PostgreSQL search");
+        }
+        if (!"openai".equalsIgnoreCase(embeddingProvider) || embeddingDimensions != 1536) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Legacy Elasticsearch question memory requires OpenAI 1536-dimensional embeddings");
         }
     }
 }

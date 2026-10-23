@@ -26,8 +26,15 @@ public class StoreIndexer implements ApplicationRunner {
     @Value("${app.ai.stores.seed.enabled:false}")
     private boolean seedEnabled;
 
+    @Value("${app.search.provider:elasticsearch}")
+    private String searchProvider;
+
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        if ("postgres".equalsIgnoreCase(searchProvider)) {
+            log.info("PostgreSQL 검색 모드에서는 매장 ES 초기화를 건너뜁니다.");
+            return;
+        }
         try {
             elasticService.createStoreIndexIfNotExists();
 

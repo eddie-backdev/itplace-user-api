@@ -21,6 +21,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,11 +35,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private final ExceptionContractController controller = new ExceptionContractController();
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ExceptionContractController())
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(handler)
                 .defaultRequest(get("/").accept(MediaType.APPLICATION_JSON))
                 .build();
@@ -69,6 +71,25 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST_BODY"))
                 .andExpect(jsonPath("$.status").value("BAD_REQUEST"));
+    }
+
+    @Test
+    void invalidStreamInputKeepsJsonErrorEnvelopeWhenSseIsAccepted() throws Exception {
+        mockMvc.perform(post("/test/errors/stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.TEXT_EVENT_STREAM)
+                        .content("{\"question\":\" \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT_VALUE"));
+        mockMvc.perform(post("/test/errors/stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.TEXT_EVENT_STREAM)
+                        .content("{"))
+                .andExpect(status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_BODY"));
+        assertThat(controller.streamCalls).isZero();
     }
 
     @Test
@@ -148,6 +169,8 @@ class GlobalExceptionHandlerTest {
     @RequestMapping("/test/errors")
     private static class ExceptionContractController {
 
+        private int streamCalls;
+
         @GetMapping("/rate-limit")
         void rateLimit() {
             throw new AuthenticationRateLimitException(SecurityCode.AUTHENTICATION_RATE_LIMITED, 7L);
@@ -155,6 +178,12 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping(value = "/body", consumes = MediaType.APPLICATION_JSON_VALUE)
         void body(@Valid @RequestBody TestRequest request) {
+        }
+
+        @PostMapping(value = "/stream", consumes = MediaType.APPLICATION_JSON_VALUE,
+                produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+        void stream(@Valid @RequestBody StreamRequest request) {
+            streamCalls++;
         }
 
         @GetMapping("/enum")
@@ -182,6 +211,9 @@ class GlobalExceptionHandlerTest {
     }
 
     private record TestRequest(@NotBlank(message = "이름은 필수입니다.") String name) {
+    }
+
+    private record StreamRequest(@NotBlank String question) {
     }
 
     private enum TestKind {

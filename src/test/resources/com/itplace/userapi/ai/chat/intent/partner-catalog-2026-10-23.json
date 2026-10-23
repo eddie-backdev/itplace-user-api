@@ -1,0 +1,2602 @@
+[
+  {
+    "partnerId": 1,
+    "partnerName": "가연결혼정보",
+    "aliases": []
+  },
+  {
+    "partnerId": 2,
+    "partnerName": "곤지암리조트",
+    "aliases": []
+  },
+  {
+    "partnerId": 3,
+    "partnerName": "광동상회",
+    "aliases": []
+  },
+  {
+    "partnerId": 4,
+    "partnerName": "교보문고sam",
+    "aliases": []
+  },
+  {
+    "partnerId": 5,
+    "partnerName": "굽네치킨",
+    "aliases": []
+  },
+  {
+    "partnerId": 6,
+    "partnerName": "그라운드시소",
+    "aliases": []
+  },
+  {
+    "partnerId": 7,
+    "partnerName": "네이버플러스",
+    "aliases": []
+  },
+  {
+    "partnerId": 8,
+    "partnerName": "다락",
+    "aliases": [
+      {
+        "aliasName": "미니창고 다락",
+        "normalizedAlias": "미니창고다락"
+      }
+    ]
+  },
+  {
+    "partnerId": 9,
+    "partnerName": "대관령",
+    "aliases": []
+  },
+  {
+    "partnerId": 10,
+    "partnerName": "대구아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 11,
+    "partnerName": "더반찬＆",
+    "aliases": []
+  },
+  {
+    "partnerId": 12,
+    "partnerName": "더플레이스",
+    "aliases": []
+  },
+  {
+    "partnerId": 13,
+    "partnerName": "데이원클리닉",
+    "aliases": []
+  },
+  {
+    "partnerId": 14,
+    "partnerName": "도미노피자",
+    "aliases": []
+  },
+  {
+    "partnerId": 15,
+    "partnerName": "동아제약",
+    "aliases": []
+  },
+  {
+    "partnerId": 16,
+    "partnerName": "딸기콩",
+    "aliases": []
+  },
+  {
+    "partnerId": 17,
+    "partnerName": "뚜레쥬르",
+    "aliases": []
+  },
+  {
+    "partnerId": 18,
+    "partnerName": "라그릴리아",
+    "aliases": []
+  },
+  {
+    "partnerId": 19,
+    "partnerName": "롯데렌터카",
+    "aliases": []
+  },
+  {
+    "partnerId": 20,
+    "partnerName": "롯데면세점",
+    "aliases": [
+      {
+        "aliasName": "롯데면세점(오프라인)",
+        "normalizedAlias": "롯데면세점오프라인"
+      },
+      {
+        "aliasName": "롯데면세점(온라인)",
+        "normalizedAlias": "롯데면세점온라인"
+      }
+    ]
+  },
+  {
+    "partnerId": 21,
+    "partnerName": "롯데시네마",
+    "aliases": []
+  },
+  {
+    "partnerId": 22,
+    "partnerName": "롯데월드",
+    "aliases": [
+      {
+        "aliasName": "롯데월드 어드벤처",
+        "normalizedAlias": "롯데월드어드벤처"
+      }
+    ]
+  },
+  {
+    "partnerId": 23,
+    "partnerName": "리디셀렉트",
+    "aliases": []
+  },
+  {
+    "partnerId": 24,
+    "partnerName": "메가박스",
+    "aliases": []
+  },
+  {
+    "partnerId": 25,
+    "partnerName": "뮤지엄 원",
+    "aliases": []
+  },
+  {
+    "partnerId": 26,
+    "partnerName": "뮤지엄L",
+    "aliases": []
+  },
+  {
+    "partnerId": 27,
+    "partnerName": "뮤직벨링",
+    "aliases": []
+  },
+  {
+    "partnerId": 28,
+    "partnerName": "미스터피자",
+    "aliases": []
+  },
+  {
+    "partnerId": 29,
+    "partnerName": "반올림피자",
+    "aliases": []
+  },
+  {
+    "partnerId": 30,
+    "partnerName": "배스킨라빈스",
+    "aliases": [
+      {
+        "aliasName": "배스킨라빈스(고객 보답)",
+        "normalizedAlias": "배스킨라빈스고객보답"
+      }
+    ]
+  },
+  {
+    "partnerId": 31,
+    "partnerName": "베베쿡",
+    "aliases": []
+  },
+  {
+    "partnerId": 32,
+    "partnerName": "부산아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 33,
+    "partnerName": "부산엑스더스카이",
+    "aliases": []
+  },
+  {
+    "partnerId": 34,
+    "partnerName": "브레댄코",
+    "aliases": []
+  },
+  {
+    "partnerId": 35,
+    "partnerName": "블라이스",
+    "aliases": []
+  },
+  {
+    "partnerId": 36,
+    "partnerName": "빛의 벙커",
+    "aliases": []
+  },
+  {
+    "partnerId": 37,
+    "partnerName": "빛의 시어터",
+    "aliases": []
+  },
+  {
+    "partnerId": 38,
+    "partnerName": "뽀로로아쿠아빌리지",
+    "aliases": [
+      {
+        "aliasName": "경주뽀로로아쿠아빌리지",
+        "normalizedAlias": "경주뽀로로아쿠아빌리지"
+      }
+    ]
+  },
+  {
+    "partnerId": 39,
+    "partnerName": "뽀로로파크",
+    "aliases": []
+  },
+  {
+    "partnerId": 40,
+    "partnerName": "서울드래곤시티",
+    "aliases": []
+  },
+  {
+    "partnerId": 41,
+    "partnerName": "서울랜드",
+    "aliases": []
+  },
+  {
+    "partnerId": 42,
+    "partnerName": "세빛섬",
+    "aliases": []
+  },
+  {
+    "partnerId": 43,
+    "partnerName": "셀렉스",
+    "aliases": []
+  },
+  {
+    "partnerId": 44,
+    "partnerName": "셀로",
+    "aliases": []
+  },
+  {
+    "partnerId": 45,
+    "partnerName": "쉐이크쉑",
+    "aliases": []
+  },
+  {
+    "partnerId": 46,
+    "partnerName": "스파랜드",
+    "aliases": []
+  },
+  {
+    "partnerId": 47,
+    "partnerName": "신라면세점",
+    "aliases": [
+      {
+        "aliasName": "신라면세점(오프라인)",
+        "normalizedAlias": "신라면세점오프라인"
+      }
+    ]
+  },
+  {
+    "partnerId": 48,
+    "partnerName": "신라아이파크면세점",
+    "aliases": [
+      {
+        "aliasName": "신라아이파크면세점(오프라인)",
+        "normalizedAlias": "신라아이파크면세점오프라인"
+      },
+      {
+        "aliasName": "신라아이파크면세점(온라인)",
+        "normalizedAlias": "신라아이파크면세점온라인"
+      }
+    ]
+  },
+  {
+    "partnerId": 49,
+    "partnerName": "신라인터넷면세점",
+    "aliases": []
+  },
+  {
+    "partnerId": 50,
+    "partnerName": "신세계면세점",
+    "aliases": [
+      {
+        "aliasName": "신세계면세점(오프라인)",
+        "normalizedAlias": "신세계면세점오프라인"
+      },
+      {
+        "aliasName": "신세계면세점(온라인)",
+        "normalizedAlias": "신세계면세점온라인"
+      }
+    ]
+  },
+  {
+    "partnerId": 51,
+    "partnerName": "싱카이",
+    "aliases": []
+  },
+  {
+    "partnerId": 52,
+    "partnerName": "씨네폭스",
+    "aliases": []
+  },
+  {
+    "partnerId": 53,
+    "partnerName": "아쿠아플라넷",
+    "aliases": []
+  },
+  {
+    "partnerId": 54,
+    "partnerName": "아쿠아필드",
+    "aliases": []
+  },
+  {
+    "partnerId": 55,
+    "partnerName": "야놀자",
+    "aliases": []
+  },
+  {
+    "partnerId": 56,
+    "partnerName": "어바웃펫",
+    "aliases": []
+  },
+  {
+    "partnerId": 57,
+    "partnerName": "에버랜드",
+    "aliases": []
+  },
+  {
+    "partnerId": 58,
+    "partnerName": "오가나셀",
+    "aliases": []
+  },
+  {
+    "partnerId": 59,
+    "partnerName": "오토오아시스",
+    "aliases": []
+  },
+  {
+    "partnerId": 60,
+    "partnerName": "온더보더",
+    "aliases": []
+  },
+  {
+    "partnerId": 61,
+    "partnerName": "요기요",
+    "aliases": []
+  },
+  {
+    "partnerId": 62,
+    "partnerName": "원더빌리지",
+    "aliases": []
+  },
+  {
+    "partnerId": 63,
+    "partnerName": "원더파크",
+    "aliases": []
+  },
+  {
+    "partnerId": 64,
+    "partnerName": "원스토어",
+    "aliases": []
+  },
+  {
+    "partnerId": 65,
+    "partnerName": "월스트리트",
+    "aliases": []
+  },
+  {
+    "partnerId": 66,
+    "partnerName": "유가네닭갈비",
+    "aliases": []
+  },
+  {
+    "partnerId": 67,
+    "partnerName": "유독",
+    "aliases": []
+  },
+  {
+    "partnerId": 68,
+    "partnerName": "유앤아이피부과의원",
+    "aliases": [
+      {
+        "aliasName": "유앤아이의원",
+        "normalizedAlias": "유앤아이의원"
+      }
+    ]
+  },
+  {
+    "partnerId": 69,
+    "partnerName": "이월드",
+    "aliases": []
+  },
+  {
+    "partnerId": 70,
+    "partnerName": "일리커피",
+    "aliases": []
+  },
+  {
+    "partnerId": 71,
+    "partnerName": "자란다",
+    "aliases": []
+  },
+  {
+    "partnerId": 72,
+    "partnerName": "전자랜드",
+    "aliases": []
+  },
+  {
+    "partnerId": 73,
+    "partnerName": "제일제면소",
+    "aliases": []
+  },
+  {
+    "partnerId": 74,
+    "partnerName": "제주민속촌",
+    "aliases": []
+  },
+  {
+    "partnerId": 75,
+    "partnerName": "젠지",
+    "aliases": []
+  },
+  {
+    "partnerId": 76,
+    "partnerName": "지니뮤직",
+    "aliases": []
+  },
+  {
+    "partnerId": 77,
+    "partnerName": "청소연구소",
+    "aliases": [
+      {
+        "aliasName": "청연(구.청소연구소)",
+        "normalizedAlias": "청연구청소연구소"
+      },
+      {
+        "aliasName": "청연",
+        "normalizedAlias": "청연"
+      }
+    ]
+  },
+  {
+    "partnerId": 78,
+    "partnerName": "초심스터디카페",
+    "aliases": []
+  },
+  {
+    "partnerId": 79,
+    "partnerName": "카모아",
+    "aliases": []
+  },
+  {
+    "partnerId": 80,
+    "partnerName": "캐리비안베이",
+    "aliases": []
+  },
+  {
+    "partnerId": 81,
+    "partnerName": "컬리너리스퀘어",
+    "aliases": []
+  },
+  {
+    "partnerId": 82,
+    "partnerName": "케이팝머치",
+    "aliases": []
+  },
+  {
+    "partnerId": 83,
+    "partnerName": "코엑스아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 84,
+    "partnerName": "쿠프마케팅",
+    "aliases": []
+  },
+  {
+    "partnerId": 85,
+    "partnerName": "클럽디 오아시스",
+    "aliases": []
+  },
+  {
+    "partnerId": 86,
+    "partnerName": "클룩",
+    "aliases": [
+      {
+        "aliasName": "클룩(KLOOK)",
+        "normalizedAlias": "클룩klook"
+      }
+    ]
+  },
+  {
+    "partnerId": 87,
+    "partnerName": "키디키디",
+    "aliases": [
+      {
+        "aliasName": "키디키디 몰",
+        "normalizedAlias": "키디키디몰"
+      }
+    ]
+  },
+  {
+    "partnerId": 88,
+    "partnerName": "키사라",
+    "aliases": []
+  },
+  {
+    "partnerId": 89,
+    "partnerName": "통인익스프레스",
+    "aliases": []
+  },
+  {
+    "partnerId": 90,
+    "partnerName": "투루카",
+    "aliases": []
+  },
+  {
+    "partnerId": 91,
+    "partnerName": "트립닷컴",
+    "aliases": []
+  },
+  {
+    "partnerId": 92,
+    "partnerName": "티웨이항공",
+    "aliases": [
+      {
+        "aliasName": "트리니티항공",
+        "normalizedAlias": "트리니티항공"
+      }
+    ]
+  },
+  {
+    "partnerId": 93,
+    "partnerName": "파리바게뜨",
+    "aliases": []
+  },
+  {
+    "partnerId": 94,
+    "partnerName": "파리크라상",
+    "aliases": []
+  },
+  {
+    "partnerId": 95,
+    "partnerName": "파파존스",
+    "aliases": [
+      {
+        "aliasName": "파파존스피자",
+        "normalizedAlias": "파파존스피자"
+      }
+    ]
+  },
+  {
+    "partnerId": 96,
+    "partnerName": "페인터즈",
+    "aliases": []
+  },
+  {
+    "partnerId": 97,
+    "partnerName": "펫생각",
+    "aliases": []
+  },
+  {
+    "partnerId": 98,
+    "partnerName": "포쉬네일",
+    "aliases": []
+  },
+  {
+    "partnerId": 99,
+    "partnerName": "포토블루",
+    "aliases": []
+  },
+  {
+    "partnerId": 100,
+    "partnerName": "푸드엠파이어",
+    "aliases": []
+  },
+  {
+    "partnerId": 101,
+    "partnerName": "피자헛",
+    "aliases": []
+  },
+  {
+    "partnerId": 102,
+    "partnerName": "필리",
+    "aliases": []
+  },
+  {
+    "partnerId": 103,
+    "partnerName": "한강유람선",
+    "aliases": []
+  },
+  {
+    "partnerId": 104,
+    "partnerName": "할리스",
+    "aliases": []
+  },
+  {
+    "partnerId": 105,
+    "partnerName": "허그맘",
+    "aliases": []
+  },
+  {
+    "partnerId": 106,
+    "partnerName": "현대면세점",
+    "aliases": []
+  },
+  {
+    "partnerId": 107,
+    "partnerName": "화담숲",
+    "aliases": []
+  },
+  {
+    "partnerId": 108,
+    "partnerName": "CGV",
+    "aliases": []
+  },
+  {
+    "partnerId": 109,
+    "partnerName": "DBR동아비즈니스리뷰",
+    "aliases": []
+  },
+  {
+    "partnerId": 110,
+    "partnerName": "GS THE FRESH",
+    "aliases": []
+  },
+  {
+    "partnerId": 111,
+    "partnerName": "GS POSTBOX",
+    "aliases": []
+  },
+  {
+    "partnerId": 112,
+    "partnerName": "GS25",
+    "aliases": []
+  },
+  {
+    "partnerId": 113,
+    "partnerName": "HBR하버드비즈니스리뷰",
+    "aliases": []
+  },
+  {
+    "partnerId": 114,
+    "partnerName": "IPTV",
+    "aliases": []
+  },
+  {
+    "partnerId": 115,
+    "partnerName": "KCC글라스",
+    "aliases": []
+  },
+  {
+    "partnerId": 116,
+    "partnerName": "LG U+",
+    "aliases": []
+  },
+  {
+    "partnerId": 117,
+    "partnerName": "LG생활건강샵",
+    "aliases": []
+  },
+  {
+    "partnerId": 118,
+    "partnerName": "LG트윈스",
+    "aliases": []
+  },
+  {
+    "partnerId": 119,
+    "partnerName": "아르떼 키즈파크 제주",
+    "aliases": []
+  },
+  {
+    "partnerId": 120,
+    "partnerName": "SEOUL SKY",
+    "aliases": []
+  },
+  {
+    "partnerId": 121,
+    "partnerName": "SK렌터카",
+    "aliases": []
+  },
+  {
+    "partnerId": 122,
+    "partnerName": "U⁺모바일tv",
+    "aliases": []
+  },
+  {
+    "partnerId": 123,
+    "partnerName": "U⁺콕",
+    "aliases": []
+  },
+  {
+    "partnerId": 124,
+    "partnerName": "V컬러링",
+    "aliases": [
+      {
+        "aliasName": "V컬러링 멤버십 프로모션",
+        "normalizedAlias": "v컬러링멤버십프로모션"
+      }
+    ]
+  },
+  {
+    "partnerId": 125,
+    "partnerName": "VIPS",
+    "aliases": []
+  },
+  {
+    "partnerId": 126,
+    "partnerName": "YBM NET",
+    "aliases": []
+  },
+  {
+    "partnerId": 127,
+    "partnerName": "스카이라인 루지",
+    "aliases": []
+  },
+  {
+    "partnerId": 128,
+    "partnerName": "롯데월드 아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 129,
+    "partnerName": "롯데월드 아이스링크",
+    "aliases": []
+  },
+  {
+    "partnerId": 130,
+    "partnerName": "롯데월드 어드벤처 부산",
+    "aliases": []
+  },
+  {
+    "partnerId": 131,
+    "partnerName": "FLO",
+    "aliases": []
+  },
+  {
+    "partnerId": 132,
+    "partnerName": "엔제리너스",
+    "aliases": []
+  },
+  {
+    "partnerId": 133,
+    "partnerName": "스피드메이트",
+    "aliases": []
+  },
+  {
+    "partnerId": 134,
+    "partnerName": "bhc",
+    "aliases": []
+  },
+  {
+    "partnerId": 135,
+    "partnerName": "제주항공",
+    "aliases": []
+  },
+  {
+    "partnerId": 136,
+    "partnerName": "기프티콘",
+    "aliases": []
+  },
+  {
+    "partnerId": 137,
+    "partnerName": "SK브로드밴드 B tv",
+    "aliases": []
+  },
+  {
+    "partnerId": 138,
+    "partnerName": "G car",
+    "aliases": [
+      {
+        "aliasName": "롯데렌터카 G car",
+        "normalizedAlias": "롯데렌터카gcar"
+      }
+    ]
+  },
+  {
+    "partnerId": 139,
+    "partnerName": "멕시카나",
+    "aliases": []
+  },
+  {
+    "partnerId": 140,
+    "partnerName": "마티나 라운지",
+    "aliases": []
+  },
+  {
+    "partnerId": 141,
+    "partnerName": "롯데월드 서울스카이",
+    "aliases": [
+      {
+        "aliasName": "서울스카이",
+        "normalizedAlias": "서울스카이"
+      }
+    ]
+  },
+  {
+    "partnerId": 142,
+    "partnerName": "이랜드몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 143,
+    "partnerName": "백미당",
+    "aliases": []
+  },
+  {
+    "partnerId": 144,
+    "partnerName": "드롭탑",
+    "aliases": []
+  },
+  {
+    "partnerId": 145,
+    "partnerName": "이니스프리",
+    "aliases": []
+  },
+  {
+    "partnerId": 146,
+    "partnerName": "텐바이텐",
+    "aliases": []
+  },
+  {
+    "partnerId": 147,
+    "partnerName": "매드포갈릭",
+    "aliases": []
+  },
+  {
+    "partnerId": 148,
+    "partnerName": "키자니아",
+    "aliases": []
+  },
+  {
+    "partnerId": 149,
+    "partnerName": "나뚜루&나뚜루시그니처",
+    "aliases": []
+  },
+  {
+    "partnerId": 150,
+    "partnerName": "컬쳐랜드",
+    "aliases": []
+  },
+  {
+    "partnerId": 151,
+    "partnerName": "워커힐호텔앤리조트",
+    "aliases": []
+  },
+  {
+    "partnerId": 152,
+    "partnerName": "아티제",
+    "aliases": []
+  },
+  {
+    "partnerId": 153,
+    "partnerName": "퍼블로그",
+    "aliases": []
+  },
+  {
+    "partnerId": 154,
+    "partnerName": "SK스토아",
+    "aliases": []
+  },
+  {
+    "partnerId": 155,
+    "partnerName": "티맵모빌리티",
+    "aliases": []
+  },
+  {
+    "partnerId": 156,
+    "partnerName": "빌리엔젤",
+    "aliases": []
+  },
+  {
+    "partnerId": 157,
+    "partnerName": "제주신화월드",
+    "aliases": []
+  },
+  {
+    "partnerId": 158,
+    "partnerName": "핏펫",
+    "aliases": []
+  },
+  {
+    "partnerId": 159,
+    "partnerName": "설악워터피아",
+    "aliases": []
+  },
+  {
+    "partnerId": 160,
+    "partnerName": "빌리카",
+    "aliases": []
+  },
+  {
+    "partnerId": 161,
+    "partnerName": "에버온",
+    "aliases": []
+  },
+  {
+    "partnerId": 162,
+    "partnerName": "그리팅",
+    "aliases": []
+  },
+  {
+    "partnerId": 163,
+    "partnerName": "풀무원",
+    "aliases": []
+  },
+  {
+    "partnerId": 164,
+    "partnerName": "파라다이스스파도고",
+    "aliases": []
+  },
+  {
+    "partnerId": 165,
+    "partnerName": "톤28",
+    "aliases": []
+  },
+  {
+    "partnerId": 166,
+    "partnerName": "SEA LIFE 부산아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 167,
+    "partnerName": "캐리비안 베이",
+    "aliases": []
+  },
+  {
+    "partnerId": 168,
+    "partnerName": "미스터힐링",
+    "aliases": []
+  },
+  {
+    "partnerId": 169,
+    "partnerName": "원스토리",
+    "aliases": []
+  },
+  {
+    "partnerId": 170,
+    "partnerName": "여행자 보험",
+    "aliases": []
+  },
+  {
+    "partnerId": 171,
+    "partnerName": "동구밭",
+    "aliases": []
+  },
+  {
+    "partnerId": 172,
+    "partnerName": "제오헤어",
+    "aliases": []
+  },
+  {
+    "partnerId": 173,
+    "partnerName": "파스쿠찌",
+    "aliases": []
+  },
+  {
+    "partnerId": 174,
+    "partnerName": "아시아나 인터넷 면세점",
+    "aliases": []
+  },
+  {
+    "partnerId": 175,
+    "partnerName": "제주삼다수",
+    "aliases": []
+  },
+  {
+    "partnerId": 176,
+    "partnerName": "노랑풍선 시티버스",
+    "aliases": []
+  },
+  {
+    "partnerId": 177,
+    "partnerName": "안경매니저",
+    "aliases": []
+  },
+  {
+    "partnerId": 178,
+    "partnerName": "타요키즈카페",
+    "aliases": []
+  },
+  {
+    "partnerId": 179,
+    "partnerName": "피자알볼로",
+    "aliases": []
+  },
+  {
+    "partnerId": 180,
+    "partnerName": "주렁주렁",
+    "aliases": []
+  },
+  {
+    "partnerId": 181,
+    "partnerName": "B tv cable",
+    "aliases": []
+  },
+  {
+    "partnerId": 182,
+    "partnerName": "사보텐",
+    "aliases": []
+  },
+  {
+    "partnerId": 183,
+    "partnerName": "미니창고 다락",
+    "aliases": []
+  },
+  {
+    "partnerId": 184,
+    "partnerName": "파고다어학원",
+    "aliases": []
+  },
+  {
+    "partnerId": 185,
+    "partnerName": "크래버대게나라",
+    "aliases": []
+  },
+  {
+    "partnerId": 186,
+    "partnerName": "원마운트",
+    "aliases": []
+  },
+  {
+    "partnerId": 187,
+    "partnerName": "씨네Q",
+    "aliases": [
+      {
+        "aliasName": "씨네Q(리저브관)",
+        "normalizedAlias": "씨네q리저브관"
+      },
+      {
+        "aliasName": "씨네Q(일반관/리클라이너관)",
+        "normalizedAlias": "씨네q일반관리클라이너관"
+      }
+    ]
+  },
+  {
+    "partnerId": 188,
+    "partnerName": "T 우주 신한카드",
+    "aliases": []
+  },
+  {
+    "partnerId": 189,
+    "partnerName": "뉴퍼마켓",
+    "aliases": []
+  },
+  {
+    "partnerId": 190,
+    "partnerName": "경주뽀로로아쿠아빌리지",
+    "aliases": []
+  },
+  {
+    "partnerId": 191,
+    "partnerName": "동원몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 192,
+    "partnerName": "티니핑월드 인 판교",
+    "aliases": []
+  },
+  {
+    "partnerId": 193,
+    "partnerName": "타코벨",
+    "aliases": []
+  },
+  {
+    "partnerId": 194,
+    "partnerName": "제주관광공사 인터넷면세점",
+    "aliases": [
+      {
+        "aliasName": "제주인터넷면세점",
+        "normalizedAlias": "제주인터넷면세점"
+      }
+    ]
+  },
+  {
+    "partnerId": 195,
+    "partnerName": "파라다이스시티 씨메르",
+    "aliases": []
+  },
+  {
+    "partnerId": 196,
+    "partnerName": "파고다인강",
+    "aliases": []
+  },
+  {
+    "partnerId": 197,
+    "partnerName": "T 멤버십 더블 체크카드(하나)",
+    "aliases": []
+  },
+  {
+    "partnerId": 198,
+    "partnerName": "무탄",
+    "aliases": []
+  },
+  {
+    "partnerId": 199,
+    "partnerName": "열린베이커리",
+    "aliases": []
+  },
+  {
+    "partnerId": 200,
+    "partnerName": "해피오더",
+    "aliases": []
+  },
+  {
+    "partnerId": 201,
+    "partnerName": "허닭",
+    "aliases": []
+  },
+  {
+    "partnerId": 202,
+    "partnerName": "네이처스케이프 플러스",
+    "aliases": []
+  },
+  {
+    "partnerId": 203,
+    "partnerName": "로렌츠",
+    "aliases": []
+  },
+  {
+    "partnerId": 204,
+    "partnerName": "YBM 전화화상",
+    "aliases": []
+  },
+  {
+    "partnerId": 205,
+    "partnerName": "투어비스",
+    "aliases": []
+  },
+  {
+    "partnerId": 206,
+    "partnerName": "더벤티",
+    "aliases": []
+  },
+  {
+    "partnerId": 207,
+    "partnerName": "하프클럽",
+    "aliases": []
+  },
+  {
+    "partnerId": 208,
+    "partnerName": "여행가자고",
+    "aliases": []
+  },
+  {
+    "partnerId": 209,
+    "partnerName": "보리보리",
+    "aliases": []
+  },
+  {
+    "partnerId": 210,
+    "partnerName": "슈퍼키친",
+    "aliases": []
+  },
+  {
+    "partnerId": 211,
+    "partnerName": "반려생활",
+    "aliases": []
+  },
+  {
+    "partnerId": 212,
+    "partnerName": "사람인 멘토링매치",
+    "aliases": []
+  },
+  {
+    "partnerId": 213,
+    "partnerName": "디자인밀",
+    "aliases": []
+  },
+  {
+    "partnerId": 214,
+    "partnerName": "후디스몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 215,
+    "partnerName": "에필로우",
+    "aliases": []
+  },
+  {
+    "partnerId": 216,
+    "partnerName": "헉슬리",
+    "aliases": []
+  },
+  {
+    "partnerId": 217,
+    "partnerName": "VOG Hair",
+    "aliases": [
+      {
+        "aliasName": "VOG Hair(보그헤어)",
+        "normalizedAlias": "voghair보그헤어"
+      }
+    ]
+  },
+  {
+    "partnerId": 218,
+    "partnerName": "쿤달",
+    "aliases": []
+  },
+  {
+    "partnerId": 219,
+    "partnerName": "셀퓨전씨",
+    "aliases": []
+  },
+  {
+    "partnerId": 220,
+    "partnerName": "스피쿠스",
+    "aliases": []
+  },
+  {
+    "partnerId": 221,
+    "partnerName": "SK매직",
+    "aliases": []
+  },
+  {
+    "partnerId": 222,
+    "partnerName": "로봇랜드",
+    "aliases": []
+  },
+  {
+    "partnerId": 223,
+    "partnerName": "파라다이스시티 원더박스",
+    "aliases": []
+  },
+  {
+    "partnerId": 224,
+    "partnerName": "T 멤버십 라이프 신한카드",
+    "aliases": []
+  },
+  {
+    "partnerId": 225,
+    "partnerName": "아로마티카",
+    "aliases": []
+  },
+  {
+    "partnerId": 226,
+    "partnerName": "아떼",
+    "aliases": []
+  },
+  {
+    "partnerId": 227,
+    "partnerName": "인터뷰박스",
+    "aliases": []
+  },
+  {
+    "partnerId": 228,
+    "partnerName": "Touch1카드(하나)",
+    "aliases": []
+  },
+  {
+    "partnerId": 229,
+    "partnerName": "허그맘허그인",
+    "aliases": []
+  },
+  {
+    "partnerId": 230,
+    "partnerName": "스코피",
+    "aliases": []
+  },
+  {
+    "partnerId": 231,
+    "partnerName": "컨티뉴",
+    "aliases": []
+  },
+  {
+    "partnerId": 232,
+    "partnerName": "리바이북",
+    "aliases": []
+  },
+  {
+    "partnerId": 233,
+    "partnerName": "위미트",
+    "aliases": []
+  },
+  {
+    "partnerId": 234,
+    "partnerName": "T 멤버십 더블 롯데 카드",
+    "aliases": []
+  },
+  {
+    "partnerId": 235,
+    "partnerName": "SK국제전화 00700",
+    "aliases": []
+  },
+  {
+    "partnerId": 236,
+    "partnerName": "르 스페이스",
+    "aliases": []
+  },
+  {
+    "partnerId": 237,
+    "partnerName": "월스트리트 잉글리시",
+    "aliases": [
+      {
+        "aliasName": "월스트리트 잉글리쉬",
+        "normalizedAlias": "월스트리트잉글리쉬"
+      }
+    ]
+  },
+  {
+    "partnerId": 238,
+    "partnerName": "파고다원",
+    "aliases": []
+  },
+  {
+    "partnerId": 239,
+    "partnerName": "멍타냥택시",
+    "aliases": []
+  },
+  {
+    "partnerId": 240,
+    "partnerName": "여수 유월드",
+    "aliases": []
+  },
+  {
+    "partnerId": 241,
+    "partnerName": "히바린",
+    "aliases": []
+  },
+  {
+    "partnerId": 242,
+    "partnerName": "국개대표",
+    "aliases": []
+  },
+  {
+    "partnerId": 243,
+    "partnerName": "농협맛선",
+    "aliases": []
+  },
+  {
+    "partnerId": 244,
+    "partnerName": "원더파크/원더빌리지",
+    "aliases": []
+  },
+  {
+    "partnerId": 245,
+    "partnerName": "파고다토쿨",
+    "aliases": []
+  },
+  {
+    "partnerId": 246,
+    "partnerName": "21그램",
+    "aliases": []
+  },
+  {
+    "partnerId": 247,
+    "partnerName": "오토카지",
+    "aliases": []
+  },
+  {
+    "partnerId": 248,
+    "partnerName": "아이피아",
+    "aliases": []
+  },
+  {
+    "partnerId": 249,
+    "partnerName": "런드리고",
+    "aliases": []
+  },
+  {
+    "partnerId": 250,
+    "partnerName": "도그메이트",
+    "aliases": []
+  },
+  {
+    "partnerId": 251,
+    "partnerName": "T 멤버십 더블 롯데 체크카드",
+    "aliases": []
+  },
+  {
+    "partnerId": 252,
+    "partnerName": "어떠케어",
+    "aliases": []
+  },
+  {
+    "partnerId": 253,
+    "partnerName": "도원스타일",
+    "aliases": []
+  },
+  {
+    "partnerId": 254,
+    "partnerName": "더라운지",
+    "aliases": []
+  },
+  {
+    "partnerId": 255,
+    "partnerName": "웅진플레이도시",
+    "aliases": []
+  },
+  {
+    "partnerId": 256,
+    "partnerName": "엘리하이/엠베스트",
+    "aliases": []
+  },
+  {
+    "partnerId": 257,
+    "partnerName": "밀크T",
+    "aliases": []
+  },
+  {
+    "partnerId": 258,
+    "partnerName": "캐리마켓",
+    "aliases": []
+  },
+  {
+    "partnerId": 259,
+    "partnerName": "스몹",
+    "aliases": []
+  },
+  {
+    "partnerId": 260,
+    "partnerName": "노트미",
+    "aliases": []
+  },
+  {
+    "partnerId": 261,
+    "partnerName": "키디키디 몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 262,
+    "partnerName": "아이러브탠",
+    "aliases": []
+  },
+  {
+    "partnerId": 263,
+    "partnerName": "코드모스",
+    "aliases": []
+  },
+  {
+    "partnerId": 264,
+    "partnerName": "루덴시아",
+    "aliases": []
+  },
+  {
+    "partnerId": 265,
+    "partnerName": "T 다이렉트 샵",
+    "aliases": []
+  },
+  {
+    "partnerId": 266,
+    "partnerName": "쇼핑라운지(고객 보답)",
+    "aliases": [
+      {
+        "aliasName": "쇼핑라운지",
+        "normalizedAlias": "쇼핑라운지"
+      }
+    ]
+  },
+  {
+    "partnerId": 267,
+    "partnerName": "배스킨라빈스(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 268,
+    "partnerName": "크록스",
+    "aliases": []
+  },
+  {
+    "partnerId": 269,
+    "partnerName": "휴대폰결제 할인",
+    "aliases": []
+  },
+  {
+    "partnerId": 270,
+    "partnerName": "아모레몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 271,
+    "partnerName": "롯데마트 제타",
+    "aliases": []
+  },
+  {
+    "partnerId": 272,
+    "partnerName": "배달의민족",
+    "aliases": []
+  },
+  {
+    "partnerId": 273,
+    "partnerName": "이디야커피",
+    "aliases": []
+  },
+  {
+    "partnerId": 274,
+    "partnerName": "어니스트플라워",
+    "aliases": []
+  },
+  {
+    "partnerId": 275,
+    "partnerName": "샐러디",
+    "aliases": []
+  },
+  {
+    "partnerId": 276,
+    "partnerName": "핑크퐁플러스",
+    "aliases": []
+  },
+  {
+    "partnerId": 277,
+    "partnerName": "롯데면세점 동경긴자점",
+    "aliases": []
+  },
+  {
+    "partnerId": 278,
+    "partnerName": "어플레이즈",
+    "aliases": [
+      {
+        "aliasName": "래디오비즈",
+        "normalizedAlias": "래디오비즈"
+      }
+    ]
+  },
+  {
+    "partnerId": 279,
+    "partnerName": "와플랫 체크",
+    "aliases": []
+  },
+  {
+    "partnerId": 280,
+    "partnerName": "핸들대리",
+    "aliases": []
+  },
+  {
+    "partnerId": 281,
+    "partnerName": "온누리시장(몰)",
+    "aliases": []
+  },
+  {
+    "partnerId": 282,
+    "partnerName": "메가MGC커피",
+    "aliases": []
+  },
+  {
+    "partnerId": 283,
+    "partnerName": "지니 TV",
+    "aliases": []
+  },
+  {
+    "partnerId": 284,
+    "partnerName": "스타벅스",
+    "aliases": []
+  },
+  {
+    "partnerId": 285,
+    "partnerName": "이마트24",
+    "aliases": []
+  },
+  {
+    "partnerId": 286,
+    "partnerName": "꾸까",
+    "aliases": []
+  },
+  {
+    "partnerId": 287,
+    "partnerName": "공차",
+    "aliases": []
+  },
+  {
+    "partnerId": 288,
+    "partnerName": "아웃백",
+    "aliases": [
+      {
+        "aliasName": "아웃백 스테이크하우스",
+        "normalizedAlias": "아웃백스테이크하우스"
+      }
+    ]
+  },
+  {
+    "partnerId": 289,
+    "partnerName": "파파존스피자",
+    "aliases": []
+  },
+  {
+    "partnerId": 290,
+    "partnerName": "던킨",
+    "aliases": []
+  },
+  {
+    "partnerId": 291,
+    "partnerName": "CU",
+    "aliases": []
+  },
+  {
+    "partnerId": 292,
+    "partnerName": "KT알파 쇼핑(구. K쇼핑)",
+    "aliases": []
+  },
+  {
+    "partnerId": 293,
+    "partnerName": "서울형 키즈카페",
+    "aliases": []
+  },
+  {
+    "partnerId": 294,
+    "partnerName": "스노우",
+    "aliases": []
+  },
+  {
+    "partnerId": 295,
+    "partnerName": "5G 데이터충전",
+    "aliases": []
+  },
+  {
+    "partnerId": 296,
+    "partnerName": "쇼핑라운지",
+    "aliases": []
+  },
+  {
+    "partnerId": 297,
+    "partnerName": "퀴즈노스",
+    "aliases": []
+  },
+  {
+    "partnerId": 298,
+    "partnerName": "롯데렌터카 G car",
+    "aliases": []
+  },
+  {
+    "partnerId": 299,
+    "partnerName": "LTE데이터 룰렛",
+    "aliases": []
+  },
+  {
+    "partnerId": 300,
+    "partnerName": "KT멤버십 공연예매",
+    "aliases": []
+  },
+  {
+    "partnerId": 301,
+    "partnerName": "모두의충전",
+    "aliases": []
+  },
+  {
+    "partnerId": 302,
+    "partnerName": "플레이타임(키즈카페)",
+    "aliases": []
+  },
+  {
+    "partnerId": 303,
+    "partnerName": "LTE 데이터충전",
+    "aliases": []
+  },
+  {
+    "partnerId": 304,
+    "partnerName": "아고다",
+    "aliases": []
+  },
+  {
+    "partnerId": 305,
+    "partnerName": "CJ더마켓",
+    "aliases": []
+  },
+  {
+    "partnerId": 306,
+    "partnerName": "필수팩",
+    "aliases": []
+  },
+  {
+    "partnerId": 307,
+    "partnerName": "genie",
+    "aliases": [
+      {
+        "aliasName": "지니 (genie)",
+        "normalizedAlias": "지니genie"
+      }
+    ]
+  },
+  {
+    "partnerId": 308,
+    "partnerName": "카페베네",
+    "aliases": []
+  },
+  {
+    "partnerId": 309,
+    "partnerName": "달콤",
+    "aliases": []
+  },
+  {
+    "partnerId": 310,
+    "partnerName": "핫딜",
+    "aliases": []
+  },
+  {
+    "partnerId": 311,
+    "partnerName": "KT닷컴 액세서리 할인",
+    "aliases": []
+  },
+  {
+    "partnerId": 312,
+    "partnerName": "GS25편의점택배",
+    "aliases": []
+  },
+  {
+    "partnerId": 313,
+    "partnerName": "정원e샵",
+    "aliases": []
+  },
+  {
+    "partnerId": 314,
+    "partnerName": "비트커피",
+    "aliases": []
+  },
+  {
+    "partnerId": 315,
+    "partnerName": "차방정",
+    "aliases": []
+  },
+  {
+    "partnerId": 316,
+    "partnerName": "아르떼뮤지엄",
+    "aliases": []
+  },
+  {
+    "partnerId": 317,
+    "partnerName": "기프티쇼",
+    "aliases": []
+  },
+  {
+    "partnerId": 318,
+    "partnerName": "블루보틀",
+    "aliases": []
+  },
+  {
+    "partnerId": 319,
+    "partnerName": "여기어때",
+    "aliases": []
+  },
+  {
+    "partnerId": 320,
+    "partnerName": "AICE",
+    "aliases": []
+  },
+  {
+    "partnerId": 321,
+    "partnerName": "VOG Hair(보그헤어)",
+    "aliases": []
+  },
+  {
+    "partnerId": 322,
+    "partnerName": "제주인터넷면세점",
+    "aliases": []
+  },
+  {
+    "partnerId": 323,
+    "partnerName": "에어클래스",
+    "aliases": []
+  },
+  {
+    "partnerId": 324,
+    "partnerName": "히트조명",
+    "aliases": []
+  },
+  {
+    "partnerId": 325,
+    "partnerName": "에듀윌",
+    "aliases": []
+  },
+  {
+    "partnerId": 326,
+    "partnerName": "리프레쉬 골프",
+    "aliases": []
+  },
+  {
+    "partnerId": 327,
+    "partnerName": "A/S수리비 할인",
+    "aliases": []
+  },
+  {
+    "partnerId": 328,
+    "partnerName": "차일디",
+    "aliases": []
+  },
+  {
+    "partnerId": 329,
+    "partnerName": "씨라이프 코엑스 아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 330,
+    "partnerName": "추억의 국민학교 떡볶이",
+    "aliases": []
+  },
+  {
+    "partnerId": 331,
+    "partnerName": "볼록북",
+    "aliases": []
+  },
+  {
+    "partnerId": 332,
+    "partnerName": "노보텔 앰배서더 동대문",
+    "aliases": []
+  },
+  {
+    "partnerId": 333,
+    "partnerName": "KKday",
+    "aliases": []
+  },
+  {
+    "partnerId": 334,
+    "partnerName": "김캐디",
+    "aliases": []
+  },
+  {
+    "partnerId": 335,
+    "partnerName": "오붓",
+    "aliases": []
+  },
+  {
+    "partnerId": 336,
+    "partnerName": "kt wiz 프로야구",
+    "aliases": []
+  },
+  {
+    "partnerId": 337,
+    "partnerName": "서울스카이",
+    "aliases": []
+  },
+  {
+    "partnerId": 338,
+    "partnerName": "클럽디오아시스",
+    "aliases": []
+  },
+  {
+    "partnerId": 339,
+    "partnerName": "앱티핏",
+    "aliases": []
+  },
+  {
+    "partnerId": 340,
+    "partnerName": "착한의사",
+    "aliases": []
+  },
+  {
+    "partnerId": 341,
+    "partnerName": "리뷰노트",
+    "aliases": []
+  },
+  {
+    "partnerId": 342,
+    "partnerName": "밀리의 서재",
+    "aliases": []
+  },
+  {
+    "partnerId": 343,
+    "partnerName": "MOVV",
+    "aliases": []
+  },
+  {
+    "partnerId": 344,
+    "partnerName": "지니팩",
+    "aliases": []
+  },
+  {
+    "partnerId": 345,
+    "partnerName": "클룩(KLOOK)",
+    "aliases": []
+  },
+  {
+    "partnerId": 346,
+    "partnerName": "한화리조트",
+    "aliases": []
+  },
+  {
+    "partnerId": 347,
+    "partnerName": "공항 스카이허브 라운지",
+    "aliases": []
+  },
+  {
+    "partnerId": 348,
+    "partnerName": "현대Hmall",
+    "aliases": []
+  },
+  {
+    "partnerId": 349,
+    "partnerName": "데이팩",
+    "aliases": []
+  },
+  {
+    "partnerId": 350,
+    "partnerName": "다운타우너",
+    "aliases": []
+  },
+  {
+    "partnerId": 351,
+    "partnerName": "집업페이",
+    "aliases": []
+  },
+  {
+    "partnerId": 352,
+    "partnerName": "QED",
+    "aliases": []
+  },
+  {
+    "partnerId": 353,
+    "partnerName": "젠지글로벌아카데미",
+    "aliases": []
+  },
+  {
+    "partnerId": 354,
+    "partnerName": "V컬러링 멤버십 프로모션",
+    "aliases": []
+  },
+  {
+    "partnerId": 355,
+    "partnerName": "VYVY",
+    "aliases": []
+  },
+  {
+    "partnerId": 356,
+    "partnerName": "롯데백화점몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 357,
+    "partnerName": "오뚜기몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 358,
+    "partnerName": "굿웨어몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 359,
+    "partnerName": "비플레인",
+    "aliases": []
+  },
+  {
+    "partnerId": 360,
+    "partnerName": "닥터피엘",
+    "aliases": []
+  },
+  {
+    "partnerId": 361,
+    "partnerName": "바잇미",
+    "aliases": []
+  },
+  {
+    "partnerId": 362,
+    "partnerName": "삼산회관",
+    "aliases": []
+  },
+  {
+    "partnerId": 363,
+    "partnerName": "미몽",
+    "aliases": []
+  },
+  {
+    "partnerId": 364,
+    "partnerName": "오피스디포",
+    "aliases": []
+  },
+  {
+    "partnerId": 365,
+    "partnerName": "비타브릿지",
+    "aliases": []
+  },
+  {
+    "partnerId": 366,
+    "partnerName": "아워홈몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 367,
+    "partnerName": "스와로브스키",
+    "aliases": [
+      {
+        "aliasName": "카페 스와로브스키",
+        "normalizedAlias": "카페스와로브스키"
+      }
+    ]
+  },
+  {
+    "partnerId": 368,
+    "partnerName": "무브제",
+    "aliases": []
+  },
+  {
+    "partnerId": 369,
+    "partnerName": "엘리하이",
+    "aliases": []
+  },
+  {
+    "partnerId": 370,
+    "partnerName": "엘리하이 키즈",
+    "aliases": []
+  },
+  {
+    "partnerId": 371,
+    "partnerName": "엠베스트",
+    "aliases": []
+  },
+  {
+    "partnerId": 372,
+    "partnerName": "트래블버킷(국내선)",
+    "aliases": [
+      {
+        "aliasName": "트래블버킷(국제선)",
+        "normalizedAlias": "트래블버킷국제선"
+      }
+    ]
+  },
+  {
+    "partnerId": 373,
+    "partnerName": "트래블버킷(국제선)",
+    "aliases": []
+  },
+  {
+    "partnerId": 374,
+    "partnerName": "와이페이모어(국내선)",
+    "aliases": [
+      {
+        "aliasName": "와이페이모어(국제선)",
+        "normalizedAlias": "와이페이모어국제선"
+      }
+    ]
+  },
+  {
+    "partnerId": 375,
+    "partnerName": "와이페이모어(국제선)",
+    "aliases": []
+  },
+  {
+    "partnerId": 376,
+    "partnerName": "그래비티 조선 서울 판교",
+    "aliases": []
+  },
+  {
+    "partnerId": 377,
+    "partnerName": "월스트리트 잉글리쉬",
+    "aliases": []
+  },
+  {
+    "partnerId": 378,
+    "partnerName": "동아제약 디몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 379,
+    "partnerName": "신라면세점(오프라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 380,
+    "partnerName": "씨라이프 부산 아쿠아리움",
+    "aliases": []
+  },
+  {
+    "partnerId": 381,
+    "partnerName": "LG트윈스 경기 티켓 할인",
+    "aliases": [
+      {
+        "aliasName": "LG트윈스",
+        "normalizedAlias": "lg트윈스"
+      }
+    ]
+  },
+  {
+    "partnerId": 382,
+    "partnerName": "대관령 하늘목장",
+    "aliases": []
+  },
+  {
+    "partnerId": 383,
+    "partnerName": "한강유람선 이크루즈",
+    "aliases": []
+  },
+  {
+    "partnerId": 384,
+    "partnerName": "신라아이파크면세점(오프라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 385,
+    "partnerName": "신라아이파크면세점(온라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 386,
+    "partnerName": "LG생활건강샵 U+패밀리샵",
+    "aliases": []
+  },
+  {
+    "partnerId": 387,
+    "partnerName": "롯데면세점(오프라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 388,
+    "partnerName": "롯데면세점(온라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 389,
+    "partnerName": "신세계면세점(온라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 390,
+    "partnerName": "신세계면세점(오프라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 391,
+    "partnerName": "오가나셀 피부과의원 청담점",
+    "aliases": []
+  },
+  {
+    "partnerId": 392,
+    "partnerName": "청연(구.청소연구소)",
+    "aliases": []
+  },
+  {
+    "partnerId": 393,
+    "partnerName": "폴라리스오피스",
+    "aliases": []
+  },
+  {
+    "partnerId": 394,
+    "partnerName": "포텔리어",
+    "aliases": []
+  },
+  {
+    "partnerId": 395,
+    "partnerName": "메가MGC커피(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 396,
+    "partnerName": "프레딧",
+    "aliases": []
+  },
+  {
+    "partnerId": 397,
+    "partnerName": "컬리",
+    "aliases": []
+  },
+  {
+    "partnerId": 398,
+    "partnerName": "마이리얼트립",
+    "aliases": []
+  },
+  {
+    "partnerId": 399,
+    "partnerName": "GS SHOP",
+    "aliases": []
+  },
+  {
+    "partnerId": 400,
+    "partnerName": "폴바셋",
+    "aliases": []
+  },
+  {
+    "partnerId": 401,
+    "partnerName": "팀홀튼",
+    "aliases": []
+  },
+  {
+    "partnerId": 402,
+    "partnerName": "배달의민족(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 403,
+    "partnerName": "투썸플레이스(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 404,
+    "partnerName": "올리브영(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 405,
+    "partnerName": "모던하우스",
+    "aliases": []
+  },
+  {
+    "partnerId": 406,
+    "partnerName": "유니스터디",
+    "aliases": []
+  },
+  {
+    "partnerId": 407,
+    "partnerName": "위피",
+    "aliases": []
+  },
+  {
+    "partnerId": 408,
+    "partnerName": "B1불스원카케어",
+    "aliases": []
+  },
+  {
+    "partnerId": 409,
+    "partnerName": "파고다",
+    "aliases": []
+  },
+  {
+    "partnerId": 410,
+    "partnerName": "씨네Q(리저브관)",
+    "aliases": []
+  },
+  {
+    "partnerId": 411,
+    "partnerName": "씨네Q(일반관/리클라이너관)",
+    "aliases": []
+  },
+  {
+    "partnerId": 412,
+    "partnerName": "유앤아이의원",
+    "aliases": []
+  },
+  {
+    "partnerId": 413,
+    "partnerName": "청연",
+    "aliases": []
+  },
+  {
+    "partnerId": 414,
+    "partnerName": "GS칼텍스",
+    "aliases": []
+  },
+  {
+    "partnerId": 415,
+    "partnerName": "버거킹",
+    "aliases": []
+  },
+  {
+    "partnerId": 416,
+    "partnerName": "GS25(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 417,
+    "partnerName": "던킨(고객 보답)",
+    "aliases": []
+  },
+  {
+    "partnerId": 418,
+    "partnerName": "후지필름몰",
+    "aliases": []
+  },
+  {
+    "partnerId": 419,
+    "partnerName": "프린트베이커리",
+    "aliases": []
+  },
+  {
+    "partnerId": 420,
+    "partnerName": "수공당",
+    "aliases": []
+  },
+  {
+    "partnerId": 421,
+    "partnerName": "설성목장(온라인)",
+    "aliases": [
+      {
+        "aliasName": "설성목장(오프라인)",
+        "normalizedAlias": "설성목장오프라인"
+      }
+    ]
+  },
+  {
+    "partnerId": 422,
+    "partnerName": "설성목장(오프라인)",
+    "aliases": []
+  },
+  {
+    "partnerId": 423,
+    "partnerName": "히키니쿠토코메 도산",
+    "aliases": []
+  },
+  {
+    "partnerId": 424,
+    "partnerName": "설성갈비",
+    "aliases": []
+  },
+  {
+    "partnerId": 425,
+    "partnerName": "설성마켓 스마트팩토리점",
+    "aliases": []
+  },
+  {
+    "partnerId": 426,
+    "partnerName": "해커스",
+    "aliases": []
+  },
+  {
+    "partnerId": 427,
+    "partnerName": "플래시백 계림",
+    "aliases": []
+  },
+  {
+    "partnerId": 428,
+    "partnerName": "더 키친 일뽀르노",
+    "aliases": []
+  },
+  {
+    "partnerId": 429,
+    "partnerName": "크리스탈 제이드",
+    "aliases": []
+  },
+  {
+    "partnerId": 430,
+    "partnerName": "이마트",
+    "aliases": []
+  },
+  {
+    "partnerId": 431,
+    "partnerName": "롯데리아",
+    "aliases": []
+  },
+  {
+    "partnerId": 432,
+    "partnerName": "세븐일레븐",
+    "aliases": []
+  },
+  {
+    "partnerId": 433,
+    "partnerName": "11번가",
+    "aliases": []
+  },
+  {
+    "partnerId": 434,
+    "partnerName": "다비치안경",
+    "aliases": []
+  },
+  {
+    "partnerId": 435,
+    "partnerName": "패스트캠퍼스",
+    "aliases": []
+  },
+  {
+    "partnerId": 436,
+    "partnerName": "포케올데이",
+    "aliases": []
+  },
+  {
+    "partnerId": 437,
+    "partnerName": "밀킨",
+    "aliases": []
+  },
+  {
+    "partnerId": 438,
+    "partnerName": "아이콘골프",
+    "aliases": []
+  },
+  {
+    "partnerId": 439,
+    "partnerName": "롯데마트&슈퍼",
+    "aliases": []
+  },
+  {
+    "partnerId": 440,
+    "partnerName": "인천공항 고메브릿지 푸드코트",
+    "aliases": []
+  },
+  {
+    "partnerId": 441,
+    "partnerName": "우파루 오딧세이",
+    "aliases": []
+  },
+  {
+    "partnerId": 442,
+    "partnerName": "초대 혜택",
+    "aliases": []
+  },
+  {
+    "partnerId": 443,
+    "partnerName": "zel",
+    "aliases": []
+  },
+  {
+    "partnerId": 444,
+    "partnerName": "KT 다이렉트샵",
+    "aliases": []
+  },
+  {
+    "partnerId": 445,
+    "partnerName": "네이버플러스 멤버십",
+    "aliases": []
+  },
+  {
+    "partnerId": 446,
+    "partnerName": "데이터 1GB 선물하기",
+    "aliases": []
+  },
+  {
+    "partnerId": 447,
+    "partnerName": "까레몽 계산점",
+    "aliases": []
+  },
+  {
+    "partnerId": 448,
+    "partnerName": "하베스트과자점",
+    "aliases": []
+  },
+  {
+    "partnerId": 449,
+    "partnerName": "경리단578",
+    "aliases": []
+  },
+  {
+    "partnerId": 450,
+    "partnerName": "까레몽베이커리",
+    "aliases": []
+  },
+  {
+    "partnerId": 451,
+    "partnerName": "멜로우모먼트",
+    "aliases": []
+  },
+  {
+    "partnerId": 452,
+    "partnerName": "뮬랭듀몽드",
+    "aliases": []
+  },
+  {
+    "partnerId": 453,
+    "partnerName": "정성베이커리",
+    "aliases": []
+  },
+  {
+    "partnerId": 454,
+    "partnerName": "도성",
+    "aliases": []
+  },
+  {
+    "partnerId": 455,
+    "partnerName": "이든케이크",
+    "aliases": []
+  },
+  {
+    "partnerId": 456,
+    "partnerName": "베어스덴베이커리",
+    "aliases": []
+  },
+  {
+    "partnerId": 457,
+    "partnerName": "마르메종과자점",
+    "aliases": []
+  },
+  {
+    "partnerId": 458,
+    "partnerName": "H콜렉션",
+    "aliases": []
+  },
+  {
+    "partnerId": 459,
+    "partnerName": "브레드디",
+    "aliases": []
+  },
+  {
+    "partnerId": 460,
+    "partnerName": "에꼴드쉐프과자점(로겐하임점)",
+    "aliases": []
+  },
+  {
+    "partnerId": 461,
+    "partnerName": "밀파네",
+    "aliases": []
+  },
+  {
+    "partnerId": 462,
+    "partnerName": "망원동티라미수 본점",
+    "aliases": []
+  },
+  {
+    "partnerId": 463,
+    "partnerName": "토모루과자점",
+    "aliases": []
+  },
+  {
+    "partnerId": 464,
+    "partnerName": "늘봄카페",
+    "aliases": []
+  },
+  {
+    "partnerId": 465,
+    "partnerName": "마망갸또 신사점",
+    "aliases": []
+  },
+  {
+    "partnerId": 466,
+    "partnerName": "달콤이네",
+    "aliases": []
+  },
+  {
+    "partnerId": 467,
+    "partnerName": "보나세라 오가닉",
+    "aliases": []
+  },
+  {
+    "partnerId": 468,
+    "partnerName": "빵뜨락제과점",
+    "aliases": []
+  },
+  {
+    "partnerId": 469,
+    "partnerName": "퐁듀베이커리(본점)",
+    "aliases": []
+  },
+  {
+    "partnerId": 470,
+    "partnerName": "크롬베이커리",
+    "aliases": []
+  },
+  {
+    "partnerId": 471,
+    "partnerName": "호밀호두",
+    "aliases": []
+  },
+  {
+    "partnerId": 472,
+    "partnerName": "파티세리소나",
+    "aliases": []
+  },
+  {
+    "partnerId": 473,
+    "partnerName": "빵 굽는 곰",
+    "aliases": []
+  },
+  {
+    "partnerId": 474,
+    "partnerName": "공병득쉐프",
+    "aliases": []
+  },
+  {
+    "partnerId": 475,
+    "partnerName": "로메이",
+    "aliases": []
+  },
+  {
+    "partnerId": 476,
+    "partnerName": "카라블로썸",
+    "aliases": []
+  },
+  {
+    "partnerId": 477,
+    "partnerName": "서촌금상고로케",
+    "aliases": []
+  },
+  {
+    "partnerId": 478,
+    "partnerName": "일리커피(캡슐 배송비 무료)",
+    "aliases": []
+  },
+  {
+    "partnerId": 479,
+    "partnerName": "바른정육점",
+    "aliases": []
+  },
+  {
+    "partnerId": 480,
+    "partnerName": "포레스트휴",
+    "aliases": []
+  },
+  {
+    "partnerId": 481,
+    "partnerName": "까망",
+    "aliases": []
+  },
+  {
+    "partnerId": 482,
+    "partnerName": "롱브르378",
+    "aliases": []
+  },
+  {
+    "partnerId": 483,
+    "partnerName": "볼트업",
+    "aliases": []
+  },
+  {
+    "partnerId": 484,
+    "partnerName": "도그마루",
+    "aliases": []
+  },
+  {
+    "partnerId": 485,
+    "partnerName": "SK나이츠",
+    "aliases": []
+  },
+  {
+    "partnerId": 486,
+    "partnerName": "북앤라이프",
+    "aliases": []
+  }
+]

@@ -2,29 +2,21 @@ package com.itplace.userapi.user.support;
 
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
-import java.util.Map;
-import java.util.Set;
+import com.itplace.userapi.reference.ReferenceDataService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
-public final class MembershipProfileValidator {
+@Component
+@RequiredArgsConstructor
+public class MembershipProfileValidator {
+    private final ReferenceDataService referenceData;
 
-    private static final Map<Carrier, Set<Grade>> VALID_GRADES = Map.of(
-            Carrier.LGU, Set.of(Grade.BASIC, Grade.VIP, Grade.VVIP, Grade.VIP콕),
-            Carrier.SKT, Set.of(Grade.SKT_SILVER, Grade.SKT_GOLD, Grade.SKT_VIP),
-            Carrier.KT, Set.of(Grade.KT_GENERAL, Grade.KT_WHITE, Grade.KT_SILVER, Grade.KT_GOLD, Grade.KT_VIP, Grade.KT_VVIP)
-    );
-
-    private MembershipProfileValidator() {
+    public boolean isValid(Carrier carrier, Grade grade) {
+        return referenceData.isSelectableProfile(carrier, grade);
     }
 
-    public static boolean isValid(Carrier carrier, Grade membershipGradeCode) {
-        return carrier != null
-                && membershipGradeCode != null
-                && VALID_GRADES.getOrDefault(carrier, Set.of()).contains(membershipGradeCode);
-    }
-
-    public static boolean isValidForSignUp(Carrier carrier, Grade membershipGradeCode) {
-        return carrier == Carrier.MVNO
-                ? membershipGradeCode == null
-                : carrier == null && membershipGradeCode == null || isValid(carrier, membershipGradeCode);
+    public boolean isValidForSignUp(Carrier carrier, Grade grade) {
+        if (carrier == null || carrier == Carrier.MVNO) return grade == null;
+        return isValid(carrier, grade);
     }
 }

@@ -1,9 +1,11 @@
 package com.itplace.userapi.benefit.dto.response;
 
+import com.itplace.userapi.benefit.dto.BenefitConditions;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.entity.enums.MembershipOptionType;
 import java.util.List;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +20,7 @@ public class PartnerBenefitDetailResponse {
     private String partnerName;
     private String category;
     private String image;
+    private boolean hasStores;
     private List<CarrierBenefitGroup> carrierGroups;
 
     @Data
@@ -45,6 +48,8 @@ public class PartnerBenefitDetailResponse {
         private String manual;
         private String url;
         private String sourceUrl;
+        private Instant sourceCapturedAt;
+        private BenefitConditions conditions;
         private UsageType usageType;
         private List<TierBenefitInfo> tierBenefits;
         private Boolean isFavorite;

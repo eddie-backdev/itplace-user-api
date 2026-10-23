@@ -28,7 +28,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class MapClusterSnapshotCache {
-    static final String KEY = "map-cluster-snapshot:v1";
+    static final String KEY = "map-cluster-snapshot:v2";
     private static final TypeReference<Map<String, MapClusterSnapshot.CategoryCount>> COUNTS = new TypeReference<>() {};
     private static final DefaultRedisScript<List> READ = new DefaultRedisScript<>("""
             if redis.call('HSTRLEN', KEYS[1], 'data') > tonumber(ARGV[1]) then

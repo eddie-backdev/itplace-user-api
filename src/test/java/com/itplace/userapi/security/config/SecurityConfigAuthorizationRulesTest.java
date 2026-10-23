@@ -48,6 +48,13 @@ class SecurityConfigAuthorizationRulesTest {
     }
 
     @Test
+    void benefitChatRoutesRemainAuthenticatedIncludingStream() {
+        assertThat(isAuthenticatedEndpoint("/api/v1/questions/chat")).isTrue();
+        assertThat(isAuthenticatedEndpoint("/api/v1/questions/chat/stream")).isTrue();
+        assertThat(isPublicPostEndpoint("/api/v1/questions/chat/stream")).isFalse();
+    }
+
+    @Test
     void passwordRecoveryRoutesStayPublicBeforeUsersWildcard() {
         assertThat(isPublicPostEndpoint("/api/v1/users/findPassword")).isTrue();
         assertThat(isPublicPostEndpoint("/api/v1/users/findPassword/confirm")).isTrue();

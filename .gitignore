@@ -76,3 +76,8 @@ Temporary Items
 ### macOS Patch ###
 # iCloud generated files
 *.icloud
+__pycache__/
+
+*.py[cod]
+
+artifact/*.log

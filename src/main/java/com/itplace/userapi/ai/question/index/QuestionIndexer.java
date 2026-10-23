@@ -42,8 +42,15 @@ public class QuestionIndexer implements ApplicationRunner {
     @Value("${app.ai.questions.seed.delay-ms:100}")
     private long delayMs;
 
+    @Value("${app.search.provider:elasticsearch}")
+    private String searchProvider;
+
     @Override
     public void run(ApplicationArguments args) {
+        if ("postgres".equalsIgnoreCase(searchProvider)) {
+            log.info("PostgreSQL 검색 모드에서는 질문 ES 초기 색인을 건너뜁니다.");
+            return;
+        }
         try {
             elasticQuestionService.createQuestionIndexIfNotExists(INDEX_NAME);
             long existingDocuments = elasticQuestionService.countDocuments(INDEX_NAME);

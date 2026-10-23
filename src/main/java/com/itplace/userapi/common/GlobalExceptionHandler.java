@@ -83,7 +83,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
 
         ApiResponse<Object> response = ApiResponse.of(code, details);
-        return super.handleExceptionInternal(ex, response, headers, statusCode, request);
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.putAll(headers);
+        responseHeaders.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        return super.handleExceptionInternal(ex, response, responseHeaders, statusCode, request);
     }
 
     private BaseCode resolveCode(Exception ex, HttpStatusCode statusCode) {

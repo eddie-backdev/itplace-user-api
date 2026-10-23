@@ -8,6 +8,8 @@ import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.BenefitPreview;
 import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.PreviewTierBenefit;
 import com.itplace.userapi.benefit.dto.response.TierBenefitInfo;
+import com.itplace.userapi.benefit.dto.BenefitOffer;
+import com.itplace.userapi.benefit.dto.OfferResolution;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
@@ -27,6 +29,9 @@ import com.itplace.userapi.partner.entity.Partner;
 import com.itplace.userapi.partner.exception.PartnerNotFoundException;
 import com.itplace.userapi.partner.repository.PartnerRepository;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
+import com.itplace.userapi.reference.ReferenceDataService;
+import com.itplace.userapi.map.repository.StoreRepository;
+import com.itplace.userapi.map.service.StorePartnerBusinessPolicy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -48,6 +53,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PartnerBenefitBrowseService {
+    private final ReferenceDataService referenceDataService;
+    private final StoreRepository storeRepository;
+    private final BenefitOfferMatcher benefitOfferMatcher;
+    private final BenefitPreviewSummaryBuilder previewSummaryBuilder;
 
     private static final List<Carrier> CARRIER_DISPLAY_ORDER = List.of(Carrier.SKT, Carrier.KT, Carrier.LGU);
 
@@ -67,6 +76,12 @@ public class PartnerBenefitBrowseService {
             Grade grade,
             Pageable pageable
     ) {
+        if (mainCategory != null && !referenceDataService.isActiveProgram(mainCategory.getCode())) {
+            throw new InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
+        }
+        if (org.springframework.util.StringUtils.hasText(category) && !referenceDataService.isActiveCategory(category.trim())) {
+            throw new InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
+        }
         List<Carrier> carrierFilters = carriers == null ? List.of() : carriers;
         List<Grade> grades = matchingGrades(carrierFilters, grade);
         boolean carrierFilterEnabled = !carrierFilters.isEmpty();
@@ -74,11 +89,13 @@ public class PartnerBenefitBrowseService {
                 ? carrierFilters.stream().map(Carrier::name).toList()
                 : CARRIER_DISPLAY_ORDER.stream().map(Carrier::name).toList();
 
+        String searchKeyword = PartnerBrowseSearchIntents.normalizeKeyword(keyword);
         Page<Partner> partnerPage = partnerRepository.findBenefitPartners(
-                mainCategory == null ? null : mainCategory.getLabel(),
+                mainCategory == null ? null : mainCategory.getCode(),
                 normalize(category),
                 filter == null ? null : filter.name(),
-                normalize(keyword),
+                searchKeyword,
+                PartnerBrowseSearchIntents.exactPartnerNames(searchKeyword),
                 carrierFilterEnabled,
                 carrierNames,
                 !grades.isEmpty(),
@@ -109,7 +126,8 @@ public class PartnerBenefitBrowseService {
                         .carriers(grades.isEmpty() ? availableCarriers(
                                 benefitsByPartner.getOrDefault(partner.getPartnerId(), List.of()),
                                 policiesByBenefit,
-                                filter
+                                filter,
+                                grades
                         ) : carrierFilters)
                         .previews(benefitPreviews(
                                 benefitsByPartner.getOrDefault(partner.getPartnerId(), List.of()),
@@ -162,18 +180,25 @@ public class PartnerBenefitBrowseService {
             if (carrier != null && policy.getCarrier() != carrier) {
                 continue;
             }
+            if (!matchesUsageType(policy, null, grades)) continue;
             Benefit benefit = benefitsById.get(policy.getBenefit().getBenefitId());
             if (benefit == null) {
                 continue;
             }
-            List<TierBenefitInfo> tierBenefits = tierBenefitsByPolicy
-                    .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
+            List<CarrierTierBenefit> policyTiers = tierBenefitsByPolicy
+                    .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of());
+            Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(policyTiers,
+                    referenceDataService.allGradeMembers(policy.getCarrier()));
+            List<TierBenefitInfo> tierBenefits = policyTiers.stream()
                     .filter(tier -> grades.isEmpty() || grades.contains(tier.getGrade()))
                     .map(tier -> new TierBenefitInfo(
-                            policy.getCarrier(), tier.getGrade(), tier.getContext(), tier.getIsAll()
+                            policy.getCarrier(), tier.getGrade(), tier.getContext(),
+                            allGradeContexts.contains(tier.getContext())
                     ))
                     .toList();
-            if (!grades.isEmpty() && tierBenefits.isEmpty()) {
+            var scopedConditions = benefitOfferMatcher.scope(policy.getConditions(), null, policy.getCarrier(), grades);
+            if (!grades.isEmpty() && tierBenefits.isEmpty()
+                    && (scopedConditions == null || scopedConditions.offers().isEmpty())) {
                 continue;
             }
             CarrierBenefit carrierBenefit = CarrierBenefit.builder()
@@ -185,11 +210,14 @@ public class PartnerBenefitBrowseService {
                     .membershipOptionType(policy.getMembershipOptionType())
                     .sourceOptionLabel(policy.getSourceOptionLabel())
                     .sourceBenefitName(policy.getCarrierBenefitName())
-                    .description(normalize(policy.getDescription()))
+                    .description(policy.getConditions() != null && policy.getConditions().offerResolution() != null
+                            ? null : normalize(policy.getDescription()))
                     .benefitLimit(policy.getDisplayBenefitLimit())
                     .manual(normalize(policy.getManual()))
                     .url(policy.getPublicUrl())
                     .sourceUrl(normalize(policy.getSourceUrl()))
+                    .sourceCapturedAt(policy.getSourceCapturedAt())
+                    .conditions(scopedConditions == null ? null : scopedConditions.publicView())
                     .usageType(policy.getUsageType())
                     .tierBenefits(tierBenefits)
                     .isFavorite(favoriteBenefitIds.contains(benefit.getBenefitId()))
@@ -213,6 +241,8 @@ public class PartnerBenefitBrowseService {
                 .partnerName(partner.getPartnerName())
                 .category(partner.getCategory())
                 .image(partner.getImage())
+                .hasStores(storeRepository.findActiveBusinessesByPartnerId(partnerId).stream()
+                        .anyMatch(business -> StorePartnerBusinessPolicy.matches(partner.getPartnerName(), business)))
                 .carrierGroups(carrierGroups)
                 .build();
     }
@@ -221,13 +251,10 @@ public class PartnerBenefitBrowseService {
         if (grade == null) {
             return List.of();
         }
-        if (carriers.size() != 1 || !MembershipProfileValidator.isValid(carriers.get(0), grade)) {
+        if (carriers.size() != 1 || !referenceDataService.isBenefitGrade(carriers.get(0), grade)) {
             throw new InvalidEnumException(BenefitCode.INVALID_MEMBERSHIP_FILTER);
         }
-        // VIP콕은 LG U+ VIP·VVIP에 적용하며 다른 등급의 상속은 추정하지 않는다.
-        return carriers.get(0) == Carrier.LGU && (grade == Grade.VIP || grade == Grade.VVIP)
-                ? List.of(grade, Grade.VIP콕)
-                : List.of(grade);
+        return referenceDataService.gradesForProfile(carriers.get(0), grade);
     }
 
     private List<Benefit> activeBenefits(List<Long> partnerIds, MainCategory mainCategory) {
@@ -236,7 +263,7 @@ public class PartnerBenefitBrowseService {
         }
         return benefitRepository.findAllByPartnerIdsWithPartner(partnerIds).stream()
                 .filter(benefit -> !Boolean.FALSE.equals(benefit.getActive()))
-                .filter(benefit -> mainCategory == null || benefit.getMainCategory() == mainCategory)
+                .filter(benefit -> mainCategory == null || mainCategory.equals(benefit.getMainCategory()))
                 .toList();
     }
 
@@ -251,27 +278,39 @@ public class PartnerBenefitBrowseService {
     private List<BenefitCarrierPolicy> activePolicies(List<BenefitCarrierPolicy> policies) {
         return policies.stream()
                 .filter(policy -> !Boolean.FALSE.equals(policy.getActive()))
+                .filter(policy -> policy.getPublicationStatus() == null
+                        || policy.getPublicationStatus() == com.itplace.userapi.benefit.entity.enums.PublicationStatus.APPROVED)
                 .toList();
     }
 
     private List<Carrier> availableCarriers(
             List<Benefit> benefits,
             Map<Long, List<BenefitCarrierPolicy>> policiesByBenefit,
-            UsageType filter
+            UsageType filter,
+            List<Grade> grades
     ) {
         Set<Carrier> available = benefits.stream()
                 .flatMap(benefit -> policiesByBenefit.getOrDefault(benefit.getBenefitId(), List.of()).stream())
-                .filter(policy -> matchesUsageType(policy.getUsageType(), filter))
+                .filter(policy -> matchesUsageType(policy, filter, grades))
                 .map(BenefitCarrierPolicy::getCarrier)
                 .collect(Collectors.toSet());
         return CARRIER_DISPLAY_ORDER.stream().filter(available::contains).toList();
     }
 
-    private boolean matchesUsageType(UsageType usageType, UsageType filter) {
-        if (filter == null) {
-            return true;
+    private boolean matchesUsageType(BenefitCarrierPolicy policy, UsageType filter, List<Grade> grades) {
+        if (policy.getConditions() != null
+                && policy.getConditions().offerResolution() == OfferResolution.UNRESOLVED
+                && filter != null) return false;
+        if (policy.getConditions() != null
+                && policy.getConditions().offerResolution() == OfferResolution.PARTIAL
+                && filter == null) return true;
+        if (benefitOfferMatcher.hasKnownOffers(policy.getConditions())) {
+            return benefitOfferMatcher.supports(policy.getConditions(), filter, policy.getCarrier(), grades);
         }
-        return usageType == filter || usageType == UsageType.BOTH;
+        if (benefitOfferMatcher.hasResolvedOffers(policy.getConditions())) {
+            return benefitOfferMatcher.supports(policy.getConditions(), filter, policy.getCarrier(), grades);
+        }
+        return filter == null || policy.getUsageType() == filter || policy.getUsageType() == UsageType.BOTH;
     }
 
     private List<BenefitPreview> benefitPreviews(
@@ -285,7 +324,7 @@ public class PartnerBenefitBrowseService {
         List<BenefitCarrierPolicy> policies = benefits.stream()
                 .flatMap(benefit -> policiesByBenefit.getOrDefault(benefit.getBenefitId(), List.of()).stream())
                 .filter(policy -> carriers.isEmpty() || carriers.contains(policy.getCarrier()))
-                .filter(policy -> matchesUsageType(policy.getUsageType(), filter))
+                .filter(policy -> matchesUsageType(policy, filter, grades))
                 .sorted(Comparator.comparing((BenefitCarrierPolicy policy) -> policy.getBenefit().getBenefitId())
                         .thenComparing(BenefitCarrierPolicy::getBenefitCarrierPolicyId))
                 .toList();
@@ -294,24 +333,51 @@ public class PartnerBenefitBrowseService {
             if (previews.containsKey(policy.getCarrier())) {
                 continue;
             }
-            List<PreviewTierBenefit> tiers = tierBenefitsByPolicy
-                    .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
+            List<CarrierTierBenefit> policyTiers = tierBenefitsByPolicy
+                    .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of());
+            Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(policyTiers,
+                    referenceDataService.allGradeMembers(policy.getCarrier()));
+            List<PreviewTierBenefit> tiers = policyTiers.stream()
                     .filter(tier -> grades.isEmpty() || grades.contains(tier.getGrade()))
                     .filter(tier -> normalize(tier.getContext()) != null)
-                    .map(tier -> new PreviewTierBenefit(tier.getGrade(), tier.getContext().trim(), tier.getIsAll()))
+                    .map(tier -> new PreviewTierBenefit(tier.getGrade(), tier.getContext().trim(),
+                            allGradeContexts.contains(tier.getContext())))
                     .toList();
-            if (tiers.isEmpty()) {
-                continue;
-            }
             Benefit benefit = policy.getBenefit();
+            List<BenefitOffer> offers = benefitOfferMatcher.hasKnownOffers(policy.getConditions())
+                    ? benefitOfferMatcher.scope(policy.getConditions(), filter, policy.getCarrier(), grades)
+                    .publicView().offers()
+                    : List.of();
+            boolean resolvedOffers = benefitOfferMatcher.hasKnownOffers(policy.getConditions());
+            boolean partial = policy.getConditions() != null
+                    && policy.getConditions().offerResolution() == OfferResolution.PARTIAL;
+            boolean unresolved = policy.getConditions() != null
+                    && policy.getConditions().offerResolution() == OfferResolution.UNRESOLVED;
+            if (tiers.isEmpty() && offers.isEmpty() && (!unresolved || !grades.isEmpty())
+                    && !(partial && grades.isEmpty() && filter == null)) continue;
+            UsageType previewUsageType = unresolved ? UsageType.UNKNOWN
+                    : resolvedOffers ? offerUsageType(offers) : policy.getUsageType();
             previews.put(policy.getCarrier(), new BenefitPreview(
                     policy.getCarrier(), benefit.getBenefitId(),
                     policy.getDisplayBenefitName(),
                     policy.getBenefitPolicy() == null ? null : policy.getBenefitPolicy().getName(),
-                    policy.getUsageType(), tiers
+                    previewUsageType,
+                    tiers, previewSummaryBuilder.build(policy.getConditions(), policyTiers, policy.getCarrier(), grades, filter),
+                    List.of(), null, null, List.of(), List.of(),
+                    normalize(policy.getSourceUrl()), policy.getSourceCapturedAt()
             ));
         }
         return CARRIER_DISPLAY_ORDER.stream().filter(previews::containsKey).map(previews::get).toList();
+    }
+
+    private UsageType offerUsageType(List<BenefitOffer> offers) {
+        Set<UsageType> types = offers.stream().map(BenefitOffer::usageType).collect(Collectors.toSet());
+        if (types.isEmpty() || types.contains(UsageType.UNKNOWN) || types.contains(null)) return UsageType.UNKNOWN;
+        if (types.contains(UsageType.BOTH)
+                || (types.contains(UsageType.ONLINE) && types.contains(UsageType.OFFLINE))) {
+            return UsageType.BOTH;
+        }
+        return types.iterator().next();
     }
 
     private String normalizeSort(String sort) {

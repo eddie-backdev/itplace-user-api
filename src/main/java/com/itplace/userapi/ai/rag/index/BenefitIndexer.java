@@ -20,8 +20,15 @@ public class BenefitIndexer implements ApplicationRunner {
     @Value("${app.ai.benefits.seed.enabled:false}")
     private boolean seedEnabled;
 
+    @Value("${app.search.provider:elasticsearch}")
+    private String searchProvider;
+
     @Override
     public void run(ApplicationArguments args) {
+        if ("postgres".equalsIgnoreCase(searchProvider)) {
+            log.info("PostgreSQL 검색 모드에서는 혜택 ES 초기 동기화를 건너뜁니다.");
+            return;
+        }
         if (!aiEnabled || !seedEnabled) {
             log.info("혜택 ES 초기 동기화가 비활성화되어 있습니다.");
             return;

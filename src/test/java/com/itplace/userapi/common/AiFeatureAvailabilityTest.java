@@ -29,6 +29,7 @@ class AiFeatureAvailabilityTest {
             MockMvc mvc = MockMvcBuilders.webAppContextSetup(context)
                     .defaultRequest(get("/").accept(MediaType.APPLICATION_JSON)).build();
             for (String path : new String[]{"/api/v1/questions/recommend", "/api/v1/questions/search",
+                    "/api/v1/questions/chat/extra",
                     "/api/v1/recommendations", "/api/v1/maps/nearby/itplace-ai"}) {
                 mvc.perform(get(path))
                         .andExpect(status().isServiceUnavailable())
@@ -37,6 +38,10 @@ class AiFeatureAvailabilityTest {
             mvc.perform(post("/api/v1/questions/save"))
                     .andExpect(status().isServiceUnavailable())
                     .andExpect(jsonPath("$.code").value("AI_DISABLED"));
+            mvc.perform(post("/api/v1/questions/chat"))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/v1/questions/chat/stream"))
+                    .andExpect(status().isOk());
             mvc.perform(get("/api/v1/benefits")).andExpect(status().isOk());
             mvc.perform(get("/api/v1/maps/nearby")).andExpect(status().isOk());
         });

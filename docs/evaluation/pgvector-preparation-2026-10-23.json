@@ -1,0 +1,226 @@
+{
+  "recordedAt": "2026-10-23T00:31:12.373472+09:00",
+  "scope": "Existing local development PostgreSQL; no production deployment or paid embeddings",
+  "preparationStatus": "TEXT_STAGING_AND_LEXICAL_ACCESS_VERIFIED",
+  "database": {
+    "container": "postgresql",
+    "port": 5432,
+    "name": "itplace",
+    "image": "itplace/postgres:18.4-postgis3.6.4-pgvector0.8.7-arm64",
+    "extensions": {
+      "plpgsql": "1.0",
+      "fuzzystrmatch": "1.2",
+      "pg_trgm": "1.6",
+      "postgis": "3.6.4",
+      "postgis_tiger_geocoder": "3.6.4",
+      "postgis_topology": "3.6.4",
+      "vector": "0.8.7"
+    },
+    "migrationsApplied": [
+      "20261020.0001",
+      "20261022.0002"
+    ]
+  },
+  "backup": {
+    "file": "/Users/eddie/.local/state/itplace/pg-preparation-20261022/before.dump",
+    "sha256": "c1e38d5d91f1f83caf41b83004c2d5334f833efa57813174cf90152d9b869010",
+    "restoreRehearsalPassed": true,
+    "temporaryRestoreDatabaseRemoved": true
+  },
+  "source": {
+    "scannedBenefits": 973,
+    "policies": 1112,
+    "activePolicies": 723,
+    "snapshotHash": "519cc3d994fd9fb7cd0485e3712dcf16556071a1aa362745f10c95a30f442292",
+    "auditErrors": 0,
+    "activeDocumentsWithUrlCapturedAtAndEvidenceId": 3191,
+    "freshCarrierCrawlPerformed": false
+  },
+  "storage": {
+    "documents": 4893,
+    "active_documents": 3191,
+    "inactive_documents": 1702,
+    "vectors": 0,
+    "policies": 1112
+  },
+  "identity": {
+    "activeTierDocuments": 3129,
+    "activeOfferGradeDocuments": 62,
+    "policyMismatches": 0,
+    "wrongSnapshotRejectedInRehearsal": true
+  },
+  "inputAudit": {
+    "model": "text-embedding-3-small",
+    "encoding": "cl100k_base",
+    "sourceSha256": "38bc3cfa4cf68aa18fe3cb6a899f9e159bbb135b3baaeedfedc78499c649230a",
+    "documentCount": 4893,
+    "activeDocumentCount": 3191,
+    "inactiveDocumentCount": 1702,
+    "activeInputCount": 3191,
+    "emptyActiveTextDocumentIds": [],
+    "tokenStats": {
+      "total": 4013685,
+      "maximum": 6065,
+      "percentiles": {
+        "p50": 1005,
+        "p90": 2456,
+        "p95": 2941,
+        "p99": 4285
+      },
+      "longestDocumentId": "benefit:258:policy:32:tier:412075"
+    },
+    "limits": {
+      "perInputTokens": 8192,
+      "perRequestTokens": 300000,
+      "batchSize": 32,
+      "batchCount": 100,
+      "maximumBatchTokens": 84295
+    },
+    "errors": [],
+    "ok": true
+  },
+  "metadataWarnings": {
+    "total": 4315,
+    "byType": {
+      "source category is unknown": 2563,
+      "business type remains OTHER": 1752
+    },
+    "otherActivePolicies": 397,
+    "interpretation": "SKT/KT source category is not supplied upstream. OTHER includes unclassified and non-store products; do not infer an unsupported category."
+  },
+  "validation": {
+    "java": {
+      "tests": 815,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reports": 125
+    },
+    "build": "passed",
+    "pythonTests": 10,
+    "serviceSearchQueries": 8,
+    "serviceChatAnswers": 8,
+    "http": {
+      "profile": "local,postgres",
+      "modelCallsEnabled": false,
+      "list": [
+        {
+          "query": "편의점",
+          "httpStatus": 200,
+          "count": 8,
+          "benefits": [
+            "GS25 멤버십 혜택 · 할인형",
+            "GS25 멤버십 혜택 · 적립형",
+            "GS25 멤버십 혜택",
+            "GS25 멤버십 혜택",
+            "이마트24 멤버십 혜택",
+            "이마트24 멤버십 혜택",
+            "CU 멤버십 혜택",
+            "CU 멤버십 혜택 · 할인형"
+          ],
+          "elapsedMs": 259
+        },
+        {
+          "query": "씨유",
+          "httpStatus": 200,
+          "count": 3,
+          "benefits": [
+            "CU 멤버십 혜택",
+            "CU 멤버십 혜택 · 할인형",
+            "CU 멤버십 혜택 · 적립형"
+          ],
+          "elapsedMs": 157
+        },
+        {
+          "query": "학원",
+          "httpStatus": 200,
+          "count": 6,
+          "benefits": [
+            "파고다어학원 멤버십 혜택",
+            "파고다어학원 멤버십 혜택",
+            "파고다 멤버십 혜택 · 할인형",
+            "파고다 멤버십 혜택 · 적립형",
+            "해커스 멤버십 혜택 · 할인형",
+            "해커스 멤버십 혜택 · 적립형"
+          ],
+          "elapsedMs": 95
+        },
+        {
+          "query": "FLO",
+          "httpStatus": 200,
+          "count": 2,
+          "benefits": [
+            "FLO 멤버십 혜택 · 할인형",
+            "FLO 멤버십 혜택 · 적립형"
+          ],
+          "elapsedMs": 82
+        }
+      ],
+      "chat": [
+        {
+          "query": "편의점",
+          "httpStatus": 200,
+          "status": "ANSWER",
+          "errorCode": "QUESTION_SUCCESS",
+          "partners": [
+            "GS25",
+            "이마트24"
+          ],
+          "elapsedMs": 103
+        },
+        {
+          "query": "학원",
+          "httpStatus": 200,
+          "status": "ANSWER",
+          "errorCode": "QUESTION_SUCCESS",
+          "partners": [
+            "파고다어학원",
+            "파고다"
+          ],
+          "elapsedMs": 227
+        },
+        {
+          "query": "FLO",
+          "httpStatus": 200,
+          "status": "ANSWER",
+          "errorCode": "QUESTION_SUCCESS",
+          "partners": [
+            "FLO",
+            "FLO"
+          ],
+          "elapsedMs": 148
+        }
+      ],
+      "health": "UP",
+      "loginHttpStatus": 200,
+      "modelRequiredRoute": {
+        "httpStatus": 503,
+        "code": "AI_DISABLED"
+      }
+    }
+  },
+  "runtime": {
+    "port": 8080,
+    "profiles": [
+      "local",
+      "postgres"
+    ],
+    "paidModelCallsEnabled": false,
+    "automaticIndexingEnabled": false,
+    "authenticatedChatLexicalFallbackAvailable": true
+  },
+  "embedding": {
+    "configuredModel": "text-embedding-3-small",
+    "dimensions": 1536,
+    "apiCallsThisPreparation": 0,
+    "storedVectors": 0,
+    "localModelSelected": false,
+    "vectorRetrievalQualityEvaluated": false
+  },
+  "limitations": [
+    "Source provenance and technical coverage are validated against the retained snapshots; this run does not assert a fresh official crawl.",
+    "Unclassified metadata is retained rather than guessed. Category coverage and arbitrary-question answer quality are not complete.",
+    "Actual embeddings and vector retrieval evaluation remain unexecuted. Legacy ES code is not fully removed; production rollout is not verified."
+  ],
+  "privateEvidenceDirectory": "/Users/eddie/.local/state/itplace/pg-preparation-20261022"
+}

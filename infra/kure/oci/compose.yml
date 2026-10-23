@@ -1,0 +1,36 @@
+services:
+  kure:
+    build:
+      context: ..
+      dockerfile: oci/Dockerfile
+    image: itplace-kure:20261024-arm64-fp32
+    container_name: itplace-kure
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18081:18081"
+    networks:
+      app-network:
+        aliases:
+          - kure-embedding
+    volumes:
+      - model-cache:/var/cache/huggingface
+    mem_limit: 8g
+    cpus: 2
+    pids_limit: 256
+    environment:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:18081/health',timeout=3)); assert d['status']=='ok' and d['dimensions']==1024 and d['model']=='nlpai-lab/KURE-v1@8b418a58414668e75532ed045c22d9ca018ae2b2'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5m
+
+networks:
+  app-network:
+    external: true
+
+volumes:
+  model-cache:

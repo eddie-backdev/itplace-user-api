@@ -26,6 +26,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Offline/admin-only question memory search endpoint.
@@ -41,11 +44,18 @@ public class QuestionSearchController {
     private final ElasticsearchClient elasticsearchClient;
     private final QuestionRecommendationService questionRecommendationService;
     private final UserRepository userRepository;
+    @Value("${app.ai.embedding.provider:${EMBEDDING_PROVIDER:openai}}")
+    private String embeddingProvider = "openai";
+    @Value("${app.ai.embedding.dimensions:${EMBEDDING_DIMENSIONS:1536}}")
+    private int embeddingDimensions = 1536;
+    @Value("${app.search.provider:elasticsearch}")
+    private String searchProvider = "elasticsearch";
 
     @GetMapping("/search")
     @Deprecated(forRemoval = false)
     public Map<String, Object> searchSimilarQuestion(
             @RequestParam @NotBlank @Size(max = 200) String query) {
+        requireLegacyEsEmbeddingContract();
         List<Float> embedding = embeddingService.embed(query);
 
         SearchResponse<Map> response;
@@ -75,6 +85,17 @@ public class QuestionSearchController {
                 "category", topHit.get("category"),
                 "score", hits.get(0).score()
         );
+    }
+
+    private void requireLegacyEsEmbeddingContract() {
+        if ("postgres".equalsIgnoreCase(searchProvider)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Legacy Elasticsearch question memory is unavailable with PostgreSQL search");
+        }
+        if (!"openai".equalsIgnoreCase(embeddingProvider) || embeddingDimensions != 1536) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Legacy Elasticsearch question memory requires OpenAI 1536-dimensional embeddings");
+        }
     }
 
     @GetMapping("/recommend")
