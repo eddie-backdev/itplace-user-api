@@ -4,6 +4,8 @@ import com.itplace.userapi.benefit.dto.BenefitFact;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Formats only explicit typed source facts; unknown fact types remain visible as source text. */
 public final class BenefitFactFormatter {
@@ -23,7 +25,7 @@ public final class BenefitFactFormatter {
             case "DISCOUNT_AMOUNT" -> qualifier + value + "원 할인" + basis(fact);
             case "DISCOUNT_RATE" -> qualifier + value + "% 할인";
             case "REWARD_RATE" -> qualifier + value + "% 적립";
-            case "REWARD_POINTS" -> qualifier + value + "포인트 적립";
+            case "REWARD_POINTS" -> qualifier + value + "포인트 적립" + basis(fact);
             case "USAGE_LIMIT" -> (sharedLabel.isBlank() ? "" : sharedLabel + " 통합 ")
                     + qualifier + value + "회" + period(fact.period());
             case "SPEND_CAP" -> qualifier + value + "원 결제 한도";
@@ -32,8 +34,38 @@ public final class BenefitFactFormatter {
             default -> java.util.Objects.toString(fact.sourceText(), "");
         };
         if (result.isBlank() || value.isBlank()) return java.util.Objects.toString(fact.sourceText(), "");
-        return !sharedLabel.isBlank() && !"USAGE_LIMIT".equalsIgnoreCase(fact.type())
+        result = !sharedLabel.isBlank() && !"USAGE_LIMIT".equalsIgnoreCase(fact.type())
                 ? result + " (" + sharedLabel + " 공통 한도)" : result;
+        String cardContext = cardContext(fact);
+        return cardContext.isBlank() ? result : result + " · " + cardContext;
+    }
+
+    private static String cardContext(BenefitFact fact) {
+        String sourceText = java.util.Objects.toString(fact.sourceText(), "");
+        String type = java.util.Objects.toString(fact.type(), "").toUpperCase(Locale.ROOT);
+        String cue = switch (type) {
+            case "DISCOUNT_AMOUNT" -> "\\s*원\\s*할인";
+            case "REWARD_POINTS" -> "\\s*(?:P|점|포인트)\\s*적립";
+            case "DISCOUNT_RATE" -> "\\s*%\\s*할인";
+            case "REWARD_RATE" -> "\\s*%\\s*적립";
+            default -> "";
+        };
+        if (cue.isBlank()) return "";
+        Matcher reward = Pattern.compile("(?:^|[^0-9,.])([0-9][0-9,]*(?:\\.[0-9]+)?)" + cue,
+                Pattern.CASE_INSENSITIVE).matcher(sourceText);
+        while (reward.find()) {
+            if (new BigDecimal(reward.group(1).replace(",", "")).compareTo(fact.value()) != 0) continue;
+            Matcher annotation = Pattern.compile("^\\s*\\(([^)]*)\\)")
+                    .matcher(sourceText.substring(reward.end()));
+            if (!annotation.find()) continue;
+            String cardSource = annotation.group(1);
+            boolean mobile = Pattern.compile("모바일\\s*카드", Pattern.CASE_INSENSITIVE).matcher(cardSource).find();
+            boolean plastic = Pattern.compile("플라스틱\\s*카드", Pattern.CASE_INSENSITIVE).matcher(cardSource).find();
+            if (mobile && plastic) return "모바일카드/플라스틱카드";
+            if (mobile) return "모바일카드";
+            if (plastic) return "플라스틱카드";
+        }
+        return "";
     }
 
     private static String basis(BenefitFact fact) {
