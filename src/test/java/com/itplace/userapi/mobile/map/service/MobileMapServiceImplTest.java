@@ -40,6 +40,8 @@ class MobileMapServiceImplTest {
                 .satisfies(marker -> {
                     assertThat(marker.storeId()).isEqualTo(1L);
                     assertThat(marker.partnerName()).isEqualTo("GS25");
+                    assertThat(marker.address()).isEqualTo("서울시 강남구 테헤란로 1");
+                    assertThat(marker.roadAddress()).isEqualTo("서울시 강남구 테헤란로 1");
                     assertThat(marker.logoUrl()).isEqualTo("https://cdn.example/gs25.png");
                     assertThat(marker.distanceMeters()).isEqualTo(120.0);
                     assertThat(marker.benefitSummary()).isEqualTo("LGU 할인");
@@ -170,6 +172,8 @@ class MobileMapServiceImplTest {
                 .store(StoreDto.builder()
                         .storeId(id)
                         .storeName(storeName)
+                        .address("서울시 강남구 테헤란로 1")
+                        .roadAddress("서울시 강남구 테헤란로 1")
                         .latitude(latitude)
                         .longitude(127.0)
                         .hasCoupon(true)
