@@ -2944,6 +2944,8 @@ components:
           type: string
         description:
           type: string
+        conditions:
+          $ref: '#/components/schemas/BenefitConditions'
         benefitLimit:
           type: string
         manual:
@@ -2956,6 +2958,20 @@ components:
         image:
           type: string
           format: uri
+        mainCategory:
+          type: string
+          enum: [ VIP_COCK, BASIC_BENEFIT ]
+          nullable: true
+        isFavorite:
+          type: boolean
+        tierBenefits:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBenefitInfo'
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/BenefitPolicyDetail'
 
     MapBenefitDetailResponse:
       type: object
@@ -2987,6 +3003,56 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TierBenefitInfo'
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/BenefitPolicyDetail'
+
+    BenefitPolicyDetail:
+      type: object
+      properties:
+        benefitId:
+          type: integer
+          format: int64
+        carrier:
+          type: string
+          enum: [ SKT, KT, LGU ]
+        benefitName:
+          type: string
+        mainCategory:
+          type: string
+          enum: [ VIP_COCK, BASIC_BENEFIT ]
+        description:
+          type: string
+        benefitLimit:
+          type: string
+        manual:
+          type: string
+        url:
+          type: string
+          format: uri
+        sourceUrl:
+          type: string
+          format: uri
+        sourceCapturedAt:
+          type: string
+          format: date-time
+        usageType:
+          type: string
+          enum: [ ONLINE, OFFLINE, BOTH ]
+        active:
+          type: boolean
+        partnerName:
+          type: string
+        image:
+          type: string
+          format: uri
+        tierBenefits:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierBenefitInfo'
+        isFavorite:
+          type: boolean
 
 
     RecommendationResponse:

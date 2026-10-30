@@ -24,6 +24,8 @@ public interface BenefitService {
 
     BenefitDetailResponse getBenefitDetail(Long benefitId);
 
+    BenefitDetailResponse getBenefitDetail(Long benefitId, Long userId);
+
     MapBenefitDetailResponse getMapBenefitDetail(
             Long storeId,
             Long partnerId,
