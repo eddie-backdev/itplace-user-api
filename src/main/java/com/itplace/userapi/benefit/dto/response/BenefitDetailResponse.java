@@ -4,6 +4,7 @@ import com.itplace.userapi.benefit.dto.BenefitConditions;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,4 +31,8 @@ public class BenefitDetailResponse {
     // Partner Info
     private String partnerName;
     private String image;
+    private Boolean isFavorite;
+    private List<TierBenefitInfo> tierBenefits;
+    private com.itplace.userapi.benefit.entity.enums.MainCategory mainCategory;
+    private List<BenefitPolicyDetail> policies;
 }

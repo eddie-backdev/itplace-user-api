@@ -14,6 +14,7 @@ import static org.mockito.Mockito.lenient;
 import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
+import com.itplace.userapi.benefit.dto.BenefitConditions;
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.BenefitPolicy;
@@ -498,6 +499,51 @@ class BenefitServiceImplTest {
         assertThat(response.getManual()).isNull();
         assertThat(response.getUrl()).isNull();
         assertThat(response.getPartnerName()).isEqualTo("파트너");
+        assertThat(response.getIsFavorite()).isFalse();
+        assertThat(response.getMainCategory()).isNull();
+        assertThat(response.getPolicies()).singleElement().satisfies(item -> {
+            assertThat(item.benefitId()).isEqualTo(1L);
+            assertThat(item.carrier()).isEqualTo(Carrier.SKT);
+            assertThat(item.isFavorite()).isFalse();
+        });
+
+        when(favoriteRepository.findFavoriteBenefitIdsByUser(7L, List.of(1L))).thenReturn(List.of(1L));
+        BenefitDetailResponse authenticated = benefitService.getBenefitDetail(1L, 7L);
+        assertThat(authenticated.getIsFavorite()).isTrue();
+        assertThat(authenticated.getPolicies()).singleElement().satisfies(item ->
+                assertThat(item.isFavorite()).isTrue());
+    }
+
+    @Test
+    void mapBenefitDetailKeepsSameCarrierVariantsAndTheirTiersSeparate() {
+        Partner partner = Partner.builder().partnerId(10L).partnerName("파트너").build();
+        Store store = Store.builder().storeId(20L).partner(partner).build();
+        Benefit first = benefit(1L, partner, Carrier.KT, "KT 기본", Grade.KT_VIP, "첫 혜택 조건");
+        Benefit second = benefit(2L, partner, Carrier.KT, "KT 추가", Grade.KT_GOLD, "둘째 혜택 조건");
+        List<BenefitCarrierPolicy> policies = List.of(first.getCarrierPolicies().get(0), second.getCarrierPolicies().get(0));
+        policies.get(0).setConditions(new BenefitConditions(List.of("첫 상품"), List.of(), List.of(), List.of(), List.of()));
+        policies.get(0).setManual("첫 사용법");
+        policies.get(1).setConditions(new BenefitConditions(List.of("둘째 상품"), List.of(), List.of(), List.of(), List.of()));
+        policies.get(1).setManual("둘째 사용법");
+        List<CarrierTierBenefit> tiers = List.of(
+                first.getCarrierPolicies().get(0).getTierBenefits().get(0),
+                second.getCarrierPolicies().get(0).getTierBenefits().get(0));
+        when(storeRepository.findByIdAndPartnerId(20L, 10L)).thenReturn(Optional.of(store));
+        when(benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(10L, MainCategory.BASIC_BENEFIT))
+                .thenReturn(List.of(first, second));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(first, second))).thenReturn(policies);
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies)).thenReturn(tiers);
+
+        MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(
+                20L, 10L, MainCategory.BASIC_BENEFIT, Carrier.KT, null);
+
+        assertThat(response.getPolicies()).hasSize(2);
+        assertThat(response.getPolicies()).extracting(item -> item.benefitId()).containsExactly(1L, 2L);
+        assertThat(response.getPolicies()).extracting(item -> item.tierBenefits().get(0).getContext())
+                .containsExactly("첫 혜택 조건", "둘째 혜택 조건");
+        assertThat(response.getPolicies()).extracting(item -> item.manual()).containsExactly("첫 사용법", "둘째 사용법");
+        assertThat(response.getPolicies()).extracting(item -> item.conditions().products().get(0))
+                .containsExactly("첫 상품", "둘째 상품");
     }
 
     @Test
@@ -525,7 +571,7 @@ class BenefitServiceImplTest {
                 30L, 40L, MainCategory.BASIC_BENEFIT, Carrier.SKT, 7L);
         assertThat(response.getCarrier()).isEqualTo(Carrier.SKT);
         assertThat(response.getUsageType()).isEqualTo(UsageType.ONLINE);
-        verify(favoriteRepository).existsByUser_IdAndBenefit_BenefitId(7L, 20L);
+        verify(favoriteRepository).findFavoriteBenefitIdsByUser(7L, List.of(20L));
         verify(carrierTierBenefitRepository).findAllByBenefitCarrierPolicyIn(List.of(onlineOnly));
     }
 
@@ -552,7 +598,7 @@ class BenefitServiceImplTest {
         when(benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(10L, MainCategory.BASIC_BENEFIT))
                 .thenReturn(List.of(lgu, skt, kt));
         when(userRepository.findById(99L)).thenReturn(Optional.of(user));
-        when(favoriteRepository.existsByUser_IdAndBenefit_BenefitId(99L, 2L)).thenReturn(true);
+        when(favoriteRepository.findFavoriteBenefitIdsByUser(99L, List.of(1L, 2L, 3L))).thenReturn(List.of(2L));
 
         MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(
                 20L, 10L, MainCategory.BASIC_BENEFIT, null, 99L);
@@ -586,7 +632,7 @@ class BenefitServiceImplTest {
         when(storeRepository.findByIdAndPartnerId(20L, 10L)).thenReturn(Optional.of(store));
         when(benefitRepository.findMapBenefitsWithPartnerAndTierBenefits(10L, MainCategory.BASIC_BENEFIT))
                 .thenReturn(List.of(kt, skt));
-        when(favoriteRepository.existsByUser_IdAndBenefit_BenefitId(99L, 1L)).thenReturn(false);
+        when(favoriteRepository.findFavoriteBenefitIdsByUser(99L, List.of(1L, 2L))).thenReturn(List.of());
 
         MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(
                 20L, 10L, MainCategory.BASIC_BENEFIT, Carrier.SKT, 99L);
@@ -637,7 +683,7 @@ class BenefitServiceImplTest {
                 .thenReturn(List.of(master));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(master)))
                 .thenReturn(List.of(sktPolicy, ktPolicy));
-        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(ktPolicy)))
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(List.of(sktPolicy, ktPolicy)))
                 .thenReturn(List.of(carrierTier(ktPolicy, Grade.KT_VIP, "KT VIP 할인")));
 
         MapBenefitDetailResponse response = benefitService.getMapBenefitDetail(

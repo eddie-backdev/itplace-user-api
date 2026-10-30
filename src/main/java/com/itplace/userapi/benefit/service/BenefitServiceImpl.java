@@ -3,6 +3,7 @@ package com.itplace.userapi.benefit.service;
 import com.itplace.userapi.benefit.BenefitCode;
 import com.itplace.userapi.benefit.dto.response.BenefitDetailResponse;
 import com.itplace.userapi.benefit.dto.response.BenefitListResponse;
+import com.itplace.userapi.benefit.dto.response.BenefitPolicyDetail;
 import com.itplace.userapi.benefit.dto.response.MapBenefitDetailResponse;
 import com.itplace.userapi.common.PageResult;
 import com.itplace.userapi.benefit.dto.response.TierBenefitInfo;
@@ -519,9 +520,19 @@ public class BenefitServiceImpl implements BenefitService {
     @Override
     @Transactional(readOnly = true)
     public BenefitDetailResponse getBenefitDetail(Long benefitId) {
+        return getBenefitDetail(benefitId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BenefitDetailResponse getBenefitDetail(Long benefitId, Long userId) {
         Benefit benefit = benefitRepository.findBenefitWithPartnerById(benefitId)
                 .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
-        BenefitCarrierPolicy policy = representativePolicy(benefit);
+        List<BenefitCarrierPolicy> policies = findBenefitPolicies(benefit);
+        BenefitCarrierPolicy policy = BenefitPolicySelector.eligible(policies, List.of(), null).stream()
+                .findFirst().orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
+        Set<Long> favoriteIds = favoriteBenefitIds(userId, List.of(benefitId));
+        Map<Long, List<CarrierTierBenefit>> tiersByPolicy = tierBenefitsByPolicy(policies);
 
         return BenefitDetailResponse.builder()
                 .benefitId(benefit.getBenefitId())
@@ -539,6 +550,10 @@ public class BenefitServiceImpl implements BenefitService {
                 .active(!Boolean.FALSE.equals(policy.getActive()))
                 .partnerName(benefit.getPartner().getPartnerName())
                 .image(benefit.getPartner().getImage())
+                .mainCategory(benefit.getMainCategory())
+                .isFavorite(favoriteIds.contains(benefitId))
+                .tierBenefits(toPolicyTierBenefits(policy, tiersByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of())))
+                .policies(toPolicyDetails(policies, favoriteIds, tiersByPolicy))
                 .build();
     }
 
@@ -569,14 +584,13 @@ public class BenefitServiceImpl implements BenefitService {
         }
         Benefit selected = selectedPolicy.getBenefit();
 
-        // Favorite 여부 체크 (선택된 Benefit에 대해서만)
-        boolean isFavorite = false;
-        if (userId != null) {
-            isFavorite = favoriteRepository.existsByUser_IdAndBenefit_BenefitId(userId, selected.getBenefitId());
-        }
+        Set<Long> favoriteIds = favoriteBenefitIds(userId,
+                displayPolicies.stream().map(policy -> policy.getBenefit().getBenefitId()).distinct().toList());
+        boolean isFavorite = favoriteIds.contains(selected.getBenefitId());
 
-        List<TierBenefitInfo> tierDtos = toDistinctTierBenefitInfosFromPolicies(
-                carrier == null ? displayPolicies : carrierPolicies);
+        Map<Long, List<CarrierTierBenefit>> tiersByPolicy = tierBenefitsByPolicy(displayPolicies);
+        List<BenefitCarrierPolicy> tierPolicies = carrier == null ? displayPolicies : carrierPolicies;
+        List<TierBenefitInfo> tierDtos = toDistinctTierBenefitInfosFromPolicies(tierPolicies, tiersByPolicy);
 
         return MapBenefitDetailResponse.builder()
                 .benefitId(selected.getBenefitId())
@@ -592,7 +606,67 @@ public class BenefitServiceImpl implements BenefitService {
                 .usageType(selectedPolicy.getUsageType())
                 .tierBenefits(tierDtos)
                 .isFavorite(isFavorite)
+                .policies(toPolicyDetails(carrierPolicies, favoriteIds, tiersByPolicy))
                 .build();
+    }
+
+    private List<BenefitCarrierPolicy> findBenefitPolicies(Benefit benefit) {
+        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit));
+        if (policies == null || policies.isEmpty()) policies = benefit.getCarrierPolicies();
+        return BenefitPolicySelector.eligible(policies, List.of(), null);
+    }
+
+    private Set<Long> favoriteBenefitIds(Long userId, List<Long> benefitIds) {
+        if (userId == null || benefitIds.isEmpty()) return Set.of();
+        return new HashSet<>(favoriteRepository.findFavoriteBenefitIdsByUser(userId, benefitIds));
+    }
+
+    private Map<Long, List<CarrierTierBenefit>> tierBenefitsByPolicy(List<BenefitCarrierPolicy> policies) {
+        if (policies.isEmpty()) return Map.of();
+        List<CarrierTierBenefit> tiers = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
+        if (tiers == null || tiers.isEmpty()) {
+            tiers = policies.stream().flatMap(policy -> policy.getTierBenefits().stream()).toList();
+        }
+        return tiers.stream().collect(Collectors.groupingBy(
+                tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
+    }
+
+    private List<BenefitPolicyDetail> toPolicyDetails(List<BenefitCarrierPolicy> policies, Set<Long> favoriteIds,
+                                                       Map<Long, List<CarrierTierBenefit>> tiersByPolicy) {
+        return policies.stream().map(policy -> {
+            Benefit benefit = policy.getBenefit();
+            return BenefitPolicyDetail.builder()
+                    .benefitId(benefit.getBenefitId())
+                    .carrier(policy.getCarrier())
+                    .benefitName(policy.getDisplayBenefitName())
+                    .mainCategory(benefit.getMainCategory())
+                    .description(policy.getConditions() != null && policy.getConditions().offerResolution() != null
+                            ? null : policy.getDescription())
+                    .conditions(policy.getConditions() == null ? null : policy.getConditions().publicView())
+                    .benefitLimit(policy.getDisplayBenefitLimit())
+                    .manual(trimNullable(policy.getManual()))
+                    .url(policy.getPublicUrl())
+                    .sourceUrl(trimNullable(policy.getSourceUrl()))
+                    .sourceCapturedAt(policy.getSourceCapturedAt())
+                    .usageType(policy.getUsageType())
+                    .active(!Boolean.FALSE.equals(policy.getActive()))
+                    .partnerName(benefit.getPartner() == null ? null : benefit.getPartner().getPartnerName())
+                    .image(benefit.getPartner() == null ? null : benefit.getPartner().getImage())
+                    .tierBenefits(toPolicyTierBenefits(policy,
+                            tiersByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of())))
+                    .isFavorite(favoriteIds.contains(benefit.getBenefitId()))
+                    .build();
+        }).toList();
+    }
+
+    private List<TierBenefitInfo> toPolicyTierBenefits(BenefitCarrierPolicy policy, List<CarrierTierBenefit> tiers) {
+        Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(tiers,
+                referenceDataService.allGradeMembers(policy.getCarrier()));
+        return tiers.stream().map(tier -> {
+            BenefitContextSplitter.SplitContext split = BenefitContextSplitter.split(tier.getContext());
+            return new TierBenefitInfo(policy.getCarrier(), tier.getGrade(), tier.getContext(), split.onlineContext(),
+                    split.offlineContext(), allGradeContexts.contains(tier.getContext()));
+        }).toList();
     }
 
     private List<BenefitCarrierPolicy> findDisplayPolicies(List<Benefit> benefits) {
@@ -647,17 +721,13 @@ public class BenefitServiceImpl implements BenefitService {
                 .orElse(null);
     }
 
-    private List<TierBenefitInfo> toDistinctTierBenefitInfosFromPolicies(List<BenefitCarrierPolicy> policies) {
-        List<CarrierTierBenefit> tiers = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
-        if (tiers == null || tiers.isEmpty()) {
-            tiers = policies.stream()
-                    .flatMap(policy -> policy.getTierBenefits().stream())
-                    .toList();
-        }
+    private List<TierBenefitInfo> toDistinctTierBenefitInfosFromPolicies(
+            List<BenefitCarrierPolicy> policies, Map<Long, List<CarrierTierBenefit>> tiersByPolicy) {
+        List<CarrierTierBenefit> tiers = policies.stream()
+                .flatMap(policy -> tiersByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream())
+                .toList();
         Map<Long, BenefitCarrierPolicy> policyById = policies.stream()
                 .collect(Collectors.toMap(BenefitCarrierPolicy::getBenefitCarrierPolicyId, policy -> policy));
-        Map<Long, List<CarrierTierBenefit>> tiersByPolicy = tiers.stream()
-                .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
         Map<Long, Set<String>> allGradeContextsByPolicy = policies.stream()
                 .collect(Collectors.toMap(BenefitCarrierPolicy::getBenefitCarrierPolicyId,
                         policy -> TierBenefitSemantics.allGradeContexts(tiersByPolicy
@@ -722,16 +792,6 @@ public class BenefitServiceImpl implements BenefitService {
 
     private BenefitCarrierPolicy selectListPolicy(List<BenefitCarrierPolicy> policies, List<Carrier> carriers, UsageType usageType) {
         return BenefitPolicySelector.eligible(policies, carriers, usageType).stream().findFirst().orElse(null);
-    }
-
-    private BenefitCarrierPolicy representativePolicy(Benefit benefit) {
-        List<BenefitCarrierPolicy> policies = benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit));
-        if (policies == null || policies.isEmpty()) {
-            policies = benefit.getCarrierPolicies();
-        }
-        return BenefitPolicySelector.eligible(policies, List.of(), null).stream()
-                .findFirst()
-                .orElseThrow(() -> new BenefitNotFoundException(BenefitCode.BENEFIT_NOT_FOUND));
     }
 
 }

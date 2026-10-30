@@ -63,8 +63,12 @@ public class BenefitController {
     }
 
     @GetMapping("/{benefitId}")
-    public ResponseEntity<ApiResponse<BenefitDetailResponse>> getBenefitDetail(@PathVariable Long benefitId) {
-        BenefitDetailResponse result = benefitService.getBenefitDetail(benefitId);
+    public ResponseEntity<ApiResponse<BenefitDetailResponse>> getBenefitDetail(
+            @PathVariable Long benefitId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails
+    ) {
+        Long userId = principalDetails == null ? null : principalDetails.getUserId();
+        BenefitDetailResponse result = benefitService.getBenefitDetail(benefitId, userId);
         ApiResponse<BenefitDetailResponse> body = ApiResponse.of(BenefitCode.BENEFIT_DETAIL_SUCCESS, result);
         return body.toResponseEntity();
     }

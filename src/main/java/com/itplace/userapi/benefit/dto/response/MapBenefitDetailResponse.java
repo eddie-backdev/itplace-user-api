@@ -31,4 +31,5 @@ public class MapBenefitDetailResponse {
     private UsageType usageType;
     private List<TierBenefitInfo> tierBenefits;
     private Boolean isFavorite; // 사용자 관심 혜택 여부 추가
+    private List<BenefitPolicyDetail> policies;
 }
