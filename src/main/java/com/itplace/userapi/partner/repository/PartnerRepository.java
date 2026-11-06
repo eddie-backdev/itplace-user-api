@@ -1,6 +1,7 @@
 package com.itplace.userapi.partner.repository;
 
 import com.itplace.userapi.partner.entity.Partner;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -52,6 +53,13 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                             (:filter = 'OFFLINE' AND bcp.usageType IN ('offline', 'both'))
                   END)
                   AND (:keyword IS NULL OR
+                       (:brandOnly = true AND (
+                           POSITION(LOWER(:keyword) IN LOWER(p.partnerName)) > 0 OR
+                           EXISTS (SELECT 1 FROM partnerAlias brand_pa WHERE brand_pa.partnerId = p.partnerId
+                                   AND (POSITION(LOWER(:keyword) IN LOWER(brand_pa.aliasName)) > 0
+                                     OR POSITION(LOWER(:keyword) IN LOWER(brand_pa.normalizedAlias)) > 0))
+                       )) OR
+                       (:brandOnly = false AND (
                        LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
                        LOWER(p.partnerName) IN (:partnerBrands) OR
                        EXISTS (
@@ -117,7 +125,7 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                                            (:filter = 'OFFLINE' AND bcp.usageType IN ('offline', 'both')))
                                  END)
                              )
-                       ))
+                       ))))
                   AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
                   AND (:gradeFilterEnabled = false OR CASE
                        WHEN bcp.conditions->>'offerResolution' IN ('SINGLE', 'SCOPED', 'PARTIAL') AND :filter IS NOT NULL THEN true
@@ -157,16 +165,40 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                   END)
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
+                  AND (bcp.publicationStatus IS NULL OR bcp.publicationStatus = 'APPROVED')
                 GROUP BY p.partnerId
                 ORDER BY
+                  CASE WHEN :brandOnly = true AND LOWER(p.partnerName) = LOWER(:keyword) THEN 0
+                       WHEN :brandOnly = true AND LEFT(LOWER(p.partnerName), LENGTH(:keyword)) = LOWER(:keyword) THEN 1
+                       WHEN :brandOnly = true AND EXISTS (SELECT 1 FROM partnerAlias rank_pa WHERE rank_pa.partnerId = p.partnerId
+                           AND (LOWER(rank_pa.aliasName) = LOWER(:keyword) OR LOWER(rank_pa.normalizedAlias) = LOWER(:keyword))) THEN 2
+                       WHEN :brandOnly = true AND EXISTS (SELECT 1 FROM partnerAlias rank_pa WHERE rank_pa.partnerId = p.partnerId
+                           AND (LEFT(LOWER(rank_pa.aliasName), LENGTH(:keyword)) = LOWER(:keyword)
+                             OR LEFT(LOWER(rank_pa.normalizedAlias), LENGTH(:keyword)) = LOWER(:keyword))) THEN 3
+                       WHEN :brandOnly = true THEN 4 END ASC,
+                  CASE WHEN :brandOnly = true AND LEFT(LOWER(p.partnerName), LENGTH(:keyword)) = LOWER(:keyword)
+                       THEN LENGTH(p.partnerName) END ASC,
                   CASE WHEN :sort = 'NAME_ASC' THEN LOWER(p.partnerName) END ASC,
                   CASE WHEN :sort = 'NAME_DESC' THEN LOWER(p.partnerName) END DESC,
                   CASE WHEN :sort = 'LATEST' THEN MAX(b.benefitId) END DESC,
                   CASE WHEN :sort = 'POPULARITY' THEN (
                       SELECT COUNT(*)
+                      FROM map_partner_view_daily mv
+                      WHERE mv.partner_id = p.partnerId
+                        AND mv.view_day BETWEEN :viewFromDate AND :viewThroughDate
+                  ) END DESC,
+                  CASE WHEN :sort = 'POPULARITY' THEN (
+                      SELECT COUNT(*)
                       FROM favorite pf
                       JOIN benefit pb ON pb.benefitId = pf.benefitId
                       WHERE pb.partnerId = p.partnerId
+                        AND COALESCE(pb.active, true) = true
+                        AND EXISTS (
+                            SELECT 1 FROM benefitCarrierPolicy fav_bcp
+                            WHERE fav_bcp.benefitId = pb.benefitId
+                              AND COALESCE(fav_bcp.active, true) = true
+                              AND (fav_bcp.publicationStatus IS NULL OR fav_bcp.publicationStatus = 'APPROVED')
+                        )
                   ) END DESC,
                   LOWER(p.partnerName) ASC,
                   p.partnerId ASC
@@ -197,6 +229,13 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                             (:filter = 'OFFLINE' AND bcp.usageType IN ('offline', 'both'))
                   END)
                   AND (:keyword IS NULL OR
+                       (:brandOnly = true AND (
+                           POSITION(LOWER(:keyword) IN LOWER(p.partnerName)) > 0 OR
+                           EXISTS (SELECT 1 FROM partnerAlias brand_pa WHERE brand_pa.partnerId = p.partnerId
+                                   AND (POSITION(LOWER(:keyword) IN LOWER(brand_pa.aliasName)) > 0
+                                     OR POSITION(LOWER(:keyword) IN LOWER(brand_pa.normalizedAlias)) > 0))
+                       )) OR
+                       (:brandOnly = false AND (
                        LOWER(p.partnerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
                        LOWER(p.partnerName) IN (:partnerBrands) OR
                        EXISTS (
@@ -262,7 +301,7 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                                            (:filter = 'OFFLINE' AND bcp.usageType IN ('offline', 'both')))
                                  END)
                              )
-                       ))
+                       ))))
                   AND (:carrierFilterEnabled = false OR bcp.carrier IN (:carriers))
                   AND (:gradeFilterEnabled = false OR CASE
                        WHEN bcp.conditions->>'offerResolution' IN ('SINGLE', 'SCOPED', 'PARTIAL') AND :filter IS NOT NULL THEN true
@@ -302,6 +341,7 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
                   END)
                   AND COALESCE(b.active, true) = true
                   AND COALESCE(bcp.active, true) = true
+                  AND (bcp.publicationStatus IS NULL OR bcp.publicationStatus = 'APPROVED')
             """,
             nativeQuery = true
     )
@@ -311,11 +351,55 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
             @Param("filter") String filter,
             @Param("keyword") String keyword,
             @Param("partnerBrands") List<String> partnerBrands,
+            @Param("brandOnly") boolean brandOnly,
             @Param("carrierFilterEnabled") boolean carrierFilterEnabled,
             @Param("carriers") List<String> carriers,
             @Param("gradeFilterEnabled") boolean gradeFilterEnabled,
             @Param("grades") List<String> grades,
             @Param("sort") String sort,
+            @Param("viewFromDate") LocalDate viewFromDate,
+            @Param("viewThroughDate") LocalDate viewThroughDate,
             Pageable pageable
     );
+
+    default Page<Partner> findBenefitPartners(
+            String mainCategory, String category, String filter, String keyword, List<String> partnerBrands,
+            boolean carrierFilterEnabled, List<String> carriers, boolean gradeFilterEnabled, List<String> grades,
+            String sort, LocalDate viewFromDate, LocalDate viewThroughDate, Pageable pageable
+    ) {
+        return findBenefitPartners(mainCategory, category, filter, keyword, partnerBrands, false,
+                carrierFilterEnabled, carriers, gradeFilterEnabled, grades, sort, viewFromDate, viewThroughDate,
+                pageable);
+    }
+
+    @Transactional(readOnly = true, timeout = 5)
+    @Query(value = """
+            SELECT p.partnerId AS "partnerId",
+                   (SELECT COUNT(*) FROM map_partner_view_daily mv
+                    WHERE mv.partner_id = p.partnerId
+                      AND mv.view_day BETWEEN :viewFromDate AND :viewThroughDate) AS "mapViewCount7d",
+                   (SELECT COUNT(*) FROM favorite f
+                    JOIN benefit b ON b.benefitId = f.benefitId
+                    WHERE b.partnerId = p.partnerId
+                      AND COALESCE(b.active, true) = true
+                      AND EXISTS (
+                          SELECT 1 FROM benefitCarrierPolicy bcp
+                          WHERE bcp.benefitId = b.benefitId
+                            AND COALESCE(bcp.active, true) = true
+                            AND (bcp.publicationStatus IS NULL OR bcp.publicationStatus = 'APPROVED')
+                      )) AS "favoriteCount"
+            FROM partner p
+            WHERE p.partnerId IN (:partnerIds)
+            """, nativeQuery = true)
+    List<PartnerPopularityCounts> findPopularityCounts(
+            @Param("partnerIds") List<Long> partnerIds,
+            @Param("viewFromDate") LocalDate viewFromDate,
+            @Param("viewThroughDate") LocalDate viewThroughDate
+    );
+
+    interface PartnerPopularityCounts {
+        Long getPartnerId();
+        Long getMapViewCount7d();
+        Long getFavoriteCount();
+    }
 }

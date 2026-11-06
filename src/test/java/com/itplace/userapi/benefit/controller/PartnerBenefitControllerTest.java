@@ -15,6 +15,7 @@ import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
+import com.itplace.userapi.benefit.entity.enums.PartnerSearchScope;
 import com.itplace.userapi.benefit.service.PartnerBenefitBrowseService;
 import com.itplace.userapi.common.GlobalExceptionHandler;
 import com.itplace.userapi.common.PageResult;
@@ -68,6 +69,20 @@ class PartnerBenefitControllerTest {
                 eq(MainCategory.BASIC_BENEFIT), eq(null), eq(null), eq(null), eq(null),
                 eq(List.of(Carrier.SKT, Carrier.KT)), eq(null), any(Pageable.class)
         );
+    }
+
+    @Test
+    void getPartnersPassesBrandSearchScope() throws Exception {
+        when(service.getPartners(eq(null), eq(null), eq(null), eq(null), eq("G"),
+                eq(PartnerSearchScope.BRAND), eq(List.of()), eq(null), any(Pageable.class)))
+                .thenReturn(PageResult.<PartnerBenefitListResponse>builder().content(List.of())
+                        .totalElements(0).totalPages(0).currentPage(0).hasNext(false).build());
+
+        mockMvc.perform(get("/api/v1/benefits/partners").param("keyword", "G").param("searchScope", "BRAND"))
+                .andExpect(status().isOk());
+
+        verify(service).getPartners(eq(null), eq(null), eq(null), eq(null), eq("G"),
+                eq(PartnerSearchScope.BRAND), eq(List.of()), eq(null), any(Pageable.class));
     }
 
     @Test

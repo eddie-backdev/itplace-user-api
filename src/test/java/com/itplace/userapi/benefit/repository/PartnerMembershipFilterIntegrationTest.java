@@ -7,6 +7,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,7 @@ class PartnerMembershipFilterIntegrationTest {
     static HikariDataSource source;
     static NamedParameterJdbcTemplate jdbc;
     static Query query;
+    static Query popularityCountsQuery;
 
     @BeforeAll
     static void connect() {
@@ -46,11 +49,12 @@ class PartnerMembershipFilterIntegrationTest {
                 CREATE TABLE benefit (benefitId bigint PRIMARY KEY, partnerId bigint, benefitName text,
                     mainCategory text, active boolean);
                 CREATE TABLE benefitCarrierPolicy (benefitCarrierPolicyId bigint PRIMARY KEY,
-                    benefitId bigint, carrier text, usageType text, active boolean, conditions jsonb,
+                    benefitId bigint, carrier text, usageType text, active boolean, publicationStatus text, conditions jsonb,
                     description text, manual text, sourceCategory text);
                 CREATE TABLE carrierTierBenefit (benefitCarrierPolicyId bigint, grade text, context text, offerKey text);
                 CREATE TABLE membership_grade_alias(carrier_code text, source_label text, grade_code text);
                 CREATE TABLE favorite (benefitId bigint);
+                CREATE TABLE map_partner_view_daily (partner_id bigint, view_day date);
                 INSERT INTO partner VALUES (1,'A cafe','카페'),(2,'B cafe','카페'),(3,'C shop','쇼핑'),
                     (4,'D vipkok','카페'),(5,'E inactive','카페'),(6,'F inactive policy','카페'),
                     (7,'G unknown grade','카페'),(8,'H legacy','카페'),(9,'I split offers','카페'),(10,'J unresolved','카페');
@@ -91,6 +95,10 @@ class PartnerMembershipFilterIntegrationTest {
                 """);
         query = Arrays.stream(PartnerRepository.class.getMethods())
                 .filter(method -> method.getName().equals("findBenefitPartners"))
+                .filter(method -> method.getAnnotation(Query.class) != null)
+                .findFirst().orElseThrow().getAnnotation(Query.class);
+        popularityCountsQuery = Arrays.stream(PartnerRepository.class.getMethods())
+                .filter(method -> method.getName().equals("findPopularityCounts"))
                 .findFirst().orElseThrow().getAnnotation(Query.class);
     }
 
@@ -137,6 +145,74 @@ class PartnerMembershipFilterIntegrationTest {
     }
 
     @Test
+    void popularityUsesSeoulSevenCalendarDaysThenEligibleFavoriteRowsAndNameTieBreak() {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        jdbc.getJdbcTemplate().update("INSERT INTO map_partner_view_daily VALUES (?, ?), (?, ?), (?, ?), (?, ?)",
+                1L, java.sql.Date.valueOf(today.minusDays(6)),
+                1L, java.sql.Date.valueOf(today),
+                2L, java.sql.Date.valueOf(today),
+                3L, java.sql.Date.valueOf(today));
+        jdbc.getJdbcTemplate().update("INSERT INTO map_partner_view_daily VALUES (?, ?)",
+                4L, java.sql.Date.valueOf(today.minusDays(7)));
+        jdbc.getJdbcTemplate().update("INSERT INTO favorite VALUES (?), (?), (?), (?), (?), (?), (?)",
+                2L, 3L, 3L, 4L, 4L, 4L, 4L);
+        jdbc.getJdbcTemplate().update("UPDATE benefitCarrierPolicy SET publicationStatus = 'PENDING' WHERE benefitId = 15");
+        try {
+            var params = params("", List.of(""));
+            params.addValue("sort", "POPULARITY", Types.VARCHAR)
+                    .addValue("carrierFilterEnabled", false)
+                    .addValue("gradeFilterEnabled", false);
+            assertRows(params, 1L, 3L, 2L, 4L, 7L, 13L, 8L, 9L, 10L, 11L, 14L, 12L);
+            assertThat(jdbc.query(query.value(), params, (rs, row) -> rs.getLong("partnerId")))
+                    .doesNotContain(15L);
+            var countParams = new MapSqlParameterSource()
+                    .addValue("partnerIds", List.of(1L, 2L, 3L, 4L))
+                    .addValue("viewFromDate", java.sql.Date.valueOf(today.minusDays(6)))
+                    .addValue("viewThroughDate", java.sql.Date.valueOf(today));
+            assertThat(jdbc.query(popularityCountsQuery.value(), countParams,
+                    (rs, row) -> List.of(rs.getLong("partnerId"), rs.getLong("mapViewCount7d"),
+                            rs.getLong("favoriteCount"))))
+                    .containsExactlyInAnyOrder(List.of(1L, 2L, 0L), List.of(2L, 1L, 1L),
+                            List.of(3L, 1L, 2L), List.of(4L, 0L, 4L));
+        } finally {
+            jdbc.getJdbcTemplate().update("UPDATE benefitCarrierPolicy SET publicationStatus = NULL WHERE benefitId = 15");
+            jdbc.getJdbcTemplate().update("DELETE FROM favorite");
+            jdbc.getJdbcTemplate().update("DELETE FROM map_partner_view_daily");
+        }
+    }
+
+    @Test
+    void brandOnlySearchMatchesNamesAndAliasesButNotPolicyText() {
+        var params = params("SKT", List.of(""));
+        params.addValue("gradeFilterEnabled", false).addValue("carrierFilterEnabled", false)
+                .addValue("keyword", "G").addValue("brandOnly", true);
+        jdbc.getJdbcTemplate().update("UPDATE benefitCarrierPolicy SET description = 'G 본문 검색어' WHERE benefitId = 14");
+        jdbc.getJdbcTemplate().update("UPDATE partner SET partnerName = 'G inactive' WHERE partnerId = 5");
+        jdbc.getJdbcTemplate().update("UPDATE partner SET partnerName = 'G held' WHERE partnerId = 14");
+        jdbc.getJdbcTemplate().update("UPDATE benefitCarrierPolicy SET publicationStatus = 'HOLD' WHERE benefitId = 14");
+        try {
+            assertRows(params, 13L, 7L, 8L);
+            params.addValue("keyword", "gs");
+            assertRows(params, 13L);
+            params.addValue("keyword", "검색 별칭");
+            assertRows(params, 15L);
+            params.addValue("keyword", "본문 검색어");
+            assertRows(params);
+            params.addValue("keyword", "%");
+            assertRows(params);
+            params.addValue("keyword", "_");
+            assertRows(params);
+            jdbc.getJdbcTemplate().update("UPDATE benefitCarrierPolicy SET publicationStatus = NULL WHERE benefitId = 14");
+            params.addValue("brandOnly", false).addValue("keyword", "본문 검색어");
+            assertRows(params, 14L);
+        } finally {
+            jdbc.getJdbcTemplate().update("UPDATE benefitCarrierPolicy SET description = '생활 혜택', publicationStatus = NULL WHERE benefitId = 14");
+            jdbc.getJdbcTemplate().update("UPDATE partner SET partnerName = 'E inactive' WHERE partnerId = 5");
+            jdbc.getJdbcTemplate().update("UPDATE partner SET partnerName = '무관한 매장' WHERE partnerId = 14");
+        }
+    }
+
+    @Test
     void keywordSearchUsesCategoryAliasesAndRelevantOfferTextWithoutBroadMovieOrManualMatches() {
         var params = params("SKT", List.of(""));
         params.addValue("gradeFilterEnabled", false).addValue("carrierFilterEnabled", false);
@@ -144,8 +220,10 @@ class PartnerMembershipFilterIntegrationTest {
         assertRows(params, 11L);
         params.addValue("keyword", "편의점");
         params.addValue("partnerBrands", List.of("gs25", "cu", "세븐일레븐", "이마트24"));
+        params.addValue("brandOnly", false);
         assertRows(params, 13L);
-        params.addValue("partnerBrands", List.of(""));
+        params.addValue("partnerBrands", List.of(""))
+                .addValue("brandOnly", false);
         params.addValue("keyword", "검색어 전용");
         assertRows(params, 14L);
         params.addValue("keyword", "영화관 정보");
@@ -155,6 +233,7 @@ class PartnerMembershipFilterIntegrationTest {
 
         params.addValue("keyword", "편의점");
         params.addValue("partnerBrands", List.of("gs25", "cu", "세븐일레븐", "이마트24"));
+        params.addValue("brandOnly", false);
         assertThat(jdbc.query(query.value() + " LIMIT 1 OFFSET 1", params,
                 (rs, row) -> rs.getLong("partnerId"))).isEmpty();
         assertThat(jdbc.queryForObject(query.countQuery(), params, Long.class)).isEqualTo(1L);
@@ -199,8 +278,11 @@ class PartnerMembershipFilterIntegrationTest {
                 .addValue("mainCategory", null, Types.VARCHAR).addValue("category", null, Types.VARCHAR)
                 .addValue("filter", null, Types.VARCHAR).addValue("keyword", null, Types.VARCHAR)
                 .addValue("partnerBrands", List.of(""))
+                .addValue("brandOnly", false)
                 .addValue("sort", "NAME_ASC", Types.VARCHAR).addValue("carrierFilterEnabled", true)
                 .addValue("carriers", List.of(carrier)).addValue("gradeFilterEnabled", true)
-                .addValue("grades", grades);
+                .addValue("grades", grades)
+                .addValue("viewFromDate", java.sql.Date.valueOf(LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(6)))
+                .addValue("viewThroughDate", java.sql.Date.valueOf(LocalDate.now(ZoneId.of("Asia/Seoul"))));
     }
 }

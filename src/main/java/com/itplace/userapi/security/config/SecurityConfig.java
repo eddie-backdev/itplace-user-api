@@ -13,7 +13,6 @@ import com.itplace.userapi.security.auth.oauth.handler.OAuth2AuthenticationSucce
 import com.itplace.userapi.security.auth.oauth.service.CustomOAuth2UserService;
 import com.itplace.userapi.security.jwt.JWTFilter;
 import com.itplace.userapi.security.jwt.JWTUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +42,6 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -80,44 +78,14 @@ public class SecurityConfig {
                 csrfTokenRequestHandler);
 
         http
-                .cors((corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
-                    @Override
-                    public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-                        CorsConfiguration configuration = new CorsConfiguration();
-
-                        configuration.setAllowedOriginPatterns(Arrays.asList(
-                                "http://localhost:3000", // 로컬 개발 환경
-                                "http://localhost:5173", // 로컬 개발 환경
-                                "http://localhost:5174", // 로컬 개발 환경
-                                "http://localhost:8080", // 로컬 개발 환경
-                                "https://itplace.click",
-                                "https://www.itplace.click",
-                                "https://userapi.itplace.click"
-                        ));
-
-                        configuration.setAllowedMethods(Arrays.asList(
-                                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-                        ));
-                        configuration.setAllowCredentials(true);
-                        configuration.setAllowedHeaders(Arrays.asList(
-                                "Accept", "Authorization", "Content-Type", "X-XSRF-TOKEN"
-                        ));
-                        configuration.setMaxAge(3600L);
-
-                        configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN", "Retry-After"));
-                        return configuration;
-                    }
-                })));
+                .cors(corsCustomizer -> corsCustomizer.configurationSource(request -> corsConfiguration()));
 
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(csrfTokenRequestHandler)
                         .sessionAuthenticationStrategy(csrfAuthenticationStrategy)
-                        .ignoringRequestMatchers(
-                                "/api/v1/internal/benefits/**",
-                                "/internal/benefits/**"
-                        ))
+                        .ignoringRequestMatchers(csrfIgnoredEndpoints()))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable());
 
@@ -193,6 +161,37 @@ public class SecurityConfig {
         };
     }
 
+    static CorsConfiguration corsConfiguration() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:3000", // 로컬 개발 환경
+                "http://localhost:5173", // 로컬 개발 환경
+                "http://localhost:5174", // 로컬 개발 환경
+                "http://localhost:8080", // 로컬 개발 환경
+                "https://itplace.click",
+                "https://www.itplace.click",
+                "https://userapi.itplace.click"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Accept", "Authorization", "Content-Type", "X-XSRF-TOKEN", "X-Map-View-Session"));
+        configuration.setMaxAge(3600L);
+        configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN", "Retry-After"));
+        return configuration;
+    }
+
+    static String[] csrfIgnoredEndpoints() {
+        return new String[]{
+                "/api/v1/internal/benefits/**",
+                "/internal/benefits/**",
+                "/api/v1/maps/stores/*/directions",
+                "/api/v1/maps/stores/*/view",
+                "/api/v1/maps/directions",
+                "/api/v1/maps/locations/search"
+        };
+    }
+
     static String[] publicReadEndpoints() {
         return new String[]{
                 "/api/v1/auth/csrf",
@@ -216,6 +215,10 @@ public class SecurityConfig {
                 "/api/v1/auth/oauth/kakao",
                 "/api/v1/auth/oauth/signUp",
                 "/api/v1/auth/oauth/link",
+                "/api/v1/maps/stores/*/directions",
+                "/api/v1/maps/stores/*/view",
+                "/api/v1/maps/directions",
+                "/api/v1/maps/locations/search",
                 "/api/v1/verification/email",
                 "/api/v1/verification/email/confirm",
                 "/api/v1/users/findPassword",

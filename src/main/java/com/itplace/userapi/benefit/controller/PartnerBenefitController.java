@@ -6,6 +6,7 @@ import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
+import com.itplace.userapi.benefit.entity.enums.PartnerSearchScope;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.service.PartnerBenefitBrowseService;
 import com.itplace.userapi.benefit.support.CarrierFilterResolver;
@@ -41,6 +42,7 @@ public class PartnerBenefitController {
             @RequestParam(required = false) UsageType filter,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "ALL") PartnerSearchScope searchScope,
             @RequestParam(required = false) Carrier carrier,
             @RequestParam(required = false) List<String> carriers,
             @RequestParam(required = false) Grade grade,
@@ -48,16 +50,12 @@ public class PartnerBenefitController {
             @RequestParam(defaultValue = "12") @Min(1) @Max(100) int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        PageResult<PartnerBenefitListResponse> result = partnerBenefitBrowseService.getPartners(
-                mainCategory,
-                category,
-                filter,
-                sort,
-                keyword,
-                CarrierFilterResolver.resolve(carrier, carriers),
-                grade,
-                pageable
-        );
+        List<Carrier> carrierFilters = CarrierFilterResolver.resolve(carrier, carriers);
+        PageResult<PartnerBenefitListResponse> result = searchScope == PartnerSearchScope.BRAND
+                ? partnerBenefitBrowseService.getPartners(mainCategory, category, filter, sort, keyword, searchScope,
+                        carrierFilters, grade, pageable)
+                : partnerBenefitBrowseService.getPartners(mainCategory, category, filter, sort, keyword,
+                        carrierFilters, grade, pageable);
         return ApiResponse.of(BenefitCode.BENEFIT_LIST_SUCCESS, result).toResponseEntity();
     }
 

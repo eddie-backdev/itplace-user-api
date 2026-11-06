@@ -21,6 +21,8 @@ import lombok.NoArgsConstructor;
 public class PartnerBenefitListResponse {
     private Long partnerId;
     private String partnerName;
+    private long mapViewCount7d;
+    private long favoriteCount;
     private String category;
     private String image;
     private List<Carrier> carriers;

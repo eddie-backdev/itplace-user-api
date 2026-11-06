@@ -16,6 +16,7 @@ import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
 import com.itplace.userapi.benefit.entity.enums.Carrier;
 import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.entity.enums.MainCategory;
+import com.itplace.userapi.benefit.entity.enums.PartnerSearchScope;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import com.itplace.userapi.benefit.exception.BenefitNotFoundException;
 import com.itplace.userapi.benefit.exception.InvalidEnumException;
@@ -41,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +62,7 @@ public class PartnerBenefitBrowseService {
     private final BenefitPreviewSummaryBuilder previewSummaryBuilder;
 
     private static final List<Carrier> CARRIER_DISPLAY_ORDER = List.of(Carrier.SKT, Carrier.KT, Carrier.LGU);
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final PartnerRepository partnerRepository;
     private final BenefitRepository benefitRepository;
@@ -72,6 +76,7 @@ public class PartnerBenefitBrowseService {
             UsageType filter,
             String sort,
             String keyword,
+            PartnerSearchScope searchScope,
             List<Carrier> carriers,
             Grade grade,
             Pageable pageable
@@ -89,22 +94,33 @@ public class PartnerBenefitBrowseService {
                 ? carrierFilters.stream().map(Carrier::name).toList()
                 : CARRIER_DISPLAY_ORDER.stream().map(Carrier::name).toList();
 
-        String searchKeyword = PartnerBrowseSearchIntents.normalizeKeyword(keyword);
-        Page<Partner> partnerPage = partnerRepository.findBenefitPartners(
-                mainCategory == null ? null : mainCategory.getCode(),
-                normalize(category),
-                filter == null ? null : filter.name(),
-                searchKeyword,
-                PartnerBrowseSearchIntents.exactPartnerNames(searchKeyword),
-                carrierFilterEnabled,
-                carrierNames,
-                !grades.isEmpty(),
-                grades.isEmpty() ? List.of("") : grades.stream().map(Grade::name).toList(),
-                normalizeSort(sort),
-                pageable
-        );
+        String searchKeyword = searchScope == PartnerSearchScope.BRAND
+                ? normalizeBrandKeyword(keyword) : PartnerBrowseSearchIntents.normalizeKeyword(keyword);
+        LocalDate viewThroughDate = LocalDate.now(SEOUL);
+        LocalDate viewFromDate = viewThroughDate.minusDays(6);
+        String keywordParam = searchKeyword;
+        List<String> brandParams = searchScope == PartnerSearchScope.BRAND
+                ? List.of("") : PartnerBrowseSearchIntents.exactPartnerNames(searchKeyword);
+        Page<Partner> partnerPage = searchScope == PartnerSearchScope.BRAND
+                ? partnerRepository.findBenefitPartners(
+                        mainCategory == null ? null : mainCategory.getCode(), normalize(category),
+                        filter == null ? null : filter.name(), keywordParam, brandParams, true,
+                        carrierFilterEnabled, carrierNames, !grades.isEmpty(),
+                        grades.isEmpty() ? List.of("") : grades.stream().map(Grade::name).toList(),
+                        normalizeSort(sort), viewFromDate, viewThroughDate, pageable)
+                : partnerRepository.findBenefitPartners(
+                        mainCategory == null ? null : mainCategory.getCode(), normalize(category),
+                        filter == null ? null : filter.name(), keywordParam, brandParams,
+                        carrierFilterEnabled, carrierNames, !grades.isEmpty(),
+                        grades.isEmpty() ? List.of("") : grades.stream().map(Grade::name).toList(),
+                        normalizeSort(sort), viewFromDate, viewThroughDate, pageable);
 
         List<Long> partnerIds = partnerPage.getContent().stream().map(Partner::getPartnerId).toList();
+        Map<Long, PartnerRepository.PartnerPopularityCounts> popularityCounts = partnerIds.isEmpty()
+                ? Map.of()
+                : partnerRepository.findPopularityCounts(partnerIds, viewFromDate, viewThroughDate).stream()
+                        .collect(Collectors.toMap(PartnerRepository.PartnerPopularityCounts::getPartnerId,
+                                Function.identity()));
         List<Benefit> benefits = activeBenefits(partnerIds, mainCategory);
         Map<Long, List<Benefit>> benefitsByPartner = benefits.stream()
                 .collect(Collectors.groupingBy(benefit -> benefit.getPartner().getPartnerId()));
@@ -121,6 +137,8 @@ public class PartnerBenefitBrowseService {
                 .map(partner -> PartnerBenefitListResponse.builder()
                         .partnerId(partner.getPartnerId())
                         .partnerName(partner.getPartnerName())
+                        .mapViewCount7d(mapViewCount(popularityCounts.get(partner.getPartnerId())))
+                        .favoriteCount(favoriteCount(popularityCounts.get(partner.getPartnerId())))
                         .category(partner.getCategory())
                         .image(partner.getImage())
                         .carriers(grades.isEmpty() ? availableCarriers(
@@ -143,6 +161,14 @@ public class PartnerBenefitBrowseService {
                 .currentPage(partnerPage.getNumber())
                 .hasNext(partnerPage.hasNext())
                 .build();
+    }
+
+    public PageResult<PartnerBenefitListResponse> getPartners(
+            MainCategory mainCategory, String category, UsageType filter, String sort, String keyword,
+            List<Carrier> carriers, Grade grade, Pageable pageable
+    ) {
+        return getPartners(mainCategory, category, filter, sort, keyword, PartnerSearchScope.ALL,
+                carriers, grade, pageable);
     }
 
     public PartnerBenefitDetailResponse getPartnerDetail(
@@ -388,6 +414,19 @@ public class PartnerBenefitBrowseService {
             case "NAME_ASC", "NAME_DESC", "LATEST" -> sort.trim().toUpperCase();
             default -> "POPULARITY";
         };
+    }
+
+    private long mapViewCount(PartnerRepository.PartnerPopularityCounts counts) {
+        return counts == null || counts.getMapViewCount7d() == null ? 0 : counts.getMapViewCount7d();
+    }
+
+    private long favoriteCount(PartnerRepository.PartnerPopularityCounts counts) {
+        return counts == null || counts.getFavoriteCount() == null ? 0 : counts.getFavoriteCount();
+    }
+
+    private static String normalizeBrandKeyword(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.replaceAll("\\s+", " ").trim();
     }
 
     private String normalize(String value) {
