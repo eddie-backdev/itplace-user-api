@@ -111,7 +111,10 @@ class FlywayMigrationIntegrationTest {
                         carrier VARCHAR(16),
                         active BOOLEAN,
                         usageType VARCHAR(20),
-                        lastCrawledAt TIMESTAMP
+                        lastCrawledAt TIMESTAMP,
+                        sourceKey VARCHAR(512),
+                        sourceUrl VARCHAR(512),
+                        sourceCategory VARCHAR(100)
                     )
                     """);
             statement.execute("""
@@ -212,7 +215,7 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(28);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(29);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
@@ -251,6 +254,10 @@ class FlywayMigrationIntegrationTest {
             assertThat(tableExists(connection, "inquiries")).isTrue();
             assertThat(tableExists(connection, "recommendation_rank_traces")).isTrue();
             assertThat(tableExists(connection, "benefitusagerecord")).isTrue();
+            assertThat(tableExists(connection, "map_partner_view_daily")).isTrue();
+            assertThat(indexExists(connection, "uq_map_partner_view_user_day")).isTrue();
+            assertThat(indexExists(connection, "uq_map_partner_view_session_day")).isTrue();
+            assertThat(indexExists(connection, "idx_map_partner_view_partner_day")).isTrue();
             assertThat(columnExists(connection, "users", "nickname")).isTrue();
             assertThat(columnExists(connection, "users", "membershipGradeCode")).isTrue();
             assertThat(columnExists(connection, "users", "membershipid")).isFalse();
@@ -319,7 +326,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20261022.0001");
+                    """)).isEqualTo("20261107.0001");
             verifyArchivedPolicyConstraints(connection);
 
             try (Statement statement = connection.createStatement()) {

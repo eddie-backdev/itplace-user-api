@@ -3,12 +3,14 @@ package com.itplace.userapi.benefit.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
@@ -91,12 +93,40 @@ class PartnerBenefitBrowseServiceTest {
         when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq(null), eq("편의점"),
                 eq(List.of("gs25", "cu", "세븐일레븐", "이마트24")), eq(false),
                 eq(List.of("SKT", "KT", "LGU")), eq(false), eq(List.of("")),
-                eq("POPULARITY"), eq(pageable)))
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         var result = service.getPartners(null, null, null, null, " 편의점 ", List.of(), null, pageable);
 
         assertThat(result.getTotalElements()).isZero();
+    }
+
+    @Test
+    void partnerListIncludesZeroDefaultPopularityCountsFromCurrentSeoulWeek() {
+        Partner partner = partner();
+        Benefit benefit = benefit(partner);
+        BenefitCarrierPolicy policy = policy(101L, benefit, Carrier.SKT, "SKT 혜택");
+        PageRequest pageable = PageRequest.of(0, 5);
+        PartnerRepository.PartnerPopularityCounts counts = mock(PartnerRepository.PartnerPopularityCounts.class);
+        when(counts.getPartnerId()).thenReturn(10L);
+        when(counts.getMapViewCount7d()).thenReturn(8L);
+        when(counts.getFavoriteCount()).thenReturn(3L);
+        when(partnerRepository.findBenefitPartners(any(), any(), any(), any(), any(), anyBoolean(), any(),
+                anyBoolean(), any(), eq("POPULARITY"), any(java.time.LocalDate.class),
+                any(java.time.LocalDate.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(partner), pageable, 1));
+        when(partnerRepository.findPopularityCounts(eq(List.of(10L)), any(java.time.LocalDate.class),
+                any(java.time.LocalDate.class))).thenReturn(List.of(counts));
+        when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(any())).thenReturn(List.of());
+
+        var result = service.getPartners(null, null, null, "POPULARITY", null, List.of(), null, pageable);
+
+        assertThat(result.getContent()).singleElement().satisfies(item -> {
+            assertThat(item.getMapViewCount7d()).isEqualTo(8L);
+            assertThat(item.getFavoriteCount()).isEqualTo(3L);
+        });
     }
 
     @Test
@@ -118,14 +148,14 @@ class PartnerBenefitBrowseServiceTest {
         when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq(null), eq("편의점"),
                 eq(List.of("gs25", "cu", "세븐일레븐", "이마트24")), eq(false),
                 eq(List.of("SKT", "KT", "LGU")), eq(false), eq(List.of("")),
-                eq("POPULARITY"), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         service.getPartners(null, null, null, null, "편의점 할인 좀 알려줘", List.of(), null, pageable);
 
         verify(partnerRepository).findBenefitPartners(eq(null), eq(null), eq(null), eq("편의점"),
                 eq(List.of("gs25", "cu", "세븐일레븐", "이마트24")), eq(false),
                 eq(List.of("SKT", "KT", "LGU")), eq(false), eq(List.of("")),
-                eq("POPULARITY"), eq(pageable));
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable));
     }
 
     @Test
@@ -138,7 +168,7 @@ class PartnerBenefitBrowseServiceTest {
 
         when(partnerRepository.findBenefitPartners(
                 eq(MainCategory.BASIC_BENEFIT.getCode()), eq("생활/편의"), eq(null), eq("GS25"), eq(List.of("")),
-                eq(true), eq(List.of("SKT")), eq(false), eq(List.of("")), eq("POPULARITY"), eq(pageable)
+                eq(true), eq(List.of("SKT")), eq(false), eq(List.of("")), eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)
         )).thenReturn(new PageImpl<>(List.of(partner), pageable, 1));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(skt, lgu));
@@ -222,7 +252,7 @@ class PartnerBenefitBrowseServiceTest {
         when(partnerRepository.findBenefitPartners(
                 eq(MainCategory.BASIC_BENEFIT.getCode()), eq(null), eq("OFFLINE"), eq(null), eq(List.of("")),
                 eq(false), eq(List.of("SKT", "KT", "LGU")), eq(false), eq(List.of("")),
-                eq("POPULARITY"), eq(pageable)
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)
         )).thenReturn(new PageImpl<>(List.of(firstPartner, secondPartner), pageable, 2));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L, 11L)))
                 .thenReturn(List.of(later, vipCategory, blank, first, inactive, second));
@@ -256,7 +286,9 @@ class PartnerBenefitBrowseServiceTest {
         assertThat(result.getContent().get(1).getPreviews()).singleElement()
                 .satisfies(preview -> assertThat(preview.benefitId()).isEqualTo(21L));
         verify(partnerRepository).findBenefitPartners(any(), any(), any(), any(), any(), eq(false), any(),
-                eq(false), any(), any(), eq(pageable));
+                eq(false), any(), any(), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable));
+        verify(partnerRepository).findPopularityCounts(eq(List.of(10L, 11L)),
+                any(java.time.LocalDate.class), any(java.time.LocalDate.class));
         verify(benefitRepository).findAllByPartnerIdsWithPartner(List.of(10L, 11L));
         verify(benefitCarrierPolicyRepository).findAllByBenefitIn(activeBenefits);
         verify(carrierTierBenefitRepository).findAllByBenefitCarrierPolicyIn(any());
@@ -353,7 +385,7 @@ class PartnerBenefitBrowseServiceTest {
         BenefitCarrierPolicy skt = policy(100L, benefit, Carrier.SKT, "SKT 혜택");
         when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq(null), eq(null), eq(List.of("")),
                 eq(true), eq(List.of("LGU")), eq(true), eq(List.of("VVIP", "VIP콕")),
-                eq("POPULARITY"), eq(pageable)))
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(partner), pageable, 3));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit)))
@@ -392,7 +424,7 @@ class PartnerBenefitBrowseServiceTest {
         PageRequest pageable = PageRequest.of(0, 10);
         when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq(null), eq(null), eq(List.of("")),
                 eq(true), eq(List.of("SKT")), eq(true), eq(List.of("SKT_LITE")),
-                eq("POPULARITY"), eq(pageable)))
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(partner), pageable, 1));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
@@ -426,7 +458,7 @@ class PartnerBenefitBrowseServiceTest {
         PageRequest pageable = PageRequest.of(0, 10);
         when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq("ONLINE"), eq(null), eq(List.of("")),
                 eq(true), eq(List.of("KT")), eq(false), eq(List.of("")),
-                eq("POPULARITY"), eq(pageable)))
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(partner), pageable, 1));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));
@@ -456,7 +488,7 @@ class PartnerBenefitBrowseServiceTest {
         PageRequest pageable = PageRequest.of(0, 10);
         when(partnerRepository.findBenefitPartners(eq(null), eq(null), eq(null), eq(null), eq(List.of("")),
                 eq(true), eq(List.of("KT")), eq(true), eq(List.of("KT_WHITE")),
-                eq("POPULARITY"), eq(pageable)))
+                eq("POPULARITY"), any(java.time.LocalDate.class), any(java.time.LocalDate.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(partner), pageable, 1));
         when(benefitRepository.findAllByPartnerIdsWithPartner(List.of(10L))).thenReturn(List.of(benefit));
         when(benefitCarrierPolicyRepository.findAllByBenefitIn(List.of(benefit))).thenReturn(List.of(policy));

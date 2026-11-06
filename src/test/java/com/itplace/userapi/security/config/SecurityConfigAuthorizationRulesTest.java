@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.util.AntPathMatcher;
+import java.util.List;
 
 class SecurityConfigAuthorizationRulesTest {
 
@@ -73,6 +74,22 @@ class SecurityConfigAuthorizationRulesTest {
         assertThat(isPublicPostEndpoint("/api/v1/auth/signUp")).isTrue();
         assertThat(isPublicPostEndpoint("/api/v1/auth/reissue")).isTrue();
         assertThat(isPublicPostEndpoint("/api/v1/internal/benefits/import")).isTrue();
+        assertThat(isPublicPostEndpoint("/api/v1/maps/stores/42/directions")).isTrue();
+        assertThat(isPublicPostEndpoint("/api/v1/maps/stores/42/view")).isTrue();
+        assertThat(isPublicPostEndpoint("/api/v1/maps/directions")).isTrue();
+        assertThat(isPublicPostEndpoint("/api/v1/maps/locations/search")).isTrue();
+        assertThat(matchesAny(SecurityConfig.csrfIgnoredEndpoints(), "/api/v1/maps/stores/42/directions")).isTrue();
+        assertThat(matchesAny(SecurityConfig.csrfIgnoredEndpoints(), "/api/v1/maps/stores/42/view")).isTrue();
+        assertThat(matchesAny(SecurityConfig.csrfIgnoredEndpoints(), "/api/v1/maps/directions")).isTrue();
+        assertThat(matchesAny(SecurityConfig.csrfIgnoredEndpoints(), "/api/v1/maps/locations/search")).isTrue();
+        assertThat(matchesAny(SecurityConfig.csrfIgnoredEndpoints(), "/api/v1/maps/locations/search/extra")).isFalse();
+        assertThat(matchesAny(SecurityConfig.csrfIgnoredEndpoints(), "/api/v1/maps/stores/42/benefits")).isFalse();
+    }
+
+    @Test
+    void mapViewSessionHeaderIsAllowedForCrossOriginRequests() {
+        assertThat(SecurityConfig.corsConfiguration().checkHeaders(List.of("X-Map-View-Session")))
+                .containsExactly("X-Map-View-Session");
     }
 
     private boolean isPublicEndpoint(String path) {

@@ -80,6 +80,7 @@ class BenefitRepositoryQueryContractTest {
     private Method repositoryMethod(Class<?> repositoryType, String methodName) {
         return Arrays.stream(repositoryType.getDeclaredMethods())
                 .filter(candidate -> candidate.getName().equals(methodName))
+                .filter(candidate -> candidate.getAnnotation(Query.class) != null)
                 .findFirst()
                 .orElseThrow();
     }

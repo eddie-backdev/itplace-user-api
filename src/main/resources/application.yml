@@ -197,3 +197,10 @@ kakao:
     rest-api-key: ${KAKAO_REST_API_KEY:}
     connect-timeout: ${KAKAO_LOCAL_CONNECT_TIMEOUT:2s}
     read-timeout: ${KAKAO_LOCAL_READ_TIMEOUT:3s}
+    search-rate-limit-per-minute: ${KAKAO_LOCAL_SEARCH_RATE_LIMIT_PER_MINUTE:240}
+  directions:
+    map-base-url: ${KAKAO_DIRECTIONS_MAP_BASE_URL:https://dapi.kakao.com}
+    car-base-url: ${KAKAO_DIRECTIONS_CAR_BASE_URL:https://apis-navi.kakaomobility.com}
+    connect-timeout: ${KAKAO_DIRECTIONS_CONNECT_TIMEOUT:2s}
+    read-timeout: ${KAKAO_DIRECTIONS_READ_TIMEOUT:6s}
+    rate-limit-per-minute: ${KAKAO_DIRECTIONS_RATE_LIMIT_PER_MINUTE:120}
