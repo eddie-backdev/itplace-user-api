@@ -49,7 +49,8 @@ public class RecommendationPersistenceService {
             return Optional.empty();
         }
 
-        return Optional.of(new CachedBatch(latest.getCreatedDate(), RecommendationMapper.toDtoList(saved)));
+        return Optional.of(new CachedBatch(latest.getCreatedDate(), RecommendationMapper.toDtoList(saved),
+                latest.getAlgorithmVersion()));
     }
 
     @Transactional
@@ -108,6 +109,6 @@ public class RecommendationPersistenceService {
         return "rec-" + userId + "-" + UUID.randomUUID();
     }
 
-    public record CachedBatch(LocalDateTime createdAt, List<Recommendations> recommendations) {
+    public record CachedBatch(LocalDateTime createdAt, List<Recommendations> recommendations, String algorithmVersion) {
     }
 }

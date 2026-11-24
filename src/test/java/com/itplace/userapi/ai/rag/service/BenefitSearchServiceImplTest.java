@@ -688,10 +688,13 @@ class BenefitSearchServiceImplTest {
         policy.setUsageType(UsageType.BOTH);
         policy.setConditions(new BenefitConditions(List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(new BenefitOffer("offer-general", "일반 영화 할인", "일반 등급 할인", UsageType.BOTH,
-                        List.of("KT_GENERAL"), false, List.of(), List.of(), List.of(), List.of(), List.of(), List.of())),
+                        List.of("KT_GENERAL"), false, List.of(), List.of(), List.of(), List.of(), List.of(), List.of()),
+                        new BenefitOffer("offer-other", "별도 영화 할인", "별도 결제 혜택", UsageType.BOTH,
+                                List.of("KT_GENERAL"), false, List.of(), List.of(), List.of(), List.of(), List.of(), List.of())),
                 OfferResolution.SCOPED, null));
         CarrierTierBenefit general = CarrierTierBenefit.builder().carrierTierBenefitId(41L)
-                .benefitCarrierPolicy(policy).grade(Grade.KT_GENERAL).context("일반 등급 할인").build();
+                .benefitCarrierPolicy(policy).grade(Grade.KT_GENERAL).offerKey("offer-other")
+                .context("별도 결제 혜택").build();
         var reference = org.mockito.Mockito.mock(com.itplace.userapi.reference.ReferenceDataService.class);
         when(reference.gradesForProfile(Carrier.KT, Grade.KT_GENERAL)).thenReturn(List.of(Grade.KT_GENERAL));
         when(reference.gradesForProfile(Carrier.KT, Grade.KT_VIP)).thenReturn(List.of(Grade.KT_VIP));
@@ -707,10 +710,12 @@ class BenefitSearchServiceImplTest {
         var normal = benefitSearchService.browseChatCandidates(Carrier.KT, Grade.KT_GENERAL, "ANY", 10);
         var resolved = benefitSearchService.resolveChatCandidates(List.of(key), Carrier.KT, Grade.KT_GENERAL);
 
-        assertThat(normal).singleElement().satisfies(candidate -> {
-            assertThat(candidate.getTierBenefitId()).isEqualTo(41L);
-            assertThat(candidate.getOfferKey()).isNull();
-        });
+        assertThat(normal).hasSize(2).extracting(Candidate::getCandidateKey)
+                .containsExactly("benefit:20:policy:30:tier:41", "benefit:20:policy:30:offer:offer-general");
+        assertThat(normal.get(0).getTierBenefitId()).isEqualTo(41L);
+        assertThat(normal.get(0).getOfferKey()).isNull();
+        assertThat(normal.get(0).getConditions().offers()).extracting(BenefitOffer::key).containsExactly("offer-other");
+        assertThat(normal.get(1).getOfferKey()).isEqualTo("offer-general");
         assertThat(resolved).singleElement().satisfies(candidate -> {
             assertThat(candidate.getCandidateKey()).isEqualTo(key);
             assertThat(candidate.getOfferKey()).isEqualTo("offer-general");
@@ -738,6 +743,26 @@ class BenefitSearchServiceImplTest {
         assertThat(basic).isEmpty();
         assertThat(diamondResult).singleElement().satisfies(candidate ->
                 assertThat(candidate.getGrade()).isEqualTo("DIAMOND"));
+    }
+
+    @Test
+    void lguVipAndVvipProfilesCanUseVipCockTierInFallbackCandidates() {
+        Benefit benefit = benefit(20L, "카페", "VIP콕 전용 할인");
+        BenefitCarrierPolicy policy = policy(benefit, 30L, Carrier.LGU, UsageType.BOTH);
+        CarrierTierBenefit vipCock = CarrierTierBenefit.builder().carrierTierBenefitId(40L)
+                .benefitCarrierPolicy(policy).grade(Grade.VIP콕).context("VIP콕 할인").isAll(false).build();
+        var reference = org.mockito.Mockito.mock(com.itplace.userapi.reference.ReferenceDataService.class);
+        when(reference.gradesForProfile(Carrier.LGU, Grade.VIP)).thenReturn(List.of(Grade.VIP, Grade.VIP콕));
+        when(reference.gradesForProfile(Carrier.LGU, Grade.VVIP)).thenReturn(List.of(Grade.VVIP, Grade.VIP콕));
+        benefitSearchService.setReferenceDataService(reference);
+        when(benefitRepository.findAllWithPartnerAndTierBenefits()).thenReturn(List.of(benefit));
+        when(benefitCarrierPolicyRepository.findAllByBenefitIn(anyList())).thenReturn(List.of(policy));
+        when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(anyList())).thenReturn(List.of(vipCock));
+
+        assertThat(benefitSearchService.browseChatCandidates(Carrier.LGU, Grade.VIP, "ANY", 10))
+                .singleElement().satisfies(candidate -> assertThat(candidate.getGrade()).isEqualTo(Grade.VIP콕.name()));
+        assertThat(benefitSearchService.browseChatCandidates(Carrier.LGU, Grade.VVIP, "ANY", 10))
+                .singleElement().satisfies(candidate -> assertThat(candidate.getGrade()).isEqualTo(Grade.VIP콕.name()));
     }
 
     @Test

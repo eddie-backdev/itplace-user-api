@@ -35,6 +35,10 @@ public record BenefitConditions(
         offers = offers == null ? List.of() : List.copyOf(offers);
         sourceBlocks = sourceBlocks == null ? List.of() : List.copyOf(sourceBlocks);
         normalizationIssues = normalizationIssues == null ? List.of() : List.copyOf(normalizationIssues);
+        if (offerResolution == null && (!offers.isEmpty() || channelDecision != null
+                || !sourceBlocks.isEmpty() || !normalizationIssues.isEmpty())) {
+            offerResolution = OfferResolution.UNRESOLVED;
+        }
     }
 
     public BenefitConditions forChannel(com.itplace.userapi.benefit.entity.enums.UsageType channel) {

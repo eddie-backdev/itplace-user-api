@@ -47,6 +47,17 @@ public class BenefitOfferMatcher {
         return conditions.withOffers(offers);
     }
 
+    public BenefitConditions forTier(BenefitConditions conditions, Carrier carrier, Grade grade, String offerKey) {
+        if (conditions == null || !hasKnownOffers(conditions)) return conditions;
+        if (offerKey == null || offerKey.isBlank()) return conditions.withOffers(List.of());
+        List<BenefitOffer> linked = conditions.offers().stream()
+                .filter(offer -> offerKey.equals(offer.key()))
+                .filter(offer -> scope(conditions.withOffers(List.of(offer)), null, carrier, List.of(grade))
+                        .offers().size() == 1)
+                .toList();
+        return conditions.withOffers(linked.size() == 1 ? linked : List.of());
+    }
+
     private boolean supportsChannel(BenefitOffer offer, UsageType channel) {
         return channel == null || offer.usageType() == channel || offer.usageType() == UsageType.BOTH;
     }

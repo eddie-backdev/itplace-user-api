@@ -34,7 +34,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 public class OpenAIServiceImpl implements OpenAIService {
     private static final int MAX_PROMPT_CANDIDATES = 15;
-    private static final int MAX_RECOMMENDATION_COUNT = 5;
     private static final int MAX_DESCRIPTION_CHARS = 160;
     private static final int MAX_CONTEXT_CHARS = 180;
     private static final int MAX_COMPLETION_TOKENS = 700;
@@ -72,7 +71,7 @@ public class OpenAIServiceImpl implements OpenAIService {
             return List.of();
         }
         String url = baseUrl + "/v1/chat/completions";
-        int recommendationCount = Math.min(Math.max(topK, 1), MAX_RECOMMENDATION_COUNT);
+        int recommendationCount = Math.min(Math.max(topK, 1), RecommendationService.MAX_RECOMMENDATION_COUNT);
         List<Candidate> rankedCandidates = deterministicRank(uf, cands);
         List<Candidate> promptCandidates = rankedCandidates.stream()
                 .limit(MAX_PROMPT_CANDIDATES)

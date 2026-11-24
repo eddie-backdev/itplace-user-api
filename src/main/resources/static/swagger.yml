@@ -2220,7 +2220,7 @@ paths:
           schema:
             type: integer
             default: 10
-          description: 추천 결과 개수 (기본값 10개)
+          description: 요청 범위 1~50 (생략 시 10). 실제 반환은 이용 가능한 추천 중 최대 5개이며, 1 요청 시 최대 1개를 반환합니다.
       responses:
         '200':
           description: 추천 결과 조회 성공

@@ -213,13 +213,13 @@ public class PartnerBenefitBrowseService {
             }
             List<CarrierTierBenefit> policyTiers = tierBenefitsByPolicy
                     .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of());
-            Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(policyTiers,
+            Set<TierBenefitSemantics.OfferContext> allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(policyTiers,
                     referenceDataService.allGradeMembers(policy.getCarrier()));
             List<TierBenefitInfo> tierBenefits = policyTiers.stream()
                     .filter(tier -> grades.isEmpty() || grades.contains(tier.getGrade()))
                     .map(tier -> new TierBenefitInfo(
                             policy.getCarrier(), tier.getGrade(), tier.getContext(),
-                            allGradeContexts.contains(tier.getContext())
+                            allGradeContexts.contains(TierBenefitSemantics.offerContext(tier))
                     ))
                     .toList();
             var scopedConditions = benefitOfferMatcher.scope(policy.getConditions(), null, policy.getCarrier(), grades);
@@ -361,13 +361,13 @@ public class PartnerBenefitBrowseService {
             }
             List<CarrierTierBenefit> policyTiers = tierBenefitsByPolicy
                     .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of());
-            Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(policyTiers,
+            Set<TierBenefitSemantics.OfferContext> allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(policyTiers,
                     referenceDataService.allGradeMembers(policy.getCarrier()));
             List<PreviewTierBenefit> tiers = policyTiers.stream()
                     .filter(tier -> grades.isEmpty() || grades.contains(tier.getGrade()))
                     .filter(tier -> normalize(tier.getContext()) != null)
                     .map(tier -> new PreviewTierBenefit(tier.getGrade(), tier.getContext().trim(),
-                            allGradeContexts.contains(tier.getContext())))
+                            allGradeContexts.contains(TierBenefitSemantics.offerContext(tier))))
                     .toList();
             Benefit benefit = policy.getBenefit();
             List<BenefitOffer> offers = benefitOfferMatcher.hasKnownOffers(policy.getConditions())
@@ -386,7 +386,7 @@ public class PartnerBenefitBrowseService {
             previews.put(policy.getCarrier(), new BenefitPreview(
                     policy.getCarrier(), benefit.getBenefitId(),
                     policy.getDisplayBenefitName(),
-                    policy.getBenefitPolicy() == null ? null : policy.getBenefitPolicy().getName(),
+                    policy.getDisplayBenefitLimit(),
                     previewUsageType,
                     tiers, previewSummaryBuilder.build(policy.getConditions(), policyTiers, policy.getCarrier(), grades, filter),
                     List.of(), null, null, List.of(), List.of(),

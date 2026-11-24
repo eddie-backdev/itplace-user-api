@@ -2,11 +2,38 @@ package com.itplace.userapi.benefit.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itplace.userapi.benefit.entity.enums.UsageType;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class BenefitConditionsPublicViewTest {
+    @Test
+    void keepsLegacyLimitsOnlyWhenExpandedPayloadIsAbsentOrEmpty() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        BenefitConditions legacy = mapper.readValue(
+                "{\"limits\":[\"월 1회\"],\"offers\":[],\"sourceBlocks\":[],\"normalizationIssues\":[]}",
+                BenefitConditions.class);
+        BenefitConditions unresolved = mapper.readValue(
+                "{\"limits\":[\"월 1회\"],\"offers\":[{\"key\":\"new-offer\"}]}",
+                BenefitConditions.class);
+        BenefitConditions unresolvedSourceBlocks = mapper.readValue(
+                "{\"limits\":[\"월 1회\"],\"sourceBlocks\":[{\"text\":\"source\"}]}",
+                BenefitConditions.class);
+        BenefitConditions unresolvedIssues = mapper.readValue(
+                "{\"limits\":[\"월 1회\"],\"normalizationIssues\":[{\"code\":\"UNASSIGNED\"}]}",
+                BenefitConditions.class);
+
+        assertThat(legacy.offerResolution()).isNull();
+        assertThat(legacy.publicView().limits()).containsExactly("월 1회");
+        assertThat(unresolved.offerResolution()).isEqualTo(OfferResolution.UNRESOLVED);
+        assertThat(unresolved.publicView().limits()).isEmpty();
+        assertThat(unresolvedSourceBlocks.offerResolution()).isEqualTo(OfferResolution.UNRESOLVED);
+        assertThat(unresolvedSourceBlocks.publicView().limits()).isEmpty();
+        assertThat(unresolvedIssues.offerResolution()).isEqualTo(OfferResolution.UNRESOLVED);
+        assertThat(unresolvedIssues.publicView().limits()).isEmpty();
+    }
+
     @Test
     void publicViewKeepsOnlyOfferChannelEvidenceAndRemovesInternalSourceLocations() {
         BenefitOffer selected = new BenefitOffer("vip", "VIP benefit", "VIP source", UsageType.ONLINE,

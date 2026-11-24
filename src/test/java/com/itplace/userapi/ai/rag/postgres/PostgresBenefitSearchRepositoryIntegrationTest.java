@@ -32,11 +32,11 @@ class PostgresBenefitSearchRepositoryIntegrationTest {
         jdbc.execute("DROP TABLE IF EXISTS benefit_search_document, membership_grade_match, membership_grade, carrierTierBenefit, benefitCarrierPolicy, benefit CASCADE");
         jdbc.execute("CREATE TABLE benefit(benefitId bigint PRIMARY KEY, active boolean)");
         jdbc.execute("CREATE TABLE benefitCarrierPolicy(benefitCarrierPolicyId bigint PRIMARY KEY, benefitId bigint, carrier text, active boolean)");
-        jdbc.execute("CREATE TABLE carrierTierBenefit(carrierTierBenefitId bigint PRIMARY KEY, benefitCarrierPolicyId bigint, grade text, isAll boolean, context text)");
+        jdbc.execute("CREATE TABLE carrierTierBenefit(carrierTierBenefitId bigint PRIMARY KEY, benefitCarrierPolicyId bigint, grade text, isAll boolean, context text, offerkey text)");
         jdbc.execute("CREATE TABLE membership_grade(code text PRIMARY KEY, carrier_code text NOT NULL, active boolean NOT NULL DEFAULT true, all_grade_member boolean NOT NULL DEFAULT true, UNIQUE(carrier_code, code))");
         jdbc.execute("CREATE TABLE membership_grade_match(carrier_code text NOT NULL, profile_grade text NOT NULL, benefit_grade text NOT NULL)");
-        jdbc.update("INSERT INTO membership_grade(code,carrier_code,all_grade_member) VALUES ('VIP','SKT',true),('GOLD','SKT',true)");
-        jdbc.update("INSERT INTO carrierTierBenefit VALUES (223,22,'VIP',false,'all')");
+        jdbc.update("INSERT INTO membership_grade(code,carrier_code,all_grade_member) VALUES ('VIP','SKT',true),('GOLD','SKT',true),('SILVER','SKT',true)");
+        jdbc.update("INSERT INTO carrierTierBenefit VALUES (223,22,'VIP',false,'all',null)");
         jdbc.execute("""
                 CREATE TABLE benefit_search_document(document_id text, benefitid bigint, benefitcarrierpolicyid bigint,
                   carriertierbenefitid bigint, carrier text, grade text, is_all_grade boolean, usage_type text,
@@ -44,7 +44,7 @@ class PostgresBenefitSearchRepositoryIntegrationTest {
                 """);
         jdbc.update("INSERT INTO benefit VALUES (1, true), (2, true), (3, false), (4,true)");
         jdbc.update("INSERT INTO benefitCarrierPolicy VALUES (11,1,'SKT',true),(22,2,'SKT',true),(33,3,'SKT',true),(44,4,'SKT',true)");
-        jdbc.update("INSERT INTO carrierTierBenefit(carrierTierBenefitId,benefitCarrierPolicyId,grade,isAll,context) VALUES (111,11,'VIP',false,'one'),(222,22,'GOLD',true,'all'),(333,33,'VIP',false,'one')");
+        jdbc.update("INSERT INTO carrierTierBenefit(carrierTierBenefitId,benefitCarrierPolicyId,grade,isAll,context,offerkey) VALUES (111,11,'VIP',false,'one',null),(222,22,'GOLD',true,'all',null),(333,33,'VIP',false,'one',null),(224,22,'SILVER',false,'all',null)");
         String vector = vector(1f);
         jdbc.update("INSERT INTO benefit_search_document VALUES ('benefit:1:policy:11:tier:111',1,11,111,'SKT','VIP',false,'BOTH',true,'스타벅스 아메리카노 무료', '{\"tags\":[\"커피\"],\"businessType\":\"cafe\"}', ?::vector,'text-embedding-3-small',1536,'benefit-carrier-grade-rag-v3')", vector);
         jdbc.update("INSERT INTO benefit_search_document VALUES ('benefit:2:policy:22:tier:222',2,22,222,'SKT','GOLD',true,'BOTH',true,'커피 할인', '{\"tags\":[\"카페\"],\"businessType\":\"cafe\"}', ?::vector,'text-embedding-3-small',1536,'benefit-carrier-grade-rag-v3')", vector);
@@ -108,6 +108,23 @@ class PostgresBenefitSearchRepositoryIntegrationTest {
             assertThat(hit.tierBenefitId()).isNull();
             assertThat(hit.metadata().path("offerKey").asText()).isEqualTo("vip-source");
         });
+    }
+
+    @Test
+    void allGradeCoverageCannotCombineDifferentOffersWithSameContext() {
+        jdbc.update("INSERT INTO benefit VALUES (50,true)");
+        jdbc.update("INSERT INTO benefitCarrierPolicy VALUES (550,50,'SKT',true)");
+        jdbc.update("INSERT INTO carrierTierBenefit VALUES (551,550,'VIP',true,'same context','offer-a'),(552,550,'GOLD',true,'same context','offer-b'),(553,550,'SILVER',false,'same context','offer-b')");
+        jdbc.update("""
+                INSERT INTO benefit_search_document VALUES
+                  ('benefit:50:policy:550:tier:551',50,550,551,'SKT','VIP',true,'both',true,'cross offer coverage',
+                    '{"documentId":"benefit:50:policy:550:tier:551"}', null,'text-embedding-3-small',1536,'benefit-carrier-grade-rag-v3'),
+                  ('benefit:50:policy:550:tier:552',50,550,552,'SKT','GOLD',true,'both',true,'cross offer coverage',
+                    '{"documentId":"benefit:50:policy:550:tier:552"}', null,'text-embedding-3-small',1536,'benefit-carrier-grade-rag-v3')
+                """);
+
+        assertThat(repository.searchLexical("cross offer coverage", Carrier.SKT, Grade.of("SILVER"),
+                BenefitSearchCondition.none(), 10)).isEmpty();
     }
 
     @Test
@@ -198,7 +215,7 @@ class PostgresBenefitSearchRepositoryIntegrationTest {
         long tierId = benefitId + 100;
         jdbc.update("INSERT INTO benefit VALUES (?, true)", benefitId);
         jdbc.update("INSERT INTO benefitCarrierPolicy VALUES (?, ?, 'SKT', true)", policyId, benefitId);
-        jdbc.update("INSERT INTO carrierTierBenefit VALUES (?, ?, 'VIP', false, '등급 혜택')", tierId, policyId);
+        jdbc.update("INSERT INTO carrierTierBenefit VALUES (?, ?, 'VIP', false, '등급 혜택', null)", tierId, policyId);
         jdbc.update("""
                 INSERT INTO benefit_search_document VALUES (?, ?, ?, ?, 'SKT', 'VIP', false, 'both', true,
                   '편의점 할인 혜택', ?::jsonb, null, 'text-embedding-3-small', 1536, 'benefit-carrier-grade-rag-v3')

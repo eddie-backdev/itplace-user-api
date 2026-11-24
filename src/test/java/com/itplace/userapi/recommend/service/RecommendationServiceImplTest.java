@@ -72,21 +72,21 @@ class RecommendationServiceImplTest {
                 .thenReturn(Optional.empty());
         when(generationLock.acquire(7L)).thenReturn(() -> { });
         when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
-        when(aiService.vectorSearch(userFeature, 10)).thenReturn(List.of(candidate));
-        when(aiService.rerankAndExplain(userFeature, List.of(candidate), 3)).thenReturn(List.of(generated));
+        when(aiService.vectorSearch(userFeature, 20)).thenReturn(List.of(candidate));
+        when(aiService.rerankAndExplain(userFeature, List.of(candidate), 5)).thenReturn(List.of(generated));
 
         List<Recommendations> result = recommendationService.recommend(7L, 3);
 
         assertThat(result).containsExactly(generated);
         assertThat(generated.getRequestId()).startsWith("rec-req-7-");
         assertThat(generated.getImpressionId()).startsWith("rec-imp-7-1-");
-        assertThat(generated.getAlgorithmVersion()).isEqualTo("personalized-es-quality-v1");
+        assertThat(generated.getAlgorithmVersion()).isEqualTo("personalized-es-quality-v2");
         assertThat(generated.getFallbackFlags()).isEmpty();
-        verify(persistenceService).replaceActiveBatch(7L, List.of(generated), "personalized-es-quality-v1");
+        verify(persistenceService).replaceActiveBatch(7L, List.of(generated), "personalized-es-quality-v2");
         verify(traceRecorder).recordGenerated(
                 eq(7L),
                 argThat(requestId -> requestId.startsWith("rec-req-7-")),
-                eq("personalized-es-quality-v1"),
+                eq("personalized-es-quality-v2"),
                 eq(List.of(candidate)),
                 eq(result),
                 argThat(latency -> latency.containsKey("total")),
@@ -96,11 +96,57 @@ class RecommendationServiceImplTest {
     }
 
     @Test
+    void smallRequestBuildsFullBatchButReturnsAndTracesOnlyRequestedCount() {
+        UserFeature userFeature = userFeature();
+        Candidate candidate = Candidate.builder().benefitId(1L).partnerName("파트너").build();
+        List<Recommendations> generated = java.util.stream.IntStream.rangeClosed(1, 5)
+                .mapToObj(rank -> Recommendations.builder().rank(rank).partnerName("파트너 " + rank)
+                        .reason("추천 이유").benefitIds(List.of((long) rank)).candidateSource("es_vector").build())
+                .toList();
+        when(persistenceService.findLatestActiveBatch(eq(7L), any(LocalDateTime.class))).thenReturn(Optional.empty());
+        when(generationLock.acquire(7L)).thenReturn(() -> { });
+        when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
+        when(aiService.vectorSearch(userFeature, 20)).thenReturn(List.of(candidate));
+        when(aiService.rerankAndExplain(userFeature, List.of(candidate), 5)).thenReturn(generated);
+
+        List<Recommendations> result = recommendationService.recommend(7L, 1);
+
+        assertThat(result).hasSize(1);
+        verify(persistenceService).replaceActiveBatch(7L, generated, "personalized-es-quality-v2");
+        verify(traceRecorder).recordGenerated(eq(7L), any(), eq("personalized-es-quality-v2"),
+                eq(List.of(candidate)), eq(result), any(), eq("miss"), eq("expired_or_absent"));
+    }
+
+    @Test
+    void oldShortCacheIsRebuiltBeforeReturningARequestForMoreItems() {
+        UserFeature userFeature = userFeature();
+        Candidate candidate = Candidate.builder().benefitId(1L).partnerName("파트너").build();
+        Recommendations oldCached = recommendation("old short cache", "es_vector");
+        List<Recommendations> generated = java.util.stream.IntStream.rangeClosed(1, 5)
+                .mapToObj(rank -> Recommendations.builder().rank(rank).partnerName("파트너 " + rank)
+                        .reason("추천 이유").benefitIds(List.of((long) rank)).candidateSource("es_vector").build())
+                .toList();
+        LocalDateTime createdAt = LocalDateTime.now().minusMinutes(10);
+        when(persistenceService.findLatestActiveBatch(eq(7L), any(LocalDateTime.class)))
+                .thenReturn(Optional.of(new CachedBatch(createdAt, List.of(oldCached), "personalized-es-quality-v1")));
+        when(generationLock.acquire(7L)).thenReturn(() -> { });
+        when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
+        when(aiService.vectorSearch(userFeature, 20)).thenReturn(List.of(candidate));
+        when(aiService.rerankAndExplain(userFeature, List.of(candidate), 5)).thenReturn(generated);
+
+        List<Recommendations> result = recommendationService.recommend(7L, 5);
+
+        assertThat(result).hasSize(5).extracting(Recommendations::getPartnerName)
+                .doesNotContain("old short cache");
+        verify(persistenceService).replaceActiveBatch(7L, generated, "personalized-es-quality-v2");
+    }
+
+    @Test
     void recommend_returnsLatestBatchWithoutAcquiringLockWhenCacheIsValid() {
         LocalDateTime createdAt = LocalDateTime.now().minusMinutes(10);
         Recommendations cached = recommendation("최신파트너", "es_vector");
         when(persistenceService.findLatestActiveBatch(eq(7L), any(LocalDateTime.class)))
-                .thenReturn(Optional.of(new CachedBatch(createdAt, List.of(cached))));
+                .thenReturn(Optional.of(new CachedBatch(createdAt, List.of(cached), "personalized-es-quality-v2")));
         when(logRepository.findLatestLoggingAtByEvents(eq(7L), anyList())).thenReturn(Optional.empty());
         when(persistenceService.hasPersistentInvalidatingSignalAfter(7L, createdAt)).thenReturn(false);
 
@@ -118,7 +164,7 @@ class RecommendationServiceImplTest {
         verify(traceRecorder).recordCached(
                 eq(7L),
                 argThat(requestId -> requestId.startsWith("rec-req-7-")),
-                eq("personalized-es-quality-v1"),
+                eq("personalized-es-quality-v2"),
                 eq(result),
                 argThat(latency -> latency.containsKey("total")),
                 eq("none")
@@ -131,7 +177,7 @@ class RecommendationServiceImplTest {
         Recommendations cached = recommendation("먼저 생성된 파트너", "es_vector");
         when(persistenceService.findLatestActiveBatch(eq(7L), any(LocalDateTime.class)))
                 .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(new CachedBatch(createdAt, List.of(cached))));
+                .thenReturn(Optional.of(new CachedBatch(createdAt, List.of(cached), "personalized-es-quality-v2")));
         when(generationLock.acquire(7L)).thenReturn(() -> { });
         when(logRepository.findLatestLoggingAtByEvents(eq(7L), anyList())).thenReturn(Optional.empty());
         when(persistenceService.hasPersistentInvalidatingSignalAfter(7L, createdAt)).thenReturn(false);
@@ -154,7 +200,7 @@ class RecommendationServiceImplTest {
                 .thenReturn(Optional.empty());
         when(generationLock.acquire(7L)).thenReturn(lease);
         when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
-        when(aiService.vectorSearch(userFeature, 10)).thenThrow(new IllegalStateException("embedding failed"));
+        when(aiService.vectorSearch(userFeature, 20)).thenThrow(new IllegalStateException("embedding failed"));
 
         assertThatThrownBy(() -> recommendationService.recommend(7L, 3))
                 .isInstanceOf(IllegalStateException.class)
@@ -186,12 +232,12 @@ class RecommendationServiceImplTest {
                 .thenReturn(Optional.empty());
         when(generationLock.acquire(7L)).thenReturn(() -> { });
         when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
-        when(aiService.vectorSearch(userFeature, 10)).thenReturn(List.of());
-        when(aiService.rerankAndExplain(userFeature, List.of(), 3)).thenReturn(List.of());
+        when(aiService.vectorSearch(userFeature, 20)).thenReturn(List.of());
+        when(aiService.rerankAndExplain(userFeature, List.of(), 5)).thenReturn(List.of());
 
         assertThat(recommendationService.recommend(7L, 3)).isEmpty();
 
-        verify(persistenceService).replaceActiveBatch(7L, List.of(), "personalized-es-quality-v1");
+        verify(persistenceService).replaceActiveBatch(7L, List.of(), "personalized-es-quality-v2");
         verify(traceRecorder).recordGenerated(eq(7L), any(), any(), eq(List.of()), eq(List.of()), any(), eq("miss"), eq("expired_or_absent"));
     }
 
@@ -229,18 +275,18 @@ class RecommendationServiceImplTest {
         when(persistenceService.hasPersistentInvalidatingSignalAfter(eq(7L), any(LocalDateTime.class)))
                 .thenReturn(false);
         when(userFeatureService.loadUserFeature(7L)).thenReturn(userFeature);
-        when(aiService.vectorSearch(userFeature, 10)).thenAnswer(invocation -> {
+        when(aiService.vectorSearch(userFeature, 20)).thenAnswer(invocation -> {
             firstGenerationStarted.countDown();
             assertThat(allowFirstGeneration.await(2, TimeUnit.SECONDS)).isTrue();
             return List.of(candidate);
         });
-        when(aiService.rerankAndExplain(userFeature, List.of(candidate), 3)).thenReturn(List.of(generated));
+        when(aiService.rerankAndExplain(userFeature, List.of(candidate), 5)).thenReturn(List.of(generated));
         org.mockito.Mockito.doAnswer(invocation -> {
             List<Recommendations> saved = invocation.getArgument(1);
             Recommendations persisted = recommendation(saved.get(0).getPartnerName(), saved.get(0).getCandidateSource());
-            storedBatch.set(new CachedBatch(LocalDateTime.now(), List.of(persisted)));
+            storedBatch.set(new CachedBatch(LocalDateTime.now(), List.of(persisted), "personalized-es-quality-v2"));
             return null;
-        }).when(persistenceService).replaceActiveBatch(eq(7L), anyList(), eq("personalized-es-quality-v1"));
+        }).when(persistenceService).replaceActiveBatch(eq(7L), anyList(), eq("personalized-es-quality-v2"));
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
@@ -257,10 +303,10 @@ class RecommendationServiceImplTest {
             assertThat(secondResult).singleElement();
             assertThat(List.of(firstResult.get(0), secondResult.get(0)))
                     .anySatisfy(result -> assertThat(result.getFallbackFlags()).containsExactly("cached_recommendation"));
-            verify(aiService, times(1)).vectorSearch(userFeature, 10);
-            verify(aiService, times(1)).rerankAndExplain(userFeature, List.of(candidate), 3);
+            verify(aiService, times(1)).vectorSearch(userFeature, 20);
+            verify(aiService, times(1)).rerankAndExplain(userFeature, List.of(candidate), 5);
             verify(persistenceService, times(1))
-                    .replaceActiveBatch(eq(7L), anyList(), eq("personalized-es-quality-v1"));
+                    .replaceActiveBatch(eq(7L), anyList(), eq("personalized-es-quality-v2"));
             verify(traceRecorder, times(1)).recordGenerated(anyLong(), any(), any(), anyList(), anyList(), any(), any(), any());
             verify(traceRecorder, times(1)).recordCached(anyLong(), any(), any(), anyList(), any(), any());
         } finally {

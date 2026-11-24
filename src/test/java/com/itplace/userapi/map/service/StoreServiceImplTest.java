@@ -690,6 +690,26 @@ class StoreServiceImplTest {
                 .isSorted();
     }
 
+    @Test
+    void nearbyRoutesKeepZeroLatitudeAsAValidCoordinate() {
+        Partner partner = Partner.builder().partnerId(10L).partnerName("카페 파트너").build();
+        Store store = store(1L, "카페 파트너 매장", partner, point(127.01, 37.50));
+        when(storeRepository.findStoreIdsInRadius(0, 127, 10_000, 900)).thenReturn(List.of(1L));
+        when(storeRepository.findStoreIdsByCategoryWithinRadius("카페", 0, 127, 10_000, 900))
+                .thenReturn(List.of(1L));
+        when(storeRepository.findAllByStoreIdInWithPartner(anyList())).thenReturn(List.of(store));
+        when(partnerBenefitCacheService.getBenefitsBatch(anyList())).thenReturn(Map.of());
+
+        List<StoreDetailResponse> allCategories = storeService.findNearby(0, 127, 10_000, 0, 127);
+        List<StoreDetailResponse> selectedCategory = storeService.findNearbyByCategory(
+                0, 127, 10_000, "카페", 0, 127);
+
+        assertThat(allCategories).hasSize(1);
+        assertThat(allCategories.get(0).getDistance()).isGreaterThan(0.0);
+        assertThat(selectedCategory).singleElement()
+                .extracting(StoreDetailResponse::getDistance).isEqualTo(allCategories.get(0).getDistance());
+    }
+
 
     @Test
     void findNearby_fetchesBoundedCandidateWindowAndSamplesFinalLimitInServer() {

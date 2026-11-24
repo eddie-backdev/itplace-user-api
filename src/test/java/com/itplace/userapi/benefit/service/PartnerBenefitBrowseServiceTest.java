@@ -194,7 +194,7 @@ class PartnerBenefitBrowseServiceTest {
                 assertThat(preview.carrier()).isEqualTo(Carrier.SKT);
                 assertThat(preview.benefitId()).isEqualTo(20L);
                 assertThat(preview.benefitName()).isEqualTo("SKT 혜택");
-                assertThat(preview.benefitLimit()).isNull();
+                assertThat(preview.benefitLimit()).isEqualTo("이용 방법에서 횟수·한도 확인");
                 assertThat(preview.tierBenefits()).singleElement().satisfies(tier ->
                         assertThat(tier.context()).isEqualTo("SKT 할인"));
             });
@@ -273,7 +273,7 @@ class PartnerBenefitBrowseServiceTest {
                     .containsExactly(Carrier.SKT, Carrier.LGU);
             assertThat(previews.get(0).benefitId()).isEqualTo(20L);
             assertThat(previews.get(0).benefitName()).isEqualTo("첫 SKT 혜택");
-            assertThat(previews.get(0).benefitLimit()).isEqualTo("제한없음");
+            assertThat(previews.get(0).benefitLimit()).isEqualTo("이용 방법에서 횟수·한도 확인");
             assertThat(previews.get(0).usageType()).isEqualTo(UsageType.BOTH);
             assertThat(previews.get(0).offers()).isEmpty();
             assertThat(previews.get(0).summary()).isNotNull();

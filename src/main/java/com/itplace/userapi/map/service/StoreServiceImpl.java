@@ -489,34 +489,9 @@ public class StoreServiceImpl implements StoreService {
         }
 
         List<Long> sampledStoreIds = sampleStoreIds(allStoreIds);
-        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds));
+        List<Store> sampledStores = storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds);
 
-        List<Long> partnerIds = limitedStores.stream()
-                .map(store -> store.getPartner().getPartnerId())
-                .distinct()
-                .toList();
-
-        // [변경] 기존: benefitRepository.findAllByPartner_PartnerIdIn + tierBenefitRepository.findAllByBenefitIn 으로
-        //        allBenefits → partnerToBenefitsMap, allTierBenefits → benefitToTiersMap 두 개의 맵을 구성.
-        // 변경 후: partnerBenefitCacheService.getBenefits(partnerId) 호출 한 번으로 혜택+등급혜택 정보를
-        //         BenefitCacheDto에 묶어 가져옴. Redis에 캐싱되어 있으면 DB 조회 없이 반환.
-        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
-
-        return limitedStores.stream()
-                .map(store -> {
-                    Partner partner = store.getPartner();
-                    List<BenefitCacheDto> finalBenefits = selectBenefits(
-                            partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
-                            store.getStoreName()
-                    );
-                    // [변경] 기존: benefitToTiersMap에서 benefitId로 TierBenefit을 조회 후 TierBenefitDto로 변환.
-                    // 변경 후: BenefitCacheDto 안에 TierBenefitDto 리스트가 이미 포함되어 있으므로
-                    //         getTierBenefits()로 바로 꺼내서 flatMap.
-                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
-                    double distance = calculateDistance(userLat, userLng,
-                            store.getLocation().getY(), store.getLocation().getX());
-                    return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
-                })
+        return toStoreDetailResponses(sampledStores, userLat, userLng, null, true).stream()
                 .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
                 .toList();
     }
@@ -634,32 +609,9 @@ public class StoreServiceImpl implements StoreService {
         }
 
         List<Long> sampledStoreIds = sampleStoreIds(storeIds);
-        List<Store> limitedStores = filterStoresMatchedToPartner(storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds));
-        if (limitedStores.isEmpty()) {
-            return Collections.emptyList();
-        }
+        List<Store> sampledStores = storeRepository.findAllByStoreIdInWithPartner(sampledStoreIds);
 
-        List<Long> partnerIds = limitedStores.stream()
-                .map(store -> store.getPartner().getPartnerId())
-                .distinct()
-                .toList();
-
-        Map<Long, List<BenefitCacheDto>> partnerToBenefitsMap = partnerBenefitCacheService.getBenefitsBatch(partnerIds);
-
-        return limitedStores.stream()
-                .map(store -> {
-                    Partner partner = store.getPartner();
-                    List<BenefitCacheDto> finalBenefits = selectBenefits(
-                            partnerToBenefitsMap.getOrDefault(partner.getPartnerId(), List.of()),
-                            store.getStoreName()
-                    );
-                    // [변경] 기존: benefitToTiersMap에서 조회 후 TierBenefitDto로 변환.
-                    // 변경 후: BenefitCacheDto.getTierBenefits()로 이미 변환된 DTO 리스트를 바로 사용.
-                    List<TierBenefitDto> tierBenefitDtos = toDistinctTierBenefits(finalBenefits);
-                    double distance = calculateDistance(userLat, userLng,
-                            store.getLocation().getY(), store.getLocation().getX());
-                    return StoreDetailResponse.of(store, partner, tierBenefitDtos, distance);
-                })
+        return toStoreDetailResponses(sampledStores, userLat, userLng, null, true).stream()
                 .sorted(Comparator.comparing(StoreDetailResponse::getDistance))
                 .toList();
     }

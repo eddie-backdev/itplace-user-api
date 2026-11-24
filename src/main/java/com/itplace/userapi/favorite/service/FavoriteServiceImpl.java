@@ -6,6 +6,8 @@ import com.itplace.userapi.benefit.dto.response.PartnerBenefitListResponse.Previ
 import com.itplace.userapi.benefit.entity.Benefit;
 import com.itplace.userapi.benefit.entity.BenefitCarrierPolicy;
 import com.itplace.userapi.benefit.entity.CarrierTierBenefit;
+import com.itplace.userapi.benefit.entity.enums.Carrier;
+import com.itplace.userapi.benefit.entity.enums.Grade;
 import com.itplace.userapi.benefit.service.TierBenefitSemantics;
 import com.itplace.userapi.benefit.service.BenefitPreviewSummaryBuilder;
 import com.itplace.userapi.reference.ReferenceDataService;
@@ -227,6 +229,7 @@ public class FavoriteServiceImpl implements FavoriteService {
         Map<Long, List<CarrierTierBenefit>> tierRowsByPolicy = carrierTierBenefitRepository
                 .findAllByBenefitCarrierPolicyIn(policies).stream()
                 .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
+        Map<Carrier, List<Grade>> allGradesByCarrier = allGradeMembersByCarrier(policies);
 
         return policies.stream()
                 .collect(Collectors.groupingBy(
@@ -237,8 +240,8 @@ public class FavoriteServiceImpl implements FavoriteService {
                                 policy.getDisplayBenefitName(),
                                 policy.getDisplayBenefitLimit(),
                                 policy.getUsageType(),
-                                tierRowsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()).stream()
-                                        .map(tier -> new PreviewTierBenefit(tier.getGrade(), tier.getContext(), tier.getIsAll())).toList(),
+                                favoritePreviewTiers(tierRowsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()),
+                                        allGradesByCarrier.getOrDefault(policy.getCarrier(), List.of())),
                                 previewSummaryBuilder.build(policy.getConditions(),
                                         tierRowsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()),
                                         policy.getCarrier(), List.of()),
@@ -269,7 +272,8 @@ public class FavoriteServiceImpl implements FavoriteService {
         Partner partner = benefit.getPartner();
 
         List<CarrierTierBenefit> carrierTiers = carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies);
-        Map<Long, Set<String>> allGradeContextsByPolicy = new java.util.HashMap<>();
+        Map<Carrier, List<Grade>> allGradesByCarrier = allGradeMembersByCarrier(policies);
+        Map<Long, Set<TierBenefitSemantics.OfferContext>> allGradeContextsByPolicy = new java.util.HashMap<>();
         for (BenefitCarrierPolicy policy : policies) {
             List<CarrierTierBenefit> policyTiers = carrierTiers.stream()
                     .filter(tier -> tier.getBenefitCarrierPolicy() == policy
@@ -278,8 +282,8 @@ public class FavoriteServiceImpl implements FavoriteService {
                             tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId())))
                     .toList();
             allGradeContextsByPolicy.put(policy.getBenefitCarrierPolicyId(),
-                    TierBenefitSemantics.allGradeContexts(policyTiers,
-                            referenceDataService.allGradeMembers(policy.getCarrier())));
+                    TierBenefitSemantics.allGradeOfferContexts(policyTiers,
+                            allGradesByCarrier.getOrDefault(policy.getCarrier(), List.of())));
         }
         List<TierBenefitDetail> tierDtos = carrierTiers.stream()
                 .map(tb -> TierBenefitDetail.builder()
@@ -287,7 +291,7 @@ public class FavoriteServiceImpl implements FavoriteService {
                         .grade(tb.getGrade())
                         .isAll(allGradeContextsByPolicy.getOrDefault(
                                 tb.getBenefitCarrierPolicy().getBenefitCarrierPolicyId(), Set.of())
-                                .contains(tb.getContext()))
+                                .contains(TierBenefitSemantics.offerContext(tb)))
                         .context(tb.getContext())
                         .discountValue(tb.getDiscountValue())
                         .build())
@@ -317,6 +321,20 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .tiers(tierDtos)
                 .carrierPolicies(carrierPolicies)
                 .build();
+    }
+
+    private Map<Carrier, List<Grade>> allGradeMembersByCarrier(List<BenefitCarrierPolicy> policies) {
+        Map<Carrier, List<Grade>> members = new java.util.EnumMap<>(Carrier.class);
+        policies.stream().map(BenefitCarrierPolicy::getCarrier).filter(java.util.Objects::nonNull).distinct()
+                .forEach(carrier -> members.put(carrier, referenceDataService.allGradeMembers(carrier)));
+        return members;
+    }
+
+    private List<PreviewTierBenefit> favoritePreviewTiers(List<CarrierTierBenefit> tiers, List<Grade> allGrades) {
+        Set<TierBenefitSemantics.OfferContext> allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(
+                tiers, allGrades);
+        return tiers.stream().map(tier -> new PreviewTierBenefit(tier.getGrade(), tier.getContext(),
+                allGradeContexts.contains(TierBenefitSemantics.offerContext(tier)))).toList();
     }
 
 

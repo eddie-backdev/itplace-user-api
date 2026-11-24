@@ -247,7 +247,7 @@ class BenefitImportServiceImplTest {
         var item = request.getBenefits().get(0);
         item.setConditions(importConditions(List.of(
                 importOffer("grouped", "VIP 혜택", "VIP 10% 할인<br>VIP 포인트 적립", List.of("SKT_VIP")),
-                importOffer("space", "공백 혜택", "VIP\u00a010% 할인", List.of("SKT_VIP")),
+                importOffer("space", "공백 혜택", "VIP 10%할인", List.of("SKT_VIP")),
                 importOffer("choice", "VIP 초이스 — VIP",
                         "[VIP 초이스]\n▶대상: VIP\n- 혜택: 밀리의 서재 3개월 무료", List.of("SKT_VIP")))));
         item.setTierBenefits(List.of(
@@ -786,6 +786,12 @@ class BenefitImportServiceImplTest {
         assertThat(parsed.getBenefits().get(0).getSourceCapturedAt()).isEqualTo(Instant.parse("2026-10-19T07:30:00Z"));
         assertThat(parsed.getBenefits().get(0).getSourceLimitText()).isEqualTo("일 1회, 월 2회");
         assertThat(parsed.getBenefits().get(0).getConditions().limits()).containsExactly("일 1회", "월 2회");
+        assertThat(parsed.getBenefits().get(0).getConditions().offerResolution()).isNull();
+        var roundTrippedConditions = objectMapper.readValue(
+                objectMapper.writeValueAsString(parsed.getBenefits().get(0).getConditions()),
+                com.itplace.userapi.benefit.dto.BenefitConditions.class);
+        assertThat(roundTrippedConditions.limits()).containsExactly("일 1회", "월 2회");
+        assertThat(roundTrippedConditions.offerResolution()).isNull();
 
         service.importSnapshot(parsed, "internal-key");
 
@@ -875,7 +881,7 @@ class BenefitImportServiceImplTest {
         archived.setUsageType(UsageType.ONLINE);
         archived.setPublicationStatus(com.itplace.userapi.benefit.entity.enums.PublicationStatus.APPROVED);
         archived.setSourceUrl("https://unverified.example/new");
-        archived.setTierBenefits(List.of(tier(Grade.SKT_VIP, "changed tier", false)));
+        archived.setTierBenefits(List.of(tier(Grade.DIAMOND, "changed tier", false)));
         request.setBenefits(new java.util.ArrayList<>(request.getBenefits()));
         request.getBenefits().add(archived);
 
@@ -898,11 +904,12 @@ class BenefitImportServiceImplTest {
                 .conditions(new BenefitConditions(List.of("old source"), List.of(), List.of("historic limit"), List.of(), List.of()))
                 .build();
         CarrierTierBenefit oldTier = CarrierTierBenefit.builder().carrierTierBenefitId(92L)
-                .benefitCarrierPolicy(policy).grade(Grade.SKT_VIP).context("historic tier").build();
+                .benefitCarrierPolicy(policy).grade(Grade.DIAMOND).context("historic tier").build();
         when(partnerRepository.findAllByPartnerNameIn(List.of("제휴사"))).thenReturn(List.of(partner));
         when(benefitCarrierPolicyRepository.findAllByCarrierAndSourceKeyInWithBenefit(
                 Carrier.SKT, List.of("skt-benefit-1", "archived-existing"))).thenReturn(List.of(policy));
         when(carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(any())).thenReturn(List.of(oldTier));
+        lenient().when(referenceDataService.isBenefitGrade(Carrier.SKT, Grade.DIAMOND)).thenReturn(false);
 
         BenefitSnapshotImportResponse response = service.importSnapshot(request, "internal-key");
 
@@ -927,6 +934,17 @@ class BenefitImportServiceImplTest {
         assertThat(response.getTierBenefitCount()).isEqualTo(1);
         verify(carrierTierBenefitRepository).saveAll(argThat(items ->
                 java.util.stream.StreamSupport.stream(items.spliterator(), false).noneMatch(item -> item == oldTier)));
+    }
+
+    @Test
+    void rejectsRetiredGradeOnActiveUpsert() {
+        BenefitSnapshotImportRequest request = request();
+        request.getBenefits().get(0).setTierBenefits(List.of(tier(Grade.DIAMOND, "retired grade", false)));
+        when(referenceDataService.isBenefitGrade(Carrier.SKT, Grade.DIAMOND)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.importSnapshot(request, "internal-key"))
+                .isInstanceOf(com.itplace.userapi.benefit.exception.InvalidEnumException.class);
+        verify(partnerRepository, never()).saveAll(any());
     }
 
     @Test

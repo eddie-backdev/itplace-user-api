@@ -290,12 +290,12 @@ public class BenefitServiceImpl implements BenefitService {
 
                     List<CarrierTierBenefit> policyTiers = tierMap
                             .getOrDefault(policy.getBenefitCarrierPolicyId(), Collections.emptyList());
-                    Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(
+                    Set<TierBenefitSemantics.OfferContext> allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(
                             policyTiers, referenceDataService.allGradeMembers(policy.getCarrier()));
                     List<TierBenefitInfo> tierBenefits = policyTiers.stream()
                             .map(tb -> new TierBenefitInfo(
                                     policy.getCarrier(), tb.getGrade(), tb.getContext(),
-                                    allGradeContexts.contains(tb.getContext())))
+                                    allGradeContexts.contains(TierBenefitSemantics.offerContext(tb))))
                             .toList();
 
                     return BenefitListResponse.builder()
@@ -660,12 +660,12 @@ public class BenefitServiceImpl implements BenefitService {
     }
 
     private List<TierBenefitInfo> toPolicyTierBenefits(BenefitCarrierPolicy policy, List<CarrierTierBenefit> tiers) {
-        Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(tiers,
+        Set<TierBenefitSemantics.OfferContext> allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(tiers,
                 referenceDataService.allGradeMembers(policy.getCarrier()));
         return tiers.stream().map(tier -> {
             BenefitContextSplitter.SplitContext split = BenefitContextSplitter.split(tier.getContext());
             return new TierBenefitInfo(policy.getCarrier(), tier.getGrade(), tier.getContext(), split.onlineContext(),
-                    split.offlineContext(), allGradeContexts.contains(tier.getContext()));
+                    split.offlineContext(), allGradeContexts.contains(TierBenefitSemantics.offerContext(tier)));
         }).toList();
     }
 
@@ -728,9 +728,9 @@ public class BenefitServiceImpl implements BenefitService {
                 .toList();
         Map<Long, BenefitCarrierPolicy> policyById = policies.stream()
                 .collect(Collectors.toMap(BenefitCarrierPolicy::getBenefitCarrierPolicyId, policy -> policy));
-        Map<Long, Set<String>> allGradeContextsByPolicy = policies.stream()
+        Map<Long, Set<TierBenefitSemantics.OfferContext>> allGradeContextsByPolicy = policies.stream()
                 .collect(Collectors.toMap(BenefitCarrierPolicy::getBenefitCarrierPolicyId,
-                        policy -> TierBenefitSemantics.allGradeContexts(tiersByPolicy
+                        policy -> TierBenefitSemantics.allGradeOfferContexts(tiersByPolicy
                                 .getOrDefault(policy.getBenefitCarrierPolicyId(), List.of()),
                                 referenceDataService.allGradeMembers(policy.getCarrier()))));
         Map<String, TierBenefitInfo> distinct = new LinkedHashMap<>();
@@ -747,7 +747,7 @@ public class BenefitServiceImpl implements BenefitService {
                     splitContext.onlineContext(),
                     splitContext.offlineContext(),
                     allGradeContextsByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), Set.of())
-                            .contains(tierBenefit.getContext())
+                            .contains(TierBenefitSemantics.offerContext(tierBenefit))
             );
             String key = String.join("|",
                     String.valueOf(info.getCarrier()),

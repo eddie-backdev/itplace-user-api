@@ -19,9 +19,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RecommendationServiceImpl implements RecommendationService {
     private static final int EXPIRED_DAYS = 1;
-    private static final int MIN_CANDIDATE_SIZE = 10;
-    private static final int MAX_CANDIDATE_SIZE = 20;
-    private static final String ALGORITHM_VERSION = "personalized-es-quality-v1";
+    private static final String ALGORITHM_VERSION = "personalized-es-quality-v2";
+    private static final int CANDIDATE_SIZE = 20;
     private static final List<String> CACHE_INVALIDATING_EVENTS = List.of(
             "click",
             "detail",
@@ -51,27 +50,31 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Override
     public List<Recommendations> recommend(Long userId, int topK) {
         long startedAt = System.nanoTime();
+        int requestedCount = Math.min(Math.max(topK, 1), RecommendationService.MAX_RECOMMENDATION_COUNT);
         String requestId = newRequestId(userId);
         LocalDateTime threshold = LocalDateTime.now().minusDays(EXPIRED_DAYS); // n일 기준으로 추천 갱신
 
         CacheLookup initialLookup = lookupCache(userId, threshold);
         if (initialLookup.usable()) {
-            return returnCached(userId, requestId, startedAt, initialLookup.batch());
+            return returnCached(userId, requestId, startedAt, requestedCount, initialLookup.batch());
         }
 
         try (RecommendationGenerationLock.Lease ignored = generationLock.acquire(userId)) {
             // 대기 중 다른 요청이 저장했을 수 있으므로 source DB에서 다시 확인한다.
             CacheLookup lockedLookup = lookupCache(userId, threshold);
             if (lockedLookup.usable()) {
-                return returnCached(userId, requestId, startedAt, lockedLookup.batch());
+                return returnCached(userId, requestId, startedAt, requestedCount, lockedLookup.batch());
             }
 
             UserFeature userFeature = userFeatureService.loadUserFeature(userId);
-            List<Candidate> candidates = aiService.vectorSearch(userFeature, candidateSize(topK));
-            List<Recommendations> recommendations = aiService.rerankAndExplain(userFeature, candidates, topK);
-            attachRequestAttribution(userId, recommendations, requestId, ALGORITHM_VERSION, List.of());
+            List<Candidate> candidates = aiService.vectorSearch(userFeature, CANDIDATE_SIZE);
+            List<Recommendations> generated = aiService.rerankAndExplain(
+                    userFeature, candidates, RecommendationService.MAX_RECOMMENDATION_COUNT)
+                    .stream().limit(RecommendationService.MAX_RECOMMENDATION_COUNT).toList();
 
-            persistenceService.replaceActiveBatch(userId, recommendations, ALGORITHM_VERSION);
+            List<Recommendations> recommendations = generated.stream().limit(requestedCount).toList();
+            attachRequestAttribution(userId, recommendations, requestId, ALGORITHM_VERSION, List.of());
+            persistenceService.replaceActiveBatch(userId, generated, ALGORITHM_VERSION);
             traceRecorder.recordGenerated(
                     userId,
                     requestId,
@@ -91,16 +94,19 @@ public class RecommendationServiceImpl implements RecommendationService {
         if (batch.isEmpty()) {
             return new CacheLookup(null, false);
         }
-        return new CacheLookup(batch.get(), !hasInvalidatingSignalAfter(userId, batch.get().createdAt()));
+        boolean currentVersion = ALGORITHM_VERSION.equals(batch.get().algorithmVersion());
+        return new CacheLookup(batch.get(), currentVersion
+                && !hasInvalidatingSignalAfter(userId, batch.get().createdAt()));
     }
 
     private List<Recommendations> returnCached(
             Long userId,
             String requestId,
             long startedAt,
+            int requestedCount,
             CachedBatch batch
     ) {
-        List<Recommendations> cached = batch.recommendations();
+        List<Recommendations> cached = batch.recommendations().stream().limit(requestedCount).toList();
         attachRequestAttribution(userId, cached, requestId, ALGORITHM_VERSION, List.of("cached_recommendation"));
         traceRecorder.recordCached(
                 userId,
@@ -127,10 +133,6 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     private LocalDateTime toLocalDateTime(Instant instant) {
         return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
-    }
-
-    private int candidateSize(int topK) {
-        return Math.min(Math.max(topK * 3, MIN_CANDIDATE_SIZE), MAX_CANDIDATE_SIZE);
     }
 
     private void attachRequestAttribution(Long userId,

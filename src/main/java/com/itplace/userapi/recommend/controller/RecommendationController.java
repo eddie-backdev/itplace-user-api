@@ -5,6 +5,7 @@ import com.itplace.userapi.recommend.dto.response.Recommendations;
 import com.itplace.userapi.recommend.RecommendationCode;
 import com.itplace.userapi.recommend.service.RecommendationServiceImpl;
 import com.itplace.userapi.security.auth.common.PrincipalDetails;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -27,6 +28,7 @@ public class RecommendationController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Recommendations>>> recommend(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Parameter(description = "요청 범위 1~50 (생략 시 10). 실제 반환은 이용 가능한 추천 중 최대 5개이며, 1 요청 시 최대 1개를 반환합니다.")
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int topK) {
 
         Long userId = principalDetails.getUserId();

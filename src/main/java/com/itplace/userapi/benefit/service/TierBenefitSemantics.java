@@ -12,20 +12,28 @@ public final class TierBenefitSemantics {
 
     private TierBenefitSemantics() {}
 
-    public static Set<String> allGradeContexts(Collection<CarrierTierBenefit> tiers, Collection<Grade> requiredGrades) {
-        if (tiers == null || tiers.isEmpty()) {
-            return Set.of();
-        }
+    public record OfferContext(String offerKey, String context) {}
 
-        Map<String, Set<Grade>> gradesByContext = tiers.stream()
+    public static Set<OfferContext> allGradeOfferContexts(Collection<CarrierTierBenefit> tiers,
+                                                           Collection<Grade> requiredGrades) {
+        if (tiers == null || tiers.isEmpty() || requiredGrades == null || requiredGrades.isEmpty()) return Set.of();
+        Map<OfferContext, Set<Grade>> gradesByOfferContext = tiers.stream()
                 .filter(tier -> tier.getContext() != null && !tier.getContext().isBlank())
-                .collect(Collectors.groupingBy(CarrierTierBenefit::getContext,
+                .collect(Collectors.groupingBy(TierBenefitSemantics::offerContext,
                         Collectors.mapping(CarrierTierBenefit::getGrade, Collectors.toSet())));
-
-        return allGradeContexts(gradesByContext, requiredGrades);
+        return allGradeKeys(gradesByOfferContext, requiredGrades);
     }
 
-    public static Set<String> allGradeContexts(Map<String, ? extends Collection<Grade>> gradesByContext, Collection<Grade> requiredGrades) {
+    public static OfferContext offerContext(CarrierTierBenefit tier) {
+        return tier == null ? new OfferContext(null, null) : offerContext(tier.getOfferKey(), tier.getContext());
+    }
+
+    private static OfferContext offerContext(String offerKey, String context) {
+        return new OfferContext(offerKey == null || offerKey.isEmpty() ? null : offerKey, context);
+    }
+
+    private static <K> Set<K> allGradeKeys(Map<K, ? extends Collection<Grade>> gradesByContext,
+                                            Collection<Grade> requiredGrades) {
         if (requiredGrades == null || requiredGrades.isEmpty() || gradesByContext == null || gradesByContext.isEmpty()) {
             return Set.of();
         }

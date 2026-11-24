@@ -164,7 +164,7 @@ public class BenefitRagDocumentBuilder {
                                                      BenefitCarrierPolicy policy,
                                                      CarrierTierBenefit tierBenefit,
                                                      Map<Carrier, Map<String, String>> labels,
-                                                     java.util.Set<String> allGradeContexts,
+                                                     java.util.Set<TierBenefitSemantics.OfferContext> allGradeContexts,
                                                      Map<String, String> categoryLabels, Map<String, String> programLabels) {
         return toPendingDocument(benefit, policy, tierBenefit, labels, allGradeContexts, categoryLabels,
                 programLabels, null, null, false);
@@ -174,14 +174,15 @@ public class BenefitRagDocumentBuilder {
                                                      BenefitCarrierPolicy policy,
                                                      CarrierTierBenefit tierBenefit,
                                                      Map<Carrier, Map<String, String>> labels,
-                                                     java.util.Set<String> allGradeContexts,
+                                                     java.util.Set<TierBenefitSemantics.OfferContext> allGradeContexts,
                                                      Map<String, String> categoryLabels, Map<String, String> programLabels,
                                                      BenefitOffer sourceOffer, String sourceGradeCode, boolean sourceAllGrades) {
         String description = nullToBlank(policy.getDescription());
         String manual = nullToBlank(policy.getManual());
         String tierContext = tierBenefit == null ? "" : nullToBlank(tierBenefit.getContext());
         BenefitConditions scopedConditions = sourceOffer != null ? policy.getConditions().withOffers(List.of(sourceOffer))
-                : conditionsForTier(policy, tierBenefit, allGradeContexts);
+                : tierBenefit == null || benefitOfferMatcher == null ? policy.getConditions()
+                : benefitOfferMatcher.forTier(policy.getConditions(), policy.getCarrier(), tierBenefit.getGrade(), tierBenefit.getOfferKey());
         boolean resolvedOffers = benefitOfferMatcher != null && benefitOfferMatcher.hasKnownOffers(policy.getConditions());
         boolean unresolvedOffers = policy.getConditions() != null
                 && policy.getConditions().offerResolution() == com.itplace.userapi.benefit.dto.OfferResolution.UNRESOLVED;
@@ -233,7 +234,7 @@ public class BenefitRagDocumentBuilder {
                 .mainCategory(benefit.getMainCategory() == null ? "" : benefit.getMainCategory().getCode())
                 .carrier(enumName(policy.getCarrier()))
                 .grade(tierBenefit != null ? enumName(tierBenefit.getGrade()) : sourceGradeCode)
-                .isAllGrade(tierBenefit != null ? allGradeContexts.contains(allGradeContextKey(tierBenefit)) : sourceAllGrades)
+                .isAllGrade(tierBenefit != null ? allGradeContexts.contains(TierBenefitSemantics.offerContext(tierBenefit)) : sourceAllGrades)
                 .usageType(documentUsageType)
                 .benefitType(enumName(policy.getType()))
                 .active(active)
@@ -274,7 +275,7 @@ public class BenefitRagDocumentBuilder {
                                   String description, String manual, String tierContext,
                                   BenefitConditions conditions, boolean resolvedOffers, boolean unresolvedOffers,
                                   BenefitRagMetadata metadata,
-                                  Map<Carrier, Map<String, String>> labels, java.util.Set<String> allGradeContexts,
+                                  Map<Carrier, Map<String, String>> labels, java.util.Set<TierBenefitSemantics.OfferContext> allGradeContexts,
                                   Map<String, String> categoryLabels, Map<String, String> programLabels) {
         List<String> lines = new ArrayList<>();
         addLabeled(lines, "제휴처", benefit.getPartner().getPartnerName());
@@ -287,7 +288,7 @@ public class BenefitRagDocumentBuilder {
         addLabeled(lines, "통신사별 혜택명", policy.getCarrierBenefitName());
         addLabeled(lines, "통신사", enumName(policy.getCarrier()));
         if (tierBenefit != null) {
-            addLabeled(lines, "대상 등급", allGradeContexts.contains(allGradeContextKey(tierBenefit)) ? "전체 등급" : gradeLabel(policy.getCarrier(), tierBenefit.getGrade(), labels));
+            addLabeled(lines, "대상 등급", allGradeContexts.contains(TierBenefitSemantics.offerContext(tierBenefit)) ? "전체 등급" : gradeLabel(policy.getCarrier(), tierBenefit.getGrade(), labels));
         }
         if (!unresolvedOffers && policy.getUsageType() != null && !"UNKNOWN".equals(enumName(policy.getUsageType()))) {
             addLabeled(lines, "이용 채널", enumName(policy.getUsageType()));
@@ -328,30 +329,9 @@ public class BenefitRagDocumentBuilder {
         return String.join("\n", lines);
     }
 
-    private BenefitConditions conditionsForTier(BenefitCarrierPolicy policy, CarrierTierBenefit tier,
-                                                 java.util.Set<String> allGradeContexts) {
-        BenefitConditions conditions = policy.getConditions();
-        if (conditions == null || benefitOfferMatcher == null || !benefitOfferMatcher.hasKnownOffers(conditions)) return conditions;
-        if (tier == null || tier.getOfferKey() == null || tier.getOfferKey().isBlank()) return conditions.withOffers(List.of());
-        List<BenefitOffer> linked = conditions.offers().stream()
-                .filter(offer -> tier.getOfferKey().equals(offer.key()))
-                .filter(offer -> benefitOfferMatcher.scope(conditions.withOffers(List.of(offer)), null,
-                        policy.getCarrier(), List.of(tier.getGrade())).offers().size() == 1)
-                .toList();
-        return conditions.withOffers(linked.size() == 1 ? linked : List.of());
-    }
-
-    private java.util.Set<String> allGradeContextsByOffer(List<CarrierTierBenefit> tiers,
+    private java.util.Set<TierBenefitSemantics.OfferContext> allGradeContextsByOffer(List<CarrierTierBenefit> tiers,
                                                            List<com.itplace.userapi.benefit.entity.enums.Grade> allGrades) {
-        return tiers.stream().collect(java.util.stream.Collectors.groupingBy(this::allGradeContextKey))
-                .entrySet().stream().filter(entry -> {
-                    List<CarrierTierBenefit> rows = entry.getValue();
-                    return TierBenefitSemantics.allGradeContexts(rows, allGrades).contains(rows.get(0).getContext());
-                }).map(Map.Entry::getKey).collect(java.util.stream.Collectors.toSet());
-    }
-
-    private String allGradeContextKey(CarrierTierBenefit tier) {
-        return Objects.toString(tier.getOfferKey(), "") + "\u0000" + Objects.toString(tier.getContext(), "");
+        return TierBenefitSemantics.allGradeOfferContexts(tiers, allGrades);
     }
 
     private String offerSummary(BenefitConditions conditions) {

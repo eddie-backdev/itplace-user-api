@@ -19,7 +19,7 @@ class TierBenefitSemanticsTest {
                 tier(Grade.SKT_SILVER, "5% 할인")
         );
 
-        assertThat(TierBenefitSemantics.allGradeContexts(outback, sktGrades())).isEmpty();
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(outback, sktGrades())).isEmpty();
     }
 
     @Test
@@ -31,8 +31,31 @@ class TierBenefitSemanticsTest {
                 tier(Grade.SKT_LITE, "전 등급 혜택")
         );
 
-        assertThat(TierBenefitSemantics.allGradeContexts(allGrade, sktGrades()))
-                .containsExactly("전 등급 혜택");
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(allGrade, sktGrades()))
+                .containsExactly(new TierBenefitSemantics.OfferContext(null, "전 등급 혜택"));
+    }
+
+    @Test
+    void sameContextRequiresCompleteGradeCoverageWithinOneOfferKey() {
+        List<CarrierTierBenefit> tiers = List.of(
+                tier(Grade.SKT_LITE, "offer-a", "같은 문구"),
+                tier(Grade.SKT_SILVER, "offer-a", "같은 문구"),
+                tier(Grade.SKT_GOLD, "offer-b", "같은 문구"),
+                tier(Grade.SKT_VIP, "offer-b", "같은 문구"));
+
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(tiers, sktGrades())).isEmpty();
+    }
+
+    @Test
+    void legacyNullOfferKeysStillGroupByContext() {
+        List<CarrierTierBenefit> tiers = List.of(
+                tier(Grade.SKT_LITE, "", "legacy"),
+                tier(Grade.SKT_SILVER, null, "legacy"),
+                tier(Grade.SKT_GOLD, null, "legacy"),
+                tier(Grade.SKT_VIP, null, "legacy"));
+
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(tiers, sktGrades()))
+                .containsExactly(new TierBenefitSemantics.OfferContext(null, "legacy"));
     }
 
     @Test
@@ -49,8 +72,9 @@ class TierBenefitSemanticsTest {
                 tier(Grade.DIAMOND, "전 등급 혜택")
         );
 
-        assertThat(TierBenefitSemantics.allGradeContexts(partial, lguGrades())).isEmpty();
-        assertThat(TierBenefitSemantics.allGradeContexts(all, lguGrades())).containsExactly("전 등급 혜택");
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(partial, lguGrades())).isEmpty();
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(all, lguGrades()))
+                .containsExactly(new TierBenefitSemantics.OfferContext(null, "전 등급 혜택"));
     }
 
     @Test
@@ -61,7 +85,7 @@ class TierBenefitSemanticsTest {
                 tier(Grade.SKT_SILVER, "전 등급 혜택")
         );
 
-        assertThat(TierBenefitSemantics.allGradeContexts(oldGradeSet, sktGrades())).isEmpty();
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(oldGradeSet, sktGrades())).isEmpty();
     }
 
     @Test
@@ -69,12 +93,13 @@ class TierBenefitSemanticsTest {
         var platinum = Grade.of("SKT_PLATINUM");
         List<CarrierTierBenefit> existing = List.of(tier(Grade.SKT_LITE, "모든 회원"), tier(Grade.SKT_SILVER, "모든 회원"),
                 tier(Grade.SKT_GOLD, "모든 회원"), tier(Grade.SKT_VIP, "모든 회원"));
-        assertThat(TierBenefitSemantics.allGradeContexts(existing, Set.of(Grade.SKT_LITE, Grade.SKT_SILVER,
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(existing, Set.of(Grade.SKT_LITE, Grade.SKT_SILVER,
                 Grade.SKT_GOLD, Grade.SKT_VIP, platinum))).isEmpty();
         existing = new java.util.ArrayList<>(existing);
         existing.add(tier(platinum, "모든 회원"));
-        assertThat(TierBenefitSemantics.allGradeContexts(existing, Set.of(Grade.SKT_LITE, Grade.SKT_SILVER,
-                Grade.SKT_GOLD, Grade.SKT_VIP, Grade.of("SKT_PLATINUM")))).containsExactly("모든 회원");
+        assertThat(TierBenefitSemantics.allGradeOfferContexts(existing, Set.of(Grade.SKT_LITE, Grade.SKT_SILVER,
+                Grade.SKT_GOLD, Grade.SKT_VIP, Grade.of("SKT_PLATINUM"))))
+                .containsExactly(new TierBenefitSemantics.OfferContext(null, "모든 회원"));
     }
 
     private Set<Grade> sktGrades() { return Set.of(Grade.SKT_LITE, Grade.SKT_SILVER, Grade.SKT_GOLD, Grade.SKT_VIP); }
@@ -82,5 +107,9 @@ class TierBenefitSemanticsTest {
 
     private CarrierTierBenefit tier(Grade grade, String context) {
         return CarrierTierBenefit.builder().grade(grade).context(context).isAll(true).build();
+    }
+
+    private CarrierTierBenefit tier(Grade grade, String offerKey, String context) {
+        return CarrierTierBenefit.builder().grade(grade).offerKey(offerKey).context(context).isAll(true).build();
     }
 }

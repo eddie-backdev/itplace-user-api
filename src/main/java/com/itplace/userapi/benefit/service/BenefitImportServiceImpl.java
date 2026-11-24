@@ -95,8 +95,9 @@ public class BenefitImportServiceImpl implements BenefitImportService {
         }
 
         List<BenefitSnapshotImportRequest.BenefitSnapshotItem> items = request.getBenefits();
-        Map<String, Partner> partnerByName = upsertPartners(items);
         Map<String, BenefitCarrierPolicy> policyBySourceKey = findPoliciesBySourceKey(request.getCarrier(), items);
+        validateTierGrades(request, policyBySourceKey);
+        Map<String, Partner> partnerByName = upsertPartners(items);
         Set<String> preserveHeldSourceKeys = new LinkedHashSet<>();
         Set<String> preserveArchivedSourceKeys = new LinkedHashSet<>();
         for (BenefitSnapshotImportRequest.BenefitSnapshotItem item : items) {
@@ -265,6 +266,16 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             if (StringUtils.hasText(item.getPartnerCategory()) && !referenceDataService.isActiveCategory(item.getPartnerCategory().trim())) {
                 throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.MAIN_CATEGORY_NOT_FOUND);
             }
+        }
+    }
+
+    private void validateTierGrades(BenefitSnapshotImportRequest request,
+            Map<String, BenefitCarrierPolicy> policyBySourceKey) {
+        for (var item : request.getBenefits()) {
+            BenefitCarrierPolicy existing = policyBySourceKey.get(item.getSourceKey());
+            boolean frozenArchived = existing != null
+                    && existing.getPublicationStatus() == PublicationStatus.ARCHIVED;
+            if (frozenArchived) continue;
             for (var tier : item.getTierBenefits()) {
                 if (tier.getGrade() == null || !referenceDataService.isBenefitGrade(request.getCarrier(), tier.getGrade())) {
                     throw new com.itplace.userapi.benefit.exception.InvalidEnumException(BenefitCode.INVALID_GRADE_FOR_BENEFIT);
@@ -597,31 +608,20 @@ public class BenefitImportServiceImpl implements BenefitImportService {
             return List.of();
         }
 
-        Map<String, Set<Grade>> gradesByOfferContext = tierBenefits.stream()
-                .filter(tier -> tier.getContext() != null && !tier.getContext().isBlank())
-                .collect(Collectors.groupingBy(tier -> tierGroupKey(resolveOfferKey(policy, tier), tier.getContext()),
-                        Collectors.mapping(BenefitSnapshotImportRequest.TierBenefitSnapshot::getGrade,
-                                Collectors.toSet())));
-        Set<String> allGradeOfferContexts = TierBenefitSemantics.allGradeContexts(gradesByOfferContext,
-                referenceDataService.allGradeMembers(policy.getCarrier()));
-
-        return tierBenefits.stream()
-                .map(tier -> {
-                    String offerKey = resolveOfferKey(policy, tier);
-                    return CarrierTierBenefit.builder()
-                            .benefitCarrierPolicy(policy)
-                            .grade(tier.getGrade())
-                            .context(tier.getContext())
-                            .isAll(allGradeOfferContexts.contains(tierGroupKey(offerKey, tier.getContext())))
-                            .discountValue(tier.getDiscountValue())
-                            .offerKey(offerKey)
-                            .build();
-                })
-                .toList();
-    }
-
-    private String tierGroupKey(String offerKey, String context) {
-        return Objects.toString(offerKey, "") + "\u0000" + Objects.toString(context, "");
+        List<CarrierTierBenefit> rows = tierBenefits.stream()
+                .map(tier -> CarrierTierBenefit.builder()
+                        .benefitCarrierPolicy(policy)
+                        .grade(tier.getGrade())
+                        .context(tier.getContext())
+                        .isAll(false)
+                        .discountValue(tier.getDiscountValue())
+                        .offerKey(resolveOfferKey(policy, tier))
+                        .build())
+                .collect(Collectors.toList());
+        Set<TierBenefitSemantics.OfferContext> allGradeOfferContexts = TierBenefitSemantics.allGradeOfferContexts(
+                rows, referenceDataService.allGradeMembers(policy.getCarrier()));
+        rows.forEach(row -> row.setIsAll(allGradeOfferContexts.contains(TierBenefitSemantics.offerContext(row))));
+        return rows;
     }
 
     private boolean isLegacyPositionOfferKey(String key) {
@@ -736,7 +736,7 @@ public class BenefitImportServiceImpl implements BenefitImportService {
 
     private String normalizeTierEvidence(String value) {
         return value == null ? "" : value.replaceAll("(?i)</?br\\s*/?>", " ")
-                .toLowerCase(Locale.ROOT).replaceAll("[\\s\\p{Z}]+", " ").trim();
+                .toLowerCase(Locale.ROOT).replaceAll("[\\s\\p{Z}]+", "");
     }
 
     private String resolveCanonicalKey(Partner partner, BenefitSnapshotImportRequest.BenefitSnapshotItem item) {

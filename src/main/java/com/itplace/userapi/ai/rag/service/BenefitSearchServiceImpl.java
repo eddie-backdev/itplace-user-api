@@ -197,8 +197,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 List<Candidate> conditioned = filterCandidates(hydrated, safeCondition);
                 log.info("benefit_search stage=postgres_chat carrier={} preHydrate={} postHydrate={} postCondition={}",
                         carrier, pgHits.size(), hydrated.size(), conditioned.size());
-                List<Candidate> candidates = conditioned
-                        .stream().filter(candidate -> eligibleForRequestedGrade(candidate, grade)).toList();
+                List<Candidate> candidates = eligibleForRequestedGrade(conditioned, grade);
                 if (!candidates.isEmpty()) return new ChatSearchResult(candidates, true);
             } catch (RuntimeException e) {
                 warnPostgresChatFailure(LAST_POSTGRES_CHAT_WARNING, "혜택 PostgreSQL chat 검색 실패. type={}", e);
@@ -250,8 +249,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
             List<Candidate> candidates = filterCandidates(hydrated, safeCondition);
             log.info("benefit_search stage=elasticsearch_chat carrier={} preHydrate={} postHydrate={} postCondition={}",
                     carrier, hits.size(), hydrated.size(), candidates.size());
-            candidates = candidates.stream()
-                    .filter(candidate -> eligibleForRequestedGrade(candidate, grade)).toList();
+            candidates = eligibleForRequestedGrade(candidates, grade);
             if (lexicalOnly) candidates = candidates.stream()
                     .filter(candidate -> lexicalScore(candidate, lexicalTerms) > 0).toList();
             if (!candidates.isEmpty()) {
@@ -290,9 +288,8 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         List<Candidate> all = fallbackCandidates(carrier, grade, 10_000, condition);
         List<String> terms = meaningfulTerms(query);
         if (terms.isEmpty()) return List.of();
-        return all.stream().map(candidate -> Map.entry(candidate, lexicalScore(candidate, terms)))
+        return eligibleForRequestedGrade(all, grade).stream().map(candidate -> Map.entry(candidate, lexicalScore(candidate, terms)))
                 .filter(entry -> entry.getValue() > 0)
-                .filter(entry -> eligibleForRequestedGrade(entry.getKey(), grade))
                 .sorted(Map.Entry.<Candidate, Integer>comparingByValue().reversed())
                 .limit(limit).map(Map.Entry::getKey).toList();
     }
@@ -303,23 +300,47 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 .filter(token -> token.length() > 1 && !generic.contains(token)).distinct().toList();
     }
 
-    private boolean eligibleForRequestedGrade(Candidate candidate, Grade grade) {
-        if (grade == null) return true;
+    private List<Candidate> eligibleForRequestedGrade(List<Candidate> candidates, Grade grade) {
+        if (grade == null || candidates.isEmpty()) return candidates;
+        Map<Carrier, List<Grade>> profileGradesByCarrier = new java.util.EnumMap<>(Carrier.class);
+        if (referenceDataService != null) {
+            candidates.stream().map(candidate -> resolveCarrier(candidate.getCarrier()))
+                    .filter(java.util.Objects::nonNull).distinct()
+                    .forEach(carrier -> {
+                        List<Grade> grades = referenceDataService.gradesForProfile(carrier, grade);
+                        profileGradesByCarrier.put(carrier, grades == null ? List.of(grade) : grades);
+                    });
+        }
+        return candidates.stream().filter(candidate -> eligibleForRequestedGrade(candidate, grade, profileGradesByCarrier)).toList();
+    }
+
+    private boolean eligibleForRequestedGrade(Candidate candidate, Grade grade,
+                                              Map<Carrier, List<Grade>> profileGradesByCarrier) {
+        Carrier carrier = resolveCarrier(candidate.getCarrier());
+        List<Grade> profileGrades = profileGradesByCarrier.getOrDefault(carrier, List.of(grade));
+        if (profileGrades.isEmpty()) return false;
         if (candidate.getOfferKey() != null && benefitOfferMatcher != null) {
-            Carrier carrier = candidate.getCarrier() == null ? null : Carrier.valueOf(candidate.getCarrier());
-            List<Grade> grades = carrier == null || referenceDataService == null ? List.of(grade)
-                    : referenceDataService.gradesForProfile(carrier, grade);
-            return benefitOfferMatcher.supports(candidate.getConditions(), null, carrier, grades);
+            return benefitOfferMatcher.supports(candidate.getConditions(), null, carrier, profileGrades);
         }
         if (Boolean.TRUE.equals(candidate.getAllGrade())) return true;
-        return candidate.getGrade() != null && grade.name().equals(candidate.getGrade());
+        return candidate.getGrade() != null && profileGrades.stream().anyMatch(mapped ->
+                mapped.name().equals(candidate.getGrade()) || mapped.getCode().equals(candidate.getGrade()));
+    }
+
+    private Carrier resolveCarrier(String code) {
+        if (code == null || code.isBlank()) return null;
+        try {
+            return Carrier.valueOf(code);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     @Override
     public List<Candidate> resolveChatCandidates(List<String> candidateKeys, Carrier carrier, Grade grade) {
         if (candidateKeys == null || candidateKeys.isEmpty()) return List.of();
-        Map<String, Candidate> available = fallbackCandidates(carrier, grade, 10_000, BenefitSearchCondition.none(), true).stream()
-                .filter(candidate -> eligibleForRequestedGrade(candidate, grade))
+        Map<String, Candidate> available = eligibleForRequestedGrade(
+                fallbackCandidates(carrier, grade, 10_000, BenefitSearchCondition.none(), true), grade).stream()
                 .collect(Collectors.toMap(Candidate::getCandidateKey, candidate -> candidate, (a, b) -> a, LinkedHashMap::new));
         return candidateKeys.stream().map(available::get).filter(java.util.Objects::nonNull).toList();
     }
@@ -327,8 +348,8 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
     @Override
     public List<Candidate> browseChatCandidates(Carrier carrier, Grade grade, String channel, int limit) {
         String requestedChannel = channel == null ? "ANY" : channel;
-        return fallbackCandidates(carrier, grade, 10_000, BenefitSearchCondition.none()).stream()
-                .filter(candidate -> eligibleForRequestedGrade(candidate, grade))
+        return eligibleForRequestedGrade(
+                fallbackCandidates(carrier, grade, 10_000, BenefitSearchCondition.none()), grade).stream()
                 .filter(candidate -> channelMatches(candidate, requestedChannel))
                 .limit(Math.max(1, limit)).toList();
     }
@@ -518,10 +539,10 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         Map<Long, List<CarrierTierBenefit>> tiersByPolicy = policies.isEmpty() ? Map.of()
                 : carrierTierBenefitRepository.findAllByBenefitCarrierPolicyIn(policies).stream()
                 .collect(Collectors.groupingBy(tier -> tier.getBenefitCarrierPolicy().getBenefitCarrierPolicyId()));
-        Map<Long, java.util.Set<String>> allGradeContextsByPolicy = new java.util.HashMap<>();
+        Map<Long, java.util.Set<TierBenefitSemantics.OfferContext>> allGradeContextsByPolicy = new java.util.HashMap<>();
         policies.forEach(policy -> {
             List<CarrierTierBenefit> tiers = tiersByPolicy.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of());
-            allGradeContextsByPolicy.put(policy.getBenefitCarrierPolicyId(), TierBenefitSemantics.allGradeContexts(
+            allGradeContextsByPolicy.put(policy.getBenefitCarrierPolicyId(), TierBenefitSemantics.allGradeOfferContexts(
                     tiers, referenceDataService == null ? List.of() : referenceDataService.allGradeMembers(policy.getCarrier())));
         });
         List<Candidate> candidates = new ArrayList<>();
@@ -600,7 +621,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                 continue;
             }
             List<CarrierTierBenefit> allTierBenefits = allTiersByPolicyId.getOrDefault(policy.getBenefitCarrierPolicyId(), List.of());
-            java.util.Set<String> allGradeContexts = TierBenefitSemantics.allGradeContexts(allTierBenefits,
+            java.util.Set<TierBenefitSemantics.OfferContext> allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(allTierBenefits,
                     referenceDataService == null ? List.of() : referenceDataService.allGradeMembers(policy.getCarrier()));
             List<CarrierTierBenefit> matchingTierBenefits = allTierBenefits.stream()
                     .filter(tierBenefit -> matchesTier(tierBenefit, grade, policy.getCarrier()))
@@ -628,7 +649,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
         List<Grade> profileGrades = profileGrade == null ? List.of()
                 : referenceDataService == null ? List.of(profileGrade)
                 : referenceDataService.gradesForProfile(policy.getCarrier(), profileGrade);
-        var allGradeContexts = TierBenefitSemantics.allGradeContexts(tiers,
+        var allGradeContexts = TierBenefitSemantics.allGradeOfferContexts(tiers,
                 referenceDataService == null ? List.of() : referenceDataService.allGradeMembers(policy.getCarrier()));
         for (BenefitOffer offer : policy.getConditions().offers()) {
             if (profileGrade == null && !Boolean.TRUE.equals(offer.allGrades()) && offer.gradeCodes().isEmpty()) continue;
@@ -639,9 +660,12 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
             List<Grade> relevantGrades = profileGrade == null ? offerGrades : offerGrades.stream()
                     .filter(profileGrades::contains).toList();
             boolean coveredByTier = Boolean.TRUE.equals(offer.allGrades())
-                    ? !allGradeContexts.isEmpty()
+                    ? tiers.stream().filter(tier -> java.util.Objects.equals(tier.getOfferKey(), offer.key()))
+                            .anyMatch(tier -> allGradeContexts.contains(TierBenefitSemantics.offerContext(tier)))
                     : !relevantGrades.isEmpty() && relevantGrades.stream().allMatch(grade -> tiers.stream()
-                    .anyMatch(tier -> grade.equals(tier.getGrade())));
+                    .anyMatch(tier -> (tier.getOfferKey() == null || tier.getOfferKey().isEmpty()
+                            || java.util.Objects.equals(tier.getOfferKey(), offer.key()))
+                            && grade.equals(tier.getGrade())));
             if (coveredByTier && !includeTierCoveredOffers) continue;
             if (offer.key() == null || !offer.key().matches("[A-Za-z0-9_-]{1,80}")) continue;
             Candidate candidate = toOfferFallbackCandidate(benefit, policy, offer,
@@ -693,7 +717,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                                       Benefit benefit,
                                       BenefitCarrierPolicy policy,
                                       CarrierTierBenefit tierBenefit,
-                                      java.util.Set<String> allGradeContexts,
+                                      java.util.Set<TierBenefitSemantics.OfferContext> allGradeContexts,
                                       BenefitSearchCondition condition) {
         Candidate candidate = toFallbackCandidate(benefit, policy, tierBenefit, allGradeContexts);
         if (candidateMatchesCondition(candidate, condition)) {
@@ -702,7 +726,7 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
     }
 
     private Candidate toFallbackCandidate(Benefit benefit, BenefitCarrierPolicy policy, CarrierTierBenefit tierBenefit,
-                                          java.util.Set<String> allGradeContexts) {
+                                          java.util.Set<TierBenefitSemantics.OfferContext> allGradeContexts) {
         BenefitRagMetadata metadata = metadataClassifier.classify(
                 benefit.getPartner().getPartnerName(),
                 benefit.getPartner().getCategory(),
@@ -730,15 +754,16 @@ public class BenefitSearchServiceImpl implements BenefitSearchService {
                         ? "" : policy.getBenefit().getMainCategory().name())
                 .carrier(policy.getCarrier() == null ? "" : policy.getCarrier().name())
                 .grade(tierBenefit == null || tierBenefit.getGrade() == null ? "" : tierBenefit.getGrade().name())
-                .allGrade(tierBenefit != null && tierBenefit.getContext() != null
-                        && allGradeContexts.contains(tierBenefit.getContext()))
+                .allGrade(tierBenefit != null && allGradeContexts.contains(TierBenefitSemantics.offerContext(tierBenefit)))
                 .usageType(policy.getUsageType() == null ? "" : policy.getUsageType().name())
                 .benefitType(policy.getType() == null ? "" : policy.getType().name())
                 .sourceKey(policy.getSourceKey())
                 .sourceUrl(firstNonBlank(policy.getSourceUrl(), policy.getUrl()))
                 .sourceCapturedAt(policy.getSourceCapturedAt())
                 .sourceLimitText(policy.getSourceLimitText())
-                .conditions(policy.getConditions())
+                .conditions(tierBenefit == null || benefitOfferMatcher == null ? policy.getConditions()
+                        : benefitOfferMatcher.forTier(policy.getConditions(), policy.getCarrier(),
+                                tierBenefit.getGrade(), tierBenefit.getOfferKey()))
                 .membershipOptionType(policy.getMembershipOptionType() == null ? "UNKNOWN" : policy.getMembershipOptionType().name())
                 .sourceOptionLabel(policy.getSourceOptionLabel())
                 .description(textOrDefault(policy.getDescription(), "설명 없음"))
