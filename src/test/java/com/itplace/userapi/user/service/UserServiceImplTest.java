@@ -25,6 +25,7 @@ import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.repository.AuthCredentialRepository;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
 import com.itplace.userapi.user.repository.UserRepository;
+import com.itplace.userapi.user.repository.AuthGrantConsumptionStore;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,9 @@ class UserServiceImplTest {
 
     @Mock
     private MembershipProfileValidator membershipProfileValidator;
+
+    @Mock
+    private AuthGrantConsumptionStore authGrantConsumptionStore;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -245,6 +249,42 @@ class UserServiceImplTest {
         verify(redisTemplate, never()).delete("resetPassword:one-time-token");
         verify(userRepository, never()).findByEmail("hong@example.com");
         verify(passwordEncoder, never()).encode(anyString());
+    }
+
+    @Test
+    void resetPasswordClaimsTokenBeforeUpdatingCredential() {
+        ValueOperations<String, String> valueOperations = org.mockito.Mockito.mock(ValueOperations.class);
+        User user = User.builder().id(7L).role(Role.USER).build();
+        ResetPasswordRequest request = resetPasswordRequest("new-password", "new-password");
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("resetPassword:one-time-token")).thenReturn("hong@example.com");
+        when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("new-password")).thenReturn("encoded-new");
+        when(authGrantConsumptionStore.claim("resetPassword:one-time-token", java.time.Duration.ofMinutes(5))).thenReturn(true);
+
+        userService.resetPassword(request);
+
+        verify(valueOperations, org.mockito.Mockito.times(2)).get("resetPassword:one-time-token");
+        assertThat(user.getAuthCredentials()).extracting(AuthCredential::getPasswordHash)
+                .containsExactly("encoded-new");
+        verify(redisTemplate, never()).delete("resetPassword:one-time-token");
+    }
+
+    @Test
+    void resetPasswordRejectsPreviouslyConsumedToken() {
+        ValueOperations<String, String> valueOperations = org.mockito.Mockito.mock(ValueOperations.class);
+        User user = User.builder().id(7L).role(Role.USER).build();
+        ResetPasswordRequest request = resetPasswordRequest("new-password", "new-password");
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("resetPassword:one-time-token")).thenReturn("hong@example.com");
+        when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.of(user));
+        when(authGrantConsumptionStore.claim("resetPassword:one-time-token", java.time.Duration.ofMinutes(5))).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.resetPassword(request))
+                .isInstanceOf(InvalidCredentialsException.class);
+
+        assertThat(user.getAuthCredentials()).isEmpty();
+        verify(passwordEncoder, never()).encode("new-password");
     }
 
     @Test

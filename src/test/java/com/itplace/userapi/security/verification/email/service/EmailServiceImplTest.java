@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 
 import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService;
 import com.itplace.userapi.security.abuse.AuthenticationAbuseProtectionService.VerificationChannel;
@@ -64,7 +65,9 @@ class EmailServiceImplTest {
                 "hong@example.com",
                 "127.0.0.1"
         );
-        verify(valueOperations).set(eq("email:verified:hong@example.com"), eq("true"), eq(1800L), eq(TimeUnit.SECONDS));
+        org.mockito.ArgumentCaptor<String> grant = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(valueOperations).set(eq("email:verified:hong@example.com"), grant.capture(), eq(1800L), eq(TimeUnit.SECONDS));
+        assertThat(grant.getValue()).startsWith("verified:");
     }
 
     @Test
@@ -77,7 +80,7 @@ class EmailServiceImplTest {
 
         verify(userRepository, never()).findByEmail("hong@example.com");
         verify(valueOperations, never()).set(
-                eq("email:verified:hong@example.com"), eq("true"), eq(1800L), eq(TimeUnit.SECONDS));
+                eq("email:verified:hong@example.com"), any(), eq(1800L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -91,7 +94,7 @@ class EmailServiceImplTest {
                 .isInstanceOf(com.itplace.userapi.security.exception.DuplicateEmailException.class);
 
         verify(valueOperations, never()).set(
-                eq("email:verified:hong@example.com"), eq("true"), eq(1800L), eq(TimeUnit.SECONDS));
+                eq("email:verified:hong@example.com"), any(), eq(1800L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -112,24 +115,13 @@ class EmailServiceImplTest {
     }
 
     @Test
-    void consumeVerifiedDeletesVerifiedEmailMarker() {
+    void verifiedGrantIdentityAcceptsLegacyTrueAndNonceMarkers() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.getAndDelete("email:verified:hong@example.com")).thenReturn("true");
+        when(valueOperations.get("email:verified:hong@example.com"))
+                .thenReturn("true", "verified:nonce-123");
 
-        boolean consumed = emailService.consumeVerified("hong@example.com");
-
-        assertThat(consumed).isTrue();
-        verify(valueOperations).getAndDelete("email:verified:hong@example.com");
-    }
-
-    @Test
-    void consumeVerifiedReturnsFalseWhenEmailWasNotVerified() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.getAndDelete("email:verified:hong@example.com")).thenReturn(null);
-
-        boolean consumed = emailService.consumeVerified("hong@example.com");
-
-        assertThat(consumed).isFalse();
+        assertThat(emailService.verifiedGrantIdentity("hong@example.com")).isEqualTo("legacy");
+        assertThat(emailService.verifiedGrantIdentity("hong@example.com")).isEqualTo("nonce-123");
     }
 
     private EmailConfirmRequest confirmRequest() {
