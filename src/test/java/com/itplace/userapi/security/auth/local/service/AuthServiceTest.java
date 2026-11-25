@@ -21,6 +21,7 @@ import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.security.verification.email.service.EmailService;
 import com.itplace.userapi.user.entity.Gender;
 import com.itplace.userapi.user.entity.User;
+import com.itplace.userapi.user.repository.AuthGrantConsumptionStore;
 import com.itplace.userapi.user.repository.UserRepository;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
 import io.jsonwebtoken.Claims;
@@ -61,6 +62,8 @@ class AuthServiceTest {
     private EmailService emailService;
     @Mock
     private MembershipProfileValidator membershipProfileValidator;
+    @Mock
+    private AuthGrantConsumptionStore authGrantConsumptionStore;
 
     @Test
     void reissueConvertsRefreshTokenSignatureMismatchToInvalidTokenAndExpiresCookies() {
@@ -319,14 +322,14 @@ class AuthServiceTest {
         AuthService authService = authService();
         SignUpRequest request = signUpRequest();
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
-        when(emailService.hasVerified("hong@example.com")).thenReturn(false);
+        when(emailService.verifiedGrantIdentity("hong@example.com")).thenReturn(null);
 
         assertThatThrownBy(() -> authService.signUp(request))
                 .isInstanceOfSatisfying(EmailVerificationException.class, exception ->
                         assertThat(exception.getCode()).isEqualTo(SecurityCode.EMAIL_VERIFICATION_FAILURE));
 
-        verify(emailService, never()).consumeVerified(any());
-        verify(userRepository, never()).save(any(User.class));
+        verify(authGrantConsumptionStore, never()).claim(any(), any());
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -334,15 +337,19 @@ class AuthServiceTest {
         AuthService authService = authService();
         SignUpRequest request = signUpRequest();
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
-        when(emailService.hasVerified("hong@example.com")).thenReturn(true);
-        when(emailService.consumeVerified("hong@example.com")).thenReturn(true);
+        when(emailService.verifiedGrantIdentity("hong@example.com")).thenReturn("grant-id");
+        when(authGrantConsumptionStore.claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30))).thenReturn(true);
         when(passwordEncoder.encode("!Password123")).thenReturn("encoded-password");
 
         authService.signUp(request);
 
-        verify(emailService).consumeVerified("hong@example.com");
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(authGrantConsumptionStore, userRepository);
+        order.verify(authGrantConsumptionStore).claim(
+                "signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30));
+        order.verify(userRepository).saveAndFlush(any(User.class));
+        verify(authGrantConsumptionStore).claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30));
         org.mockito.ArgumentCaptor<User> savedUser = org.mockito.ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(savedUser.capture());
+        verify(userRepository).saveAndFlush(savedUser.capture());
         assertThat(savedUser.getValue().getPhoneNumber()).isNull();
     }
 
@@ -352,14 +359,14 @@ class AuthServiceTest {
         request.setCarrier(Carrier.MVNO);
         request.setMembershipGradeCode(null);
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
-        when(emailService.hasVerified("hong@example.com")).thenReturn(true);
-        when(emailService.consumeVerified("hong@example.com")).thenReturn(true);
+        when(emailService.verifiedGrantIdentity("hong@example.com")).thenReturn("grant-id");
+        when(authGrantConsumptionStore.claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30))).thenReturn(true);
         when(passwordEncoder.encode("!Password123")).thenReturn("encoded-password");
 
         authService().signUp(request);
 
         org.mockito.ArgumentCaptor<User> savedUser = org.mockito.ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(savedUser.capture());
+        verify(userRepository).saveAndFlush(savedUser.capture());
         assertThat(savedUser.getValue().getCarrier()).isEqualTo(Carrier.MVNO);
         assertThat(savedUser.getValue().getMembershipGradeCode()).isNull();
     }
@@ -381,14 +388,14 @@ class AuthServiceTest {
                 """, SignUpRequest.class);
         AuthService authService = authService();
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
-        when(emailService.hasVerified("hong@example.com")).thenReturn(true);
-        when(emailService.consumeVerified("hong@example.com")).thenReturn(true);
+        when(emailService.verifiedGrantIdentity("hong@example.com")).thenReturn("grant-id");
+        when(authGrantConsumptionStore.claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30))).thenReturn(true);
         when(passwordEncoder.encode("!Password123")).thenReturn("encoded-password");
 
         authService.signUp(request);
 
         org.mockito.ArgumentCaptor<User> savedUser = org.mockito.ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(savedUser.capture());
+        verify(userRepository).saveAndFlush(savedUser.capture());
         assertThat(savedUser.getValue().getPhoneNumber()).isNull();
     }
 
@@ -401,9 +408,9 @@ class AuthServiceTest {
                 .isInstanceOf(com.itplace.userapi.security.exception.PasswordMismatchException.class);
 
         verify(userRepository, never()).findByEmail(any());
-        verify(emailService, never()).hasVerified(any());
-        verify(emailService, never()).consumeVerified(any());
-        verify(userRepository, never()).save(any(User.class));
+        verify(emailService, never()).verifiedGrantIdentity(any());
+        verify(authGrantConsumptionStore, never()).claim(any(), any());
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -414,22 +421,38 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService().signUp(signUpRequest()))
                 .isInstanceOf(com.itplace.userapi.security.exception.DuplicateEmailException.class);
 
-        verify(emailService, never()).hasVerified(any());
-        verify(emailService, never()).consumeVerified(any());
-        verify(userRepository, never()).save(any(User.class));
+        verify(emailService, never()).verifiedGrantIdentity(any());
+        verify(authGrantConsumptionStore, never()).claim(any(), any());
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
     void signupDoesNotSaveWhenVerifiedEmailMarkerWasAlreadyConsumed() {
         when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
-        when(emailService.hasVerified("hong@example.com")).thenReturn(true);
-        when(emailService.consumeVerified("hong@example.com")).thenReturn(false);
+        when(emailService.verifiedGrantIdentity("hong@example.com")).thenReturn("grant-id");
+        when(authGrantConsumptionStore.claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30))).thenReturn(false);
 
         assertThatThrownBy(() -> authService().signUp(signUpRequest()))
                 .isInstanceOf(EmailVerificationException.class);
 
-        verify(userRepository, never()).save(any(User.class));
+        verify(authGrantConsumptionStore).claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
         verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void signupRollsBackWhenVerifiedGrantChangesBeforeClaimCompletes() {
+        when(userRepository.findByEmail("hong@example.com")).thenReturn(Optional.empty());
+        when(emailService.verifiedGrantIdentity("hong@example.com")).thenReturn("grant-id", "new-grant-id");
+        when(authGrantConsumptionStore.claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> authService().signUp(signUpRequest()))
+                .isInstanceOf(EmailVerificationException.class);
+
+        verify(authGrantConsumptionStore).claim("signup:email:hong@example.com:grant-id", java.time.Duration.ofMinutes(30));
+        verify(emailService, org.mockito.Mockito.times(2)).verifiedGrantIdentity("hong@example.com");
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     private AuthService authService() {
@@ -442,7 +465,8 @@ class AuthServiceTest {
                 jwtUtil,
                 cookieUtil,
                 emailService,
-                membershipProfileValidator
+                membershipProfileValidator,
+                authGrantConsumptionStore
         );
     }
 

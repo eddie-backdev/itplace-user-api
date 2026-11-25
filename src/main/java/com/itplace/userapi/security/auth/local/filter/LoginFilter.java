@@ -50,6 +50,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             throws AuthenticationException {
         try {
             LoginRequest requestBody = objectMapper.readValue(request.getInputStream(), LoginRequest.class);
+            if (requestBody == null || requestBody.getEmail() == null || requestBody.getEmail().isBlank()
+                    || requestBody.getPassword() == null || requestBody.getPassword().isBlank()) {
+                throw new InvalidLoginRequestException();
+            }
             String username = requestBody.getEmail();
             String password = requestBody.getPassword();
             request.setAttribute(LOGIN_IDENTIFIER_ATTRIBUTE, username);
@@ -68,7 +72,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
             return authenticationManager.authenticate(authToken);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new InvalidLoginRequestException(e);
         }
     }
 
@@ -107,16 +111,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException, ServletException {
         boolean rateLimited = failed instanceof LoginRateLimitAuthenticationException;
+        boolean invalidRequest = failed instanceof InvalidLoginRequestException;
         if (rateLimited) {
             log.info("로그인 요청 제한");
+        } else if (invalidRequest) {
+            log.info("잘못된 로그인 요청");
         } else {
             log.info("로그인 실패");
             recordLoginFailure(request);
         }
         response.setContentType("application/json;charset=UTF-8");
-        SecurityCode responseCode = rateLimited
-                ? SecurityCode.AUTHENTICATION_RATE_LIMITED
-                : SecurityCode.LOGIN_FAIL;
+        SecurityCode responseCode = rateLimited ? SecurityCode.AUTHENTICATION_RATE_LIMITED
+                : invalidRequest ? SecurityCode.INVALID_INPUT_VALUE : SecurityCode.LOGIN_FAIL;
         response.setStatus(responseCode.getStatus().value());
         ApiResponse<Void> apiResponse = ApiResponse.of(responseCode, null);
         objectMapper.writeValue(response.getOutputStream(), apiResponse);
@@ -152,6 +158,16 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 .membershipGrade(user.getMembershipGradeCode())
                 .membershipVerified(Boolean.TRUE.equals(user.getMembershipVerified()))
                 .build();
+    }
+
+    private static class InvalidLoginRequestException extends AuthenticationException {
+        private InvalidLoginRequestException() {
+            super(SecurityCode.INVALID_INPUT_VALUE.getMessage());
+        }
+
+        private InvalidLoginRequestException(Throwable cause) {
+            super(SecurityCode.INVALID_INPUT_VALUE.getMessage(), cause);
+        }
     }
 
 }

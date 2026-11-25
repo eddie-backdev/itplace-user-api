@@ -9,7 +9,5 @@ public interface EmailService {
 
     void confirm(EmailConfirmRequest request, String clientAddress);
 
-    boolean hasVerified(String email);
-
-    boolean consumeVerified(String email);
+    String verifiedGrantIdentity(String email);
 }

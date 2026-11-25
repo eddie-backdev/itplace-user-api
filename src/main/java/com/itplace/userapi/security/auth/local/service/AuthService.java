@@ -18,12 +18,14 @@ import com.itplace.userapi.security.jwt.JWTUtil;
 import com.itplace.userapi.user.entity.AuthCredential;
 import com.itplace.userapi.user.entity.Role;
 import com.itplace.userapi.user.entity.User;
+import com.itplace.userapi.user.repository.AuthGrantConsumptionStore;
 import com.itplace.userapi.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -43,6 +45,7 @@ public class AuthService {
     private final CookieUtil cookieUtil;
     private final EmailService emailService;
     private final MembershipProfileValidator membershipProfileValidator;
+    private final AuthGrantConsumptionStore authGrantConsumptionStore;
 
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
         log.info("Access 토큰 재발급 시작");
@@ -122,20 +125,25 @@ public class AuthService {
     public void signUp(SignUpRequest request) {
         log.info("회원가입 시작");
 
-        validateSignUpRequest(request);
-        if (!emailService.consumeVerified(request.getEmail())) {
+        String grantIdentity = validateSignUpRequest(request);
+        if (!authGrantConsumptionStore.claim(
+                "signup:email:" + request.getEmail() + ":" + grantIdentity, Duration.ofMinutes(30))) {
             log.info("이메일 인증 소모 실패");
             throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
         }
-        userRepository.save(createLocalUser(request));
+        if (!grantIdentity.equals(emailService.verifiedGrantIdentity(request.getEmail()))) {
+            log.info("이메일 인증 마커가 변경되었거나 만료됨");
+            throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
+        }
+        userRepository.saveAndFlush(createLocalUser(request));
         log.info("USER 저장됨");
     }
 
-    private void validateSignUpRequest(SignUpRequest request) {
+    private String validateSignUpRequest(SignUpRequest request) {
         validatePasswordConfirmation(request);
         validateUniqueEmail(request.getEmail());
         validateMembershipProfile(request);
-        validateVerifiedEmail(request.getEmail());
+        return validateVerifiedEmail(request.getEmail());
     }
 
     private void validatePasswordConfirmation(SignUpRequest request) {
@@ -158,11 +166,13 @@ public class AuthService {
         }
     }
 
-    private void validateVerifiedEmail(String email) {
-        if (!emailService.hasVerified(email)) {
+    private String validateVerifiedEmail(String email) {
+        String grantIdentity = emailService.verifiedGrantIdentity(email);
+        if (grantIdentity == null) {
             log.info("이메일 인증 미완료");
             throw new EmailVerificationException(SecurityCode.EMAIL_VERIFICATION_FAILURE);
         }
+        return grantIdentity;
     }
 
     private User createLocalUser(SignUpRequest request) {

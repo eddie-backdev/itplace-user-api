@@ -215,7 +215,7 @@ class FlywayMigrationIntegrationTest {
                 .baselineVersion(MigrationVersion.fromVersion("20260722.0"))
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(29);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(30);
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(columnExists(connection, "store", "active")).isTrue();
@@ -326,7 +326,7 @@ class FlywayMigrationIntegrationTest {
                     WHERE success = true
                     ORDER BY installed_rank DESC
                     LIMIT 1
-                    """)).isEqualTo("20261107.0001");
+                    """)).isEqualTo("20261125.0001");
             verifyArchivedPolicyConstraints(connection);
 
             try (Statement statement = connection.createStatement()) {

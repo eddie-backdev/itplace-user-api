@@ -4,6 +4,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.hasItems;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +18,7 @@ import com.itplace.userapi.security.auth.local.dto.response.LoginResponse;
 import com.itplace.userapi.security.auth.oauth.dto.response.KakaoLoginResult;
 import com.itplace.userapi.security.auth.oauth.dto.response.OAuthResult;
 import com.itplace.userapi.security.auth.oauth.service.OAuthService;
+import com.itplace.userapi.security.jwt.JWTUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
@@ -28,6 +31,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class OAuthControllerTest {
 
@@ -36,12 +40,17 @@ class OAuthControllerTest {
     @Mock
     private OAuthService oAuthService;
 
-    @Mock
     private CookieUtil cookieUtil;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        JWTUtil jwtUtil = org.mockito.Mockito.mock(JWTUtil.class);
+        when(jwtUtil.getAccessTokenValidityInMS()).thenReturn(TimeUnit.MINUTES.toMillis(15));
+        when(jwtUtil.getRefreshTokenValidityInMS()).thenReturn(TimeUnit.DAYS.toMillis(30));
+        cookieUtil = org.mockito.Mockito.spy(new CookieUtil(jwtUtil));
+        ReflectionTestUtils.setField(cookieUtil, "cookieSecure", true);
+        ReflectionTestUtils.setField(cookieUtil, "cookieSameSite", "None");
         OAuthController controller = new OAuthController(oAuthService, cookieUtil);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
@@ -129,5 +138,50 @@ class OAuthControllerTest {
 
         verify(oAuthService).linkOAuthAccount(eq("temp-token"), any());
         verify(cookieUtil).setTokensToCookie(any(HttpServletResponse.class), eq("access-token"), eq("refresh-token"));
+    }
+
+    @Test
+    void kakaoSignUpCompletionRejectsMissingTempCookie() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/oauth/signUp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new ObjectMapper().writeValueAsString(Map.of(
+                                "nickname", "카카오닉",
+                                "gender", "FEMALE",
+                                "birthday", "1995-01-01"
+                        ))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void kakaoSignUpCompletionSetsSessionCookiesForValidTempCookie() throws Exception {
+        LoginResponse loginResponse = LoginResponse.builder()
+                .nickname("카카오닉")
+                .carrier(Carrier.KT)
+                .membershipGradeCode(Grade.KT_GOLD)
+                .membershipVerified(false)
+                .build();
+        when(oAuthService.signUpWithOAuth(eq("temp-token"), any()))
+                .thenReturn(OAuthResult.builder()
+                        .accessToken("access-token")
+                        .refreshToken("refresh-token")
+                        .loginResponse(loginResponse)
+                        .build());
+
+        mockMvc.perform(post("/api/v1/auth/oauth/signUp")
+                        .cookie(new Cookie("tempToken", "temp-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new ObjectMapper().writeValueAsString(Map.of(
+                                "nickname", "카카오닉",
+                                "gender", "FEMALE",
+                                "birthday", "1995-01-01"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("LOGIN_SUCCESS"))
+                .andExpect(header().stringValues("Set-Cookie", hasItems(
+                        org.hamcrest.Matchers.containsString("access=access-token"),
+                        org.hamcrest.Matchers.containsString("refresh=refresh-token")
+                )));
+
+        verify(oAuthService).signUpWithOAuth(eq("temp-token"), any());
     }
 }

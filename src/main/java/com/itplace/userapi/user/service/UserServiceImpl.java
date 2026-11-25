@@ -20,9 +20,11 @@ import com.itplace.userapi.user.entity.User;
 import com.itplace.userapi.user.exception.InvalidMembershipProfileException;
 import com.itplace.userapi.user.exception.UserNotFoundException;
 import com.itplace.userapi.user.repository.AuthCredentialRepository;
+import com.itplace.userapi.user.repository.AuthGrantConsumptionStore;
 import com.itplace.userapi.user.repository.SocialAccountRepository;
 import com.itplace.userapi.user.repository.UserRepository;
 import com.itplace.userapi.user.support.MembershipProfileValidator;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,7 @@ public class UserServiceImpl implements UserService {
     private final SocialAccountRepository socialAccountRepository;
     private final AuthCredentialRepository authCredentialRepository;
     private final MembershipProfileValidator membershipProfileValidator;
+    private final AuthGrantConsumptionStore authGrantConsumptionStore;
 
     private static final String RESET_PASSWORD_PREFIX = "resetPassword:";
 
@@ -102,9 +105,12 @@ public class UserServiceImpl implements UserService {
             throw new PasswordMismatchException(SecurityCode.PASSWORD_MISMATCH);
         }
 
-        redisTemplate.delete(key);
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException(SecurityCode.USER_NOT_FOUND));
+        if (!authGrantConsumptionStore.claim("resetPassword:" + request.getResetPasswordToken(), Duration.ofMinutes(5))
+                || !request.getEmail().equals(redisTemplate.opsForValue().get(key))) {
+            throw new InvalidCredentialsException(SecurityCode.RESET_PASSWORD_FAILURE);
+        }
         upsertLocalPasswordCredential(user, passwordEncoder.encode(request.getNewPassword()));
     }
 
